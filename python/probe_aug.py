@@ -20,21 +20,21 @@ class ProbeAUG(Probe):
 
         self.IO_mds = IOMdsAUG(shn, sock)
         self.IO_file = IOFileAUG(shn)
-        self.nodes = ('VOL3', 'VOL1', 'CUR1', 'CUR2', 'VOL2')
+        self.nodes = ('VOL3', 'VOL1', 'CUR1', 'CUR2')
 
     def mapsig(self):
-        self.R  = self.x['VOL3']
-        self.Vb = self.x['VOL1']
-        self.I1 = self.x['CUR1']
-        self.I2 = self.x['CUR2']
-        self.V  = self.x['VOL2']
+        s = 2048
 
-        self.I1m = np.mean(self.I1[:100])
-        self.I2m = np.mean(self.I2[:100])
+        self.t = self.x['t'][s:]
+        self.R = self.x['VOL3'][s:]
 
-        self.Vb = -self.Vb
-        self.I1 = self.I1m-self.I1
-        self.I2 = self.I2m-self.I2
+        self.V = self.x['VOL1'][s:]
+        self.I = np.c_[self.x['CUR1'][s:], self.x['CUR2'][s:]]
+
+        self.I_offs = np.mean(self.I[:100,:],0)
+
+        self.V = -self.V
+        self.I = self.I_offs - self.I
 
 
 

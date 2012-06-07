@@ -6,39 +6,46 @@ from mdsclient import *
 from matplotlib.pyplot import figure, plot, show
 from tight_figure import tight_figure as figure
 
-
-class IOMds:
-    def __init__(self, shn=0, sock=None):
-        self.shn, self.sock = shn, sock
-        self.mdsport, self.mdsfmt = "8000", ""
-
-    def mdsstr(self, node):
-        return self.mdsfmt % (self.shn, node)
-
-    def getsig(self, node):
-        return mdsvalue(self.sock,self.mdsstr(node))
-
-    def gettim(self, node):
-        return mdsvalue(self.sock,'dim_of(%s)' % self.mdsstr(node))
-
-    def load(self, nodes):
-        if self.sock is None:
-            self.sock = mdsconnect('localhost:' + str(self.mdsport))
-
-        t = self.gettim(nodes[0])
-        x = {}
-        for node in nodes:
-            x[node] = self.getsig(node)
-
-        return t, x
-
-    def save(self, t, x):
+class IO:
+    def __init__(self):
         pass
 
+    def get_size(self, node):
+        pass
 
-class IOFile:
-    def __init__(self, subdir="", shn=0):
-        self.subdir, self.shn = subdir, shn
+    def get_node(self, node):
+        pass
+
+    def put_node(self, node, val):
+        pass
+
+    def set_view(self, s):
+        nodes = self.x.keys()
+        Xs = self.X[:,s]
+        for i in xrange(len(nodes)):
+            self.x[nodes[i]] = Xs[i]
+
+    def load(self, nodes):
+        self.nodes = nodes
+        M = len(nodes)
+        N = self.get_size(nodes[0])
+
+        self.X = np.empty((M,N),'f')
+        self.x = {}
+
+        for i in xrange(M):
+            node = nodes[i]
+            self.X[i,:] = self.get_node(node)
+            self.x[node] = self.X[i]
+
+    def save(self):
+        for node, val in self.x.iteritems():
+            self.put_node(node, val)
+
+
+class IOFile(IO):
+    def __init__(self, shn=0, subdir=""):
+        self.shn, self.subdir = shn, subdir
 
         pth = os.environ['DATAPATH']
         pth = os.path.join(pth, self.subdir)
@@ -46,27 +53,65 @@ class IOFile:
         
         self.h5name = os.path.join(pth, fname)
 
+        IO.__init__(self)
+
+    def get_size(self, node):
+        return self._f[node].len()
+
+    def get_node(self, node):
+        return self._f[node].value
+
+    def put_node(self, node, val):
+        self._f.create_dataset(node,data=val,compression="gzip")
+
     def load(self, nodes):
-        f = h5py.File(self.h5name,"r")
+        self._f = h5py.File(self.h5name,"r")
     
-        t = f['t'].value
-        x = {}
-        for node in nodes:
-            x[node] = f[node].value
-        
-        f.close()
-        return t, x
+        IO.load(self, nodes)
 
-    def save(self, t, x):
-        f = h5py.File(self.h5name,"w")
+        self._f.close()
+        return self.x
 
-        f.create_dataset('t',data=t,compression="gzip")
+    def save(self):
+        self._f = h5py.File(self.h5name,"w")
 
-        for node, val in x.iteritems():
-            f.create_dataset(node,data=val,compression="gzip")
+        IO.save(self)
 
-        f.close()
+        self._f.close()
 
+
+class IOMds(IO):
+    def __init__(self, shn=0, sock=None):
+        self.shn, self.sock = shn, sock
+        self.mdsport, self.mdsfmt = "8000", ""
+
+    def mdsstr(self, node):
+        return self.mdsfmt % (self.shn, node)
+
+    def get_size(self, node):
+        return mdsvalue(self.sock,'size(%s)' % self.mdsstr(node))
+
+    def get_time(self, node):
+        return mdsvalue(self.sock,'dim_of(%s)' % self.mdsstr(node))
+
+    def get_node(self, node):
+        if node == 't':
+            node = self.nodes[self.nodes.index('t')-1]
+            return self.get_time(node)
+        else:
+            return mdsvalue(self.sock,self.mdsstr(node))
+
+    def load(self, nodes):
+        if self.sock is None:
+            self.sock = mdsconnect('localhost:' + str(self.mdsport))
+
+        IO.load(self, nodes)
+
+        return self.x
+
+    def save(self):
+        raise NotImplementedError("Saving to MDS not implemented")
+ 
 
 class Probe:
     def __init__(self, shn=0, sock=None):
@@ -79,27 +124,32 @@ class Probe:
         pass
 
     def load_mds(self):
-        self.t, self.x = self.IO_mds.load(self.nodes)
+        self.x = self.IO_mds.load(self.nodes)
         self.mapsig()
         
     def load_file(self):
-        self.t, self.x = self.IO_file.load(self.nodes)
+        self.x = self.IO_file.load(self.nodes)
         self.mapsig()
 
     def save(self):
-        self.IO_file.save(self.t,self.x)
+        self.IO_file.save(self.x)
 
     def load(self):
         try:
-            self.t, self.x = self.IO_file.load(self.nodes)
+            self.x = self.IO_file.load(self.nodes)
         except:
-            self.t, self.x = self.IO_mds.load(self.nodes)
+            self.x = self.IO_mds.load(self.nodes)
             self.save()
 
         self.mapsig()        
 
+    def cut_tail(self):
+        s = np.where(self.R < 0.99*self.R[0]);
+
+
+
     def plot(self):
-        X = np.c_[self.I1,self.I2,self.R,self.Vb/100.]
+        X = np.c_[self.I,self.R,self.V/100.]
         figure()
         plot(self.t,X)
 
