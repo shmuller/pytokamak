@@ -11,7 +11,7 @@ class IOMdsAUG(IOMds):
 
 class IOFileAUG(IOFile):
     def __init__(self, shn=27695):
-        IOFile.__init__(self, "AUG", shn)
+        IOFile.__init__(self, shn=shn, subdir="AUG")
 
 
 class ProbeAUG(Probe):
@@ -20,16 +20,17 @@ class ProbeAUG(Probe):
 
         self.IO_mds = IOMdsAUG(shn, sock)
         self.IO_file = IOFileAUG(shn)
-        self.nodes = ('VOL3', 'VOL1', 'CUR1', 'CUR2')
+        self.nodes = ('VOL3', 'VOL1', 'CUR1', 'CUR2', 't')
 
     def mapsig(self):
-        s = 2048
+        s = slice(2048, None)
+        x = self.x.view(s)
 
-        self.t = self.x['t'][s:]
-        self.R = self.x['VOL3'][s:]
+        self.t = x['t']
+        self.R = x['VOL3']
 
-        self.V = self.x['VOL1'][s:]
-        self.I = np.c_[self.x['CUR1'][s:], self.x['CUR2'][s:]]
+        self.V = x['VOL1']
+        self.I = np.c_[x['CUR1'], x['CUR2']]
 
         self.I_offs = np.mean(self.I[:100,:],0)
 
