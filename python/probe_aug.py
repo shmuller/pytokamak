@@ -27,25 +27,26 @@ class ProbeAUG(probe.Probe):
         s = slice(2048, None)
         x = self.x.view(s)
 
-        self.t = x['t']
-        self.R = x['VOL3']
+        t = x['t']
+        R = x['VOL3']
 
-        self.V = x['VOL1']
-        self.I = np.r_[x['CUR1'], x['CUR2']].reshape((2,-1))
+        V = x['VOL1']
+        I1 = x['CUR1']
+        I2 = x['CUR2']
 
-        self.I_offs = np.mean(self.I[:,:100],1)
+        R[:] -= R[0]
+        V[:] = -V
 
-        self.R -= self.R[0]
-        self.V = -self.V
-        self.I = self.I_offs[:,None] - self.I
+        I1[:] = I1[:100].mean() - I1
+        I2[:] = I2[:100].mean() - I2
 
-        R = probe.PositionSignal(self.t, self.R, 'R')
-        V = probe.VoltageSignal(self.t, self.V, 'V')
+        R = probe.PositionSignal(t, R, 'R')
+        V = probe.VoltageSignal(t, V, 'V')
 
         self.S = {'R': R,
                   'V': V,
-                  'I1': probe.CurrentSignal(self.t, self.I[0], 'I1', V),
-                  'I2': probe.CurrentSignal(self.t, self.I[1], 'I2', V)}
+                  'I1': probe.CurrentSignal(t, I1, 'I1', V),
+                  'I2': probe.CurrentSignal(t, I2, 'I2', V)}
 
 
 

@@ -1,10 +1,13 @@
 import numpy as np
 import os
 import h5py
-from mdsclient import *
+import copy
 
 from matplotlib.pyplot import figure, plot, show, hold
 from tight_figure import tight_figure as figure
+
+import scipy.optimize as opt
+from mdsclient import *
 
 from pdb import set_trace
 
@@ -119,15 +122,86 @@ class IOMds(IO):
         raise NotImplementedError("Saving to MDS not implemented")
 
 
+class PeriodPhaseFinder():
+    def __init__(self, x):
+        self.x = x
+        self.di = np.zeros(2)
+        self.iE = None
+
+    def find_f(self):
+        nextpow2 = lambda x: 2**np.ceil(np.log2(x)).astype('i')
+        Nfft = nextpow2(self.x.size)
+
+        X = np.fft.fft(self.x-self.x.mean(), Nfft)
+        iM = np.abs(X[1:Nfft/2+1]).argmax()+1
+        f = np.float(iM)/Nfft
+        return f
+
+    def cumdist(self, p):
+        d, i = p[0], p[1]
+        M = self.x.size
+        iE = np.round(np.arange(i,M,d/2)).astype('i')
+        
+        N = iE.size/2
+        iE = iE[:2*N].reshape(N,2).T        
+
+        dx = self.x[iE[0]] - self.x[iE[1]]
+        D = -np.sqrt(dx.dot(dx)/N)
+
+        self.iE = iE
+        return D
+
+    def guess_d(self, p0):
+        d0, i0 = p0[0], p0[1]
+        N = 200
+        dd = np.linspace(0.99*d0, 1.01*d0, N)
+        DD = np.empty(N)
+        for j in xrange(N):
+            DD[j] = self.cumdist([dd[j],i0])
+        d = dd[DD.argmin()]
+        return d
+
+    def chop_sweeps(self):
+        f0 = self.find_f()
+        d0 = 1./f0
+        x0 = self.x[:np.round(d0)]
+        i0 = min(x0.argmin(), x0.argmax())
+        
+        d = self.guess_d([d0,i0])
+
+        p = opt.fmin(self.cumdist, np.array([d,i0]))
+
+        D = self.cumdist([d0,i0])
+        print D
+        
+        D = self.cumdist([d,i0])
+        print D
+
+        D = self.cumdist(p)
+        print D
+
+        return D
+
+    def get_iE(self):
+        return self.iE
+
+
 class Signal:
     def __init__(self, t, x, name="", type=None):
         self.t, self.x, self.name, self.type = t, x, name, type
+
+    def copy(self):
+        s = copy.copy(self)
+        s.x = s.x.copy()
+        return s
 
     def trim(self, s):
         self.t, self.x = self.t[s], self.x[s]
 
     def norm_to_region(self, cnd):
-        return self.x - self.x[cnd].mean()
+        s = self.copy()
+        s.x[:] -= self.x[cnd].mean()
+        return s
 
     def deriv(self):
         delta = lambda x: np.r_[x[1]-x[0], x[2:]-x[:-2], x[-1]-x[-2]]
@@ -153,6 +227,17 @@ class PositionSignal(Signal):
 class VoltageSignal(Signal):
     def __init__(self, t, x, name=""):
         Signal.__init__(self, t, x, name, 'Voltage')
+        self.iE = None
+
+    def chop_sweeps(self):
+        PPF = PeriodPhaseFinder(self.x)
+        PPF.chop_sweeps()
+        self.iE = PPF.get_iE()
+
+    def plot(self):
+        Signal.plot(self)
+        if self.iE is not None:
+            plot(self.t[self.iE], self.x[self.iE], 'r+')
 
 
 class CurrentSignal(Signal):
@@ -166,7 +251,7 @@ class CurrentSignal(Signal):
         N = (dV_dtc*dV_dtc).sum()
 
         dI = self.norm_to_region(cnd)
-        self.C = (dI[cnd]*dV_dtc).sum()/N
+        self.C = (dI.x[cnd]*dV_dtc).sum()/N
 
     def I_capa(self):
         if self.C is None:
@@ -174,8 +259,10 @@ class CurrentSignal(Signal):
         return self.C*self.V.deriv()
 
     def I_corr(self):
-        x = self.x - self.I_capa()
-        return CurrentSignal(self.t, x, self.name, self.V, self.C)
+        I_capa = self.I_capa()
+        s = self.copy()
+        s.x[:] -= I_capa
+        return s
 
 
 class Probe:
@@ -184,8 +271,6 @@ class Probe:
 
         self.IO_mds = self.IO_file = None
         self.nodes = ()
-        
-        self.C = None
 
     def mapsig(self):
         pass
