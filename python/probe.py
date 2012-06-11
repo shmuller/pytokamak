@@ -283,15 +283,30 @@ class CurrentSignal(Signal):
 
 class IVChar:
     def __init__(self, V, I):
-        self.V, self.I = V, I
+        ind = V.x.argsort()
+        self.V, self.I = V[ind], I[ind]
+        self.Vm, self.VM = self.V.range()
+        self.Im, self.IM = self.I.x.min(), np.median(self.I.x[:ind.size/2])
+        self.dV = self.VM - self.Vm
+        self.dI = self.IM - self.Im
 
-    def plot(self, newfig=True):
+    def get_IV(self):
+        return self.V.x, self.I.x
+
+    def get_IV_norm(self):
+        V = (self.V.x - self.Vm)/self.dV
+        I = (self.I.x - self.Im)/self.dI*2 - 1
+        return V, I
+
+    def plot(self, newfig=True, fun='get_IV'):
+        get_IV = getattr(self, fun)
         if newfig: figure()
-        line, = plot(self.V.x, self.I.x)
+        line, = plot(*get_IV())
         return line
 
-    def update(self, line):
-        line.set_data(self.V.x, self.I.x)
+    def update(self, line, fun='get_IV'):
+        get_IV = getattr(self, fun)
+        line.set_data(*get_IV())
 
 
 class IVGroup:
@@ -300,13 +315,16 @@ class IVGroup:
         for j, I in enumerate(II):
             self.IV_char[j] = IVChar(V[s], I[s])
 
-    def plot(self, newfig=True):
-        if newfig: figure()
-        return [IV_char.plot(False) for IV_char in self.IV_char]
+    def __getitem__(self, index):
+        return self.IV_char[index]
 
-    def update(self, lines):
+    def plot(self, newfig=True, fun='get_IV'):
+        if newfig: figure()
+        return [IV_char.plot(False, fun) for IV_char in self.IV_char]
+
+    def update(self, lines, fun='get_IV'):
         for IV_char, line in zip(self.IV_char, lines):
-            IV_char.update(line)
+            IV_char.update(line, fun)
 
 
 class IVSeries:
@@ -329,13 +347,17 @@ class IVSeries:
         I_range = np.array([I.plot_range() for I in II])
         return I_range[:,0].min(), I_range[:,1].max()
 
-    def plot(self):
-        lines = self.IV_group[0].plot(True)
-        xlim(self.V_range)
-        ylim(self.I_range)
+    def plot(self, fun='get_IV'):
+        lines = self.IV_group[0].plot(True, fun)
+        if fun == 'get_IV':
+            xlim(self.V_range)
+            ylim(self.I_range)
+        elif fun == 'get_IV_norm':
+            xlim(( 0.0, 1.0))
+            ylim((-1.2, 1.2))
         draw()
         for IV_group in self.IV_group[1:]:
-            IV_group.update(lines)
+            IV_group.update(lines, fun)
             draw()
 
 
