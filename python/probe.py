@@ -7,7 +7,6 @@ from matplotlib.pyplot import figure, plot, draw, hold, xlim, ylim
 from tight_figure import tight_figure as figure
 
 import scipy.optimize as opt
-from scipy.stats import scoreatpercentile as percentile
 
 from mdsclient import *
 
@@ -16,12 +15,10 @@ from pdb import set_trace
 class Data(dict):
     def __init__(self, nodes, X):
         self.nodes, self.X = nodes, X
-        p = [(nodes[i], X[i]) for i in xrange(len(nodes))]
-        dict.__init__(self, p)
+        dict.__init__(self, zip(nodes, X))
 
     def view(self, s):
-        p = [(self.nodes[i], self.X[i,s]) for i in xrange(len(self.nodes))]
-        return dict(p)
+        return dict(zip(self.nodes, self.X[:,s]))
 
 
 class IO:
@@ -250,8 +247,8 @@ class VoltageSignal(Signal):
         PPF.chop_sweeps()
         self.iE = PPF.get_iE()
 
-    def plot(self):
-        Signal.plot(self)
+    def plot(self, newfig=True):
+        Signal.plot(self, newfig)
         if self.iE is not None:
             plot(self.t[self.iE], self.x[self.iE], 'r+')
 
@@ -290,34 +287,56 @@ class IVChar:
 
     def plot(self, newfig=True):
         if newfig: figure()
-        return plot(self.V.x, self.I.x)
+        line, = plot(self.V.x, self.I.x)
+        return line
+
+    def update(self, line):
+        line.set_data(self.V.x, self.I.x)
 
 
-class IVCharSeries:
-    def __init__(self, V, I):
-        self.V_range, self.I_range = V.plot_range(), I.plot_range()
+class IVGroup:
+    def __init__(self, V, II, s=slice(None)):
+        self.IV_char = np.empty(len(II), object)
+        for j, I in enumerate(II):
+            self.IV_char[j] = IVChar(V[s], I[s])
+
+    def plot(self, newfig=True):
+        if newfig: figure()
+        return [IV_char.plot(False) for IV_char in self.IV_char]
+
+    def update(self, lines):
+        for IV_char, line in zip(self.IV_char, lines):
+            IV_char.update(line)
+
+
+class IVSeries:
+    def __init__(self, V, II):
+        self.V_range = V.plot_range()
+        self.I_range = self._plot_range(II)
 
         if V.iE is None:
             V.chop_sweeps()
         N = V.iE.size-1
-        self.IV = np.empty(N, object)
+        self.IV_group = np.empty(N, object)
         for j in xrange(N):
             s = slice(V.iE[j], V.iE[j+1]+1)
-            self.IV[j] = IVChar(V[s], I[s])
+            self.IV_group[j] = IVGroup(V, II, s)
 
     def __getitem__(self, index):
-        return self.IV[index]
+        return self.IV_group[index]
+
+    def _plot_range(self, II):
+        I_range = np.array([I.plot_range() for I in II])
+        return I_range[:,0].min(), I_range[:,1].max()
 
     def plot(self):
-        fig = figure()
-        IV = self.IV[0]
-        line, = plot(IV.V.x, IV.I.x)
+        lines = self.IV_group[0].plot(True)
         xlim(self.V_range)
         ylim(self.I_range)
-        fig.canvas.draw()
-        for IV in self.IV[1:]:
-            line.set_data(IV.V.x, IV.I.x)
-            fig.canvas.draw()
+        draw()
+        for IV_group in self.IV_group[1:]:
+            IV_group.update(lines)
+            draw()
 
 
 
@@ -352,6 +371,10 @@ class Probe:
 
         self.mapsig()
 
+    def get_type(self, type):
+        istype = lambda x: x.type == type
+        return filter(istype, self.S.itervalues())
+
     def plot(self):
         figure()
         hold(True)
@@ -359,18 +382,16 @@ class Probe:
             S.plot(newfig=False)
 
     def trim(self):
-        for S in self.S.itervalues():
-            if isinstance(S, PositionSignal):
-                i0, i1 = S.get_t_ind()
-                break
+        S = self.get_type('Position')
+        i0, i1 = S[0].get_t_ind()
 
         s = slice(i1)
         for S in self.S.itervalues():
             S.trim(s)
 
-    def IV_char(self, name):
-        V, I = self.S['V'], self.S[name]
-        IV = IVCharSeries(V, I)
-        return IV
+    def IV_series(self):
+        V = self.S['V']
+        II = self.get_type('Current')
+        return IVSeries(V, II)
 
 
