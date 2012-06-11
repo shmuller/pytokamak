@@ -3,10 +3,12 @@ import os
 import h5py
 import copy
 
-from matplotlib.pyplot import figure, plot, show, hold
+from matplotlib.pyplot import figure, plot, draw, hold, xlim, ylim
 from tight_figure import tight_figure as figure
 
 import scipy.optimize as opt
+from scipy.stats import scoreatpercentile as percentile
+
 from mdsclient import *
 
 from pdb import set_trace
@@ -142,11 +144,8 @@ class PeriodPhaseFinder():
         M = self.x.size
         iE = np.round(np.arange(i,M,d/2)).astype('i')
         
-        N = iE.size/2
-        iE = iE[:2*N].reshape(N,2).T        
-
-        dx = self.x[iE[0]] - self.x[iE[1]]
-        D = -np.sqrt(dx.dot(dx)/N)
+        dx = np.diff(self.x[iE])
+        D = -np.sqrt(dx.dot(dx)/dx.size)
 
         self.iE = iE
         return D
@@ -190,6 +189,9 @@ class Signal:
     def __init__(self, t, x, name="", type=None):
         self.t, self.x, self.name, self.type = t, x, name, type
 
+    def __getitem__(self, index):
+        return self.__init__(self.t[index], self.x[index], self.name, self.type)
+
     def copy(self):
         s = copy.copy(self)
         s.x = s.x.copy()
@@ -197,6 +199,14 @@ class Signal:
 
     def trim(self, s):
         self.t, self.x = self.t[s], self.x[s]
+
+    def range(self):
+        return self.x.min(), self.x.max()
+
+    def plot_range(self):
+        x = np.sort(self.x)
+        i = np.round(np.array([0.001, 0.999])*(x.size-1)).astype('i')
+        return tuple(x[i])
 
     def norm_to_region(self, cnd):
         s = self.copy()
@@ -217,6 +227,9 @@ class PositionSignal(Signal):
     def __init__(self, t, x, name=""):
         Signal.__init__(self, t, x, name, 'Position')
 
+    def __getitem__(self, index):
+        return PositionSignal(self.t[index], self.x[index], self.name)
+
     def get_t_ind(self):
         i0 = np.argmax(self.x)
         i1 = np.where(self.x[i0:] < self.x[0])[0][0]
@@ -228,6 +241,9 @@ class VoltageSignal(Signal):
     def __init__(self, t, x, name=""):
         Signal.__init__(self, t, x, name, 'Voltage')
         self.iE = None
+
+    def __getitem__(self, index):
+        return VoltageSignal(self.t[index], self.x[index], self.name)
 
     def chop_sweeps(self):
         PPF = PeriodPhaseFinder(self.x)
@@ -244,6 +260,9 @@ class CurrentSignal(Signal):
     def __init__(self, t, x, name="", V=None, C=None):
         Signal.__init__(self, t, x, name, 'Current')
         self.V, self.C = V, C
+
+    def __getitem__(self, index):
+        return CurrentSignal(self.t[index], self.x[index], self.name)
 
     def capa_pickup(self):
         cnd = self.t - self.t[0] < 0.05
@@ -263,6 +282,44 @@ class CurrentSignal(Signal):
         s = self.copy()
         s.x[:] -= I_capa
         return s
+
+
+class IVChar:
+    def __init__(self, V, I):
+        self.V, self.I = V, I
+
+    def plot(self, newfig=True):
+        if newfig: figure()
+        return plot(self.V.x, self.I.x)
+
+
+class IVCharSeries:
+    def __init__(self, V, I):
+        self.V_range, self.I_range = V.plot_range(), I.plot_range()
+
+        if V.iE is None:
+            V.chop_sweeps()
+        N = V.iE.size-1
+        self.IV = np.empty(N, object)
+        for j in xrange(N):
+            s = slice(V.iE[j], V.iE[j+1]+1)
+            self.IV[j] = IVChar(V[s], I[s])
+
+    def __getitem__(self, index):
+        return self.IV[index]
+
+    def plot(self):
+        fig = figure()
+        IV = self.IV[0]
+        line, = plot(IV.V.x, IV.I.x)
+        xlim(self.V_range)
+        ylim(self.I_range)
+        fig.canvas.draw()
+        for IV in self.IV[1:]:
+            line.set_data(IV.V.x, IV.I.x)
+            fig.canvas.draw()
+
+
 
 
 class Probe:
@@ -311,5 +368,9 @@ class Probe:
         for S in self.S.itervalues():
             S.trim(s)
 
+    def IV_char(self, name):
+        V, I = self.S['V'], self.S[name]
+        IV = IVCharSeries(V, I)
+        return IV
 
 
