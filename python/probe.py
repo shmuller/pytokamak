@@ -189,6 +189,9 @@ class Signal:
     def __getitem__(self, index):
         return self.__init__(self.t[index], self.x[index], self.name, self.type)
 
+    def len(self):
+        return self.x.size
+
     def copy(self):
         s = copy.copy(self)
         s.x = s.x.copy()
@@ -281,22 +284,177 @@ class CurrentSignal(Signal):
         return s
 
 
+class Fitter:
+    def __init__(self, x, y):
+        self.x, self.y = x, y
+
+        self.OK = None
+        self.X = self.Y = None
+        self.P0 = self.P = None
+        self.p0 = self.p = None
+
+    # overload
+    def set_OK(self):
+        self.OK = True
+        return self.OK
+
+    def set_norm(self):
+        self.X, self.Y = self.x, self.y
+        return self.X, self.Y
+
+    def set_unnorm(self):
+        self.p0, self.p = self.P0, self.P
+        return self.p0, self.p
+
+    def set_guess(self):
+        self.P0 = 0.
+        return self.P0
+
+    def fitfun(self, P, X):
+        pass
+
+    # static
+    def is_OK(self):
+        if self.OK is None:
+            self.set_OK()
+        return self.OK
+
+    def get_norm(self):
+        if self.X is None:
+            self.set_norm()
+        return self.X, self.Y
+
+    def get_unnorm(self):
+        if self.p0 is None:
+            self.set_unnorm()
+        return self.p0, self.p
+
+    def get_guess(self):
+        if self.P0 is None:
+            self.set_guess()
+        return self.P0
+            
+    def fitfunlsq(self, P):
+        X, Y = self.get_norm()
+        dY = self.fitfun(P, X) - Y
+        return dY.dot(dY)/dY.size
+
+    def fit(self):
+        if not self.is_OK():
+            raise RuntimeError("Cannot fit data that failed is_OK() check")
+            
+        self.P0 = self.get_guess()
+        self.P = opt.fmin(self.fitfunlsq, self.P0)
+        return self.set_unnorm()
+
+    def eval_guess_norm(self):
+        return self.fitfun(self.P0, self.X)
+
+    def eval_norm(self):
+        return self.fitfun(self.P, self.X)
+
+    def eval_guess(self):
+        return self.fitfun(self.p0, self.x)
+
+    def eval(self):
+        return self.fitfun(self.p, self.x)
+
+    def plot_norm(self):
+        if self.p is None: self.fit()
+        figure()
+        plot(self.X, np.c_[self.Y, self.eval_guess_norm(), self.eval_norm()])
+
+    def plot(self):
+        if self.p is None: self.fit()
+        figure()
+        plot(self.x, np.c_[self.y, self.eval_guess(), self.eval()])
+
+
+class FitterIV(Fitter):
+    def __init__(self, V, I):
+        self.V, self.I = V, I
+        self.Vm, self.VM = self.V[0], self.V[-1]
+        self.Im, self.IM = self.I.min(), np.median(self.I[:I.size/2])
+        self.dV = self.VM - self.Vm
+        self.dI = self.IM - self.Im
+
+        Fitter.__init__(self, self.V, self.I)
+
+    def set_OK(self):
+        def medianstd(x):
+            xm = np.median(x)
+            dx = x-xm
+            xs = np.sqrt(dx.dot(dx)/dx.size)
+            return xm, xs
+
+        N = self.I.size
+        Ilm, Ils = medianstd(self.I[:N/10])
+        Irm, Irs = medianstd(self.I[N*9/10:])
+
+        cnd1 = Ilm > Ils
+        cnd2 = Irm < -2*Ils
+        self.OK = cnd1 & cnd2
+        return self.OK
+
+    def set_norm(self):
+        self.X = (self.V.astype('d') - self.Vm)/self.dV
+        self.Y = (self.I.astype('d') - self.Im)/self.dI*2 - 1
+        return self.X, self.Y
+
+    def set_unnorm(self):
+        def unnormalize(P, Vm, VM, Im, IM):
+            dV, dI = VM-Vm, IM-Im
+            a = 2./dI
+            b = -(Im*a+1)
+
+            p = np.empty_like(P)
+            p[0] = (P[0]-b)/a
+            p[1] = (P[1]+P[2]*np.log(1.-b/P[0]))*dV+Vm
+            p[2] = P[2]*dV
+            return p
+
+        self.p0 = unnormalize(self.P0, self.Vm, self.VM, self.Im, self.IM)
+        self.p  = unnormalize(self.P , self.Vm, self.VM, self.Im, self.IM)
+        return self.p0, self.p
+
+    def set_guess(self):
+        def find_i0(x):
+            return np.flatnonzero(np.diff(np.sign(x)))[-1]
+
+        V, I = self.get_norm()
+        I0 = 1.
+        i0 = find_i0(I)
+        Vf = (V[i0]+V[i0+1])/2
+        im = I.argmin()
+        Te = (V[im]-Vf)/np.log(1-I[im]/I0)
+
+        self.P0 = np.array([I0, Vf, Te])
+        return self.P0
+
+    def fitfun(self, P, X):
+        return P[0]*(1.-np.exp((X-P[1])/P[2]))
+        
+
+
 class IVChar:
     def __init__(self, V, I):
         ind = V.x.argsort()
         self.V, self.I = V[ind], I[ind]
-        self.Vm, self.VM = self.V.range()
-        self.Im, self.IM = self.I.x.min(), np.median(self.I.x[:ind.size/2])
-        self.dV = self.VM - self.Vm
-        self.dI = self.IM - self.Im
+
+        self.fitter_IV = FitterIV(self.V.x, self.I.x)
+        self.OK = self.fitter_IV.is_OK()
+
+        self.p = self.p0 = None
 
     def get_IV(self):
         return self.V.x, self.I.x
 
     def get_IV_norm(self):
-        V = (self.V.x - self.Vm)/self.dV
-        I = (self.I.x - self.Im)/self.dI*2 - 1
-        return V, I
+        return self.fitter_IV.get_norm()
+    
+    def get_IV_fit(self):
+        self.p0, self.p = self.fitter_IV.fit()
+        return self.fitter_IV.eval()
 
     def plot(self, newfig=True, fun='get_IV'):
         get_IV = getattr(self, fun)
@@ -305,8 +463,9 @@ class IVChar:
         return line
 
     def update(self, line, fun='get_IV'):
-        get_IV = getattr(self, fun)
-        line.set_data(*get_IV())
+        if self.OK:
+            get_IV = getattr(self, fun)
+            line.set_data(*get_IV())
 
 
 class IVGroup:
@@ -318,6 +477,12 @@ class IVGroup:
     def __getitem__(self, index):
         return self.IV_char[index]
 
+    def is_OK(self):
+        OK = np.empty(self.IV_char.size, bool)
+        for j, IV_char in enumerate(self.IV_char):
+            OK[j] = IV_char.OK
+        return OK
+
     def plot(self, newfig=True, fun='get_IV'):
         if newfig: figure()
         return [IV_char.plot(False, fun) for IV_char in self.IV_char]
@@ -325,7 +490,6 @@ class IVGroup:
     def update(self, lines, fun='get_IV'):
         for IV_char, line in zip(self.IV_char, lines):
             IV_char.update(line, fun)
-
 
 class IVSeries:
     def __init__(self, V, II):
@@ -335,6 +499,8 @@ class IVSeries:
         if V.iE is None:
             V.chop_sweeps()
         N = V.iE.size-1
+        self.siz = (N, len(II))
+
         self.IV_group = np.empty(N, object)
         for j in xrange(N):
             s = slice(V.iE[j], V.iE[j+1]+1)
@@ -347,12 +513,18 @@ class IVSeries:
         I_range = np.array([I.plot_range() for I in II])
         return I_range[:,0].min(), I_range[:,1].max()
 
+    def is_OK(self):
+        OK = np.empty(self.siz, bool)
+        for j, LP_group in enumerate(self.IV_group):
+            OK[j,:] = LP_group.is_OK()
+        return OK
+
     def plot(self, fun='get_IV'):
         lines = self.IV_group[0].plot(True, fun)
         if fun == 'get_IV':
             xlim(self.V_range)
             ylim(self.I_range)
-        elif fun == 'get_IV_norm':
+        else:
             xlim(( 0.0, 1.0))
             ylim((-1.2, 1.2))
         draw()
