@@ -350,24 +350,50 @@ class Fitter:
     def eval_guess_norm(self):
         return self.fitfun(self.P0, self.X)
 
-    def eval_norm(self):
-        return self.fitfun(self.P, self.X)
-
     def eval_guess(self):
         return self.fitfun(self.p0, self.x)
+
+    def eval_norm(self):
+        return self.fitfun(self.P, self.X)
 
     def eval(self):
         return self.fitfun(self.p, self.x)
 
-    def plot_norm(self):
-        if self.p is None: self.fit()
-        figure()
-        plot(self.X, np.c_[self.Y, self.eval_guess_norm(), self.eval_norm()])
+    def get_XY(self):
+        if self.is_OK(): 
+            if self.P is None:
+                self.fit()
+            return self.X, (self.Y, self.eval_guess_norm(), self.eval_norm())
+        else:
+            return self.X, (self.Y,)
 
-    def plot(self):
-        if self.p is None: self.fit()
-        figure()
-        plot(self.x, np.c_[self.y, self.eval_guess(), self.eval()])
+    def get_xy(self):
+        if self.is_OK(): 
+            if self.p is None:
+                self.fit()
+            return self.x, (self.y, self.eval_guess(), self.eval())
+        else:
+            return self.x, (self.y,)
+
+    def plot(self, newfig=True, fun='get_xy', lines=None):
+        x, y = getattr(self, fun)()
+        
+        if lines is None: lines = []
+        Nl, Ny = len(lines), len(y)
+        if newfig and Nl == 0: figure()
+
+        for li, yi in zip(lines, y):
+            li.set_data(x, yi)
+            li.set_visible(True)
+
+        for li in lines[Ny:]:
+            li.set_visible(False)
+
+        for yi in y[Nl:]:
+            li, = plot(x, yi)
+            lines.append(li)
+
+        return lines
 
 
 class FitterIV(Fitter):
@@ -433,7 +459,6 @@ class FitterIV(Fitter):
 
     def fitfun(self, P, X):
         return P[0]*(1.-np.exp((X-P[1])/P[2]))
-        
 
 
 class IVChar:
@@ -456,16 +481,8 @@ class IVChar:
         self.p0, self.p = self.fitter_IV.fit()
         return self.fitter_IV.eval()
 
-    def plot(self, newfig=True, fun='get_IV'):
-        get_IV = getattr(self, fun)
-        if newfig: figure()
-        line, = plot(*get_IV())
-        return line
-
-    def update(self, line, fun='get_IV'):
-        if self.OK:
-            get_IV = getattr(self, fun)
-            line.set_data(*get_IV())
+    def plot(self, newfig=True, fun='get_xy', lines=None):
+        return self.fitter_IV.plot(newfig, fun, lines)
 
 
 class IVGroup:
@@ -483,13 +500,13 @@ class IVGroup:
             OK[j] = IV_char.OK
         return OK
 
-    def plot(self, newfig=True, fun='get_IV'):
-        if newfig: figure()
-        return [IV_char.plot(False, fun) for IV_char in self.IV_char]
+    def plot(self, newfig=True, fun='get_xy', lines=None):
+        if lines is None:
+            if newfig: figure()
+            return [x.plot(False, fun) for x in self.IV_char]
+        else:
+            return [x.plot(False, fun, l) for x, l in zip(self.IV_char, lines)]
 
-    def update(self, lines, fun='get_IV'):
-        for IV_char, line in zip(self.IV_char, lines):
-            IV_char.update(line, fun)
 
 class IVSeries:
     def __init__(self, V, II):
@@ -519,20 +536,19 @@ class IVSeries:
             OK[j,:] = LP_group.is_OK()
         return OK
 
-    def plot(self, fun='get_IV'):
-        lines = self.IV_group[0].plot(True, fun)
-        if fun == 'get_IV':
+    def plot(self, fun='get_xy'):
+        figure()
+        if fun == 'get_xy':
             xlim(self.V_range)
             ylim(self.I_range)
         else:
             xlim(( 0.0, 1.0))
             ylim((-1.2, 1.2))
-        draw()
-        for IV_group in self.IV_group[1:]:
-            IV_group.update(lines, fun)
+
+        lines = None
+        for IV_group in self.IV_group:
+            lines = IV_group.plot(False, fun, lines)
             draw()
-
-
 
 
 class Probe:
