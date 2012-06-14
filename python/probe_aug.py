@@ -23,6 +23,8 @@ class ProbeAUG(probe.Probe):
         self.IO_file = IOFileAUG(shn)
         self.nodes = ('VOL3', 'VOL1', 'CUR1', 'CUR2', 't')
 
+        self.Vcal = (5.0952, -190.8193)
+
     def mapsig(self):
         s = slice(2048, None)
         x = self.x.view(s)
@@ -35,7 +37,7 @@ class ProbeAUG(probe.Probe):
         I2 = x['CUR2']
 
         R[:] -= R[0]
-        V[:] = -V
+        V[:] = self.Vcal[0]*(-V) + self.Vcal[1]
 
         I1[:] = I1[:100].mean() - I1
         I2[:] = I2[:100].mean() - I2
@@ -47,7 +49,6 @@ class ProbeAUG(probe.Probe):
                   'V': V,
                   'I1': probe.CurrentSignal(t, I1, 'I1', V),
                   'I2': probe.CurrentSignal(t, I2, 'I2', V)}
-
 
 
 if __name__ == "__main__":

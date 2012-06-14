@@ -7,10 +7,11 @@ from matplotlib.pyplot import figure, plot, draw, hold, xlim, ylim
 from tight_figure import tight_figure as figure
 
 import scipy.optimize as opt
+import scipy.odr as odr
 
 from mdsclient import *
 
-from pdb import set_trace
+from ipdb import set_trace
 
 class Data(dict):
     def __init__(self, nodes, X):
@@ -284,14 +285,33 @@ class CurrentSignal(Signal):
         return s
 
 
+def wrap_fmin(fun, p0, x, y):
+    def dy2(p):
+        dy = fun(p, x) - y
+        return dy.dot(dy)/dy.size
+
+    return opt.fmin(dy2, p0)
+
+def wrap_odr(fun, p0, x, y):
+    mod = odr.Model(fun)
+    dat = odr.Data(x, y)
+    o = odr.ODR(dat, mod, p0)
+    out = o.run()
+    return out.beta
+
+engines = {'fmin': wrap_fmin, 'odr': wrap_odr}
+
+
 class Fitter:
-    def __init__(self, x, y):
+    def __init__(self, x, y, engine='fmin'):
         self.x, self.y = x, y
 
         self.OK = None
         self.X = self.Y = None
-        self.P0 = self.P = None
-        self.p0 = self.p = None
+        self.P = self.P0 = None
+        self.p = self.p0 = None
+
+        self.set_engine(engine)
 
     # overload
     def set_OK(self):
@@ -303,8 +323,8 @@ class Fitter:
         return self.X, self.Y
 
     def set_unnorm(self):
-        self.p0, self.p = self.P0, self.P
-        return self.p0, self.p
+        self.p, self.p0 = self.P, self.P0
+        return self.p, self.p0
 
     def set_guess(self):
         self.P0 = 0.
@@ -325,45 +345,45 @@ class Fitter:
         return self.X, self.Y
 
     def get_unnorm(self):
-        if self.p0 is None:
+        if self.p is None:
             self.set_unnorm()
-        return self.p0, self.p
+        return self.p, self.p0
 
     def get_guess(self):
         if self.P0 is None:
             self.set_guess()
         return self.P0
-            
-    def fitfunlsq(self, P):
-        X, Y = self.get_norm()
-        dY = self.fitfun(P, X) - Y
-        return dY.dot(dY)/dY.size
+    
+    def set_engine(self, engine):
+        self.engine = engines[engine]
 
     def fit(self):
         if not self.is_OK():
             raise RuntimeError("Cannot fit data that failed is_OK() check")
             
         self.P0 = self.get_guess()
-        self.P = opt.fmin(self.fitfunlsq, self.P0)
-        return self.set_unnorm()
+        self.P = self.engine(self.fitfun, self.P0, self.X, self.Y)
+        self.set_unnorm()
 
-    def eval_guess_norm(self):
-        return self.fitfun(self.P0, self.X)
+        return self.p
 
-    def eval_guess(self):
-        return self.fitfun(self.p0, self.x)
+    def eval_guess_norm(self, X):
+        return self.fitfun(self.P0, X)
 
-    def eval_norm(self):
-        return self.fitfun(self.P, self.X)
+    def eval_guess(self, x):
+        return self.fitfun(self.p0, x)
 
-    def eval(self):
-        return self.fitfun(self.p, self.x)
+    def eval_norm(self, X):
+        return self.fitfun(self.P, X)
+
+    def eval(self, x):
+        return self.fitfun(self.p, x)
 
     def get_XY(self):
         if self.is_OK(): 
             if self.P is None:
                 self.fit()
-            return self.X, (self.Y, self.eval_guess_norm(), self.eval_norm())
+            return self.X, (self.Y, self.eval_norm(self.X))
         else:
             return self.X, (self.Y,)
 
@@ -371,7 +391,7 @@ class Fitter:
         if self.is_OK(): 
             if self.p is None:
                 self.fit()
-            return self.x, (self.y, self.eval_guess(), self.eval())
+            return self.x, (self.y, self.eval(self.x))
         else:
             return self.x, (self.y,)
 
@@ -390,21 +410,26 @@ class Fitter:
             li.set_visible(False)
 
         for yi in y[Nl:]:
-            li, = plot(x, yi)
+            li, = plot(x, yi, linewidth=1.5)
             lines.append(li)
 
         return lines
 
 
 class FitterIV(Fitter):
-    def __init__(self, V, I):
-        self.V, self.I = V, I
+    def __init__(self, V, I, cut_at_min=True, **kwargs):
+        ind = V.argsort()
+        self.V, self.I = V[ind], I[ind]
+
+        self.im = self.I.argmin()
         self.Vm, self.VM = self.V[0], self.V[-1]
-        self.Im, self.IM = self.I.min(), np.median(self.I[:I.size/2])
+        self.Im, self.IM = self.I[self.im], np.median(self.I[:I.size/2])
         self.dV = self.VM - self.Vm
         self.dI = self.IM - self.Im
 
-        Fitter.__init__(self, self.V, self.I)
+        self.cut_at_min = cut_at_min
+
+        Fitter.__init__(self, self.V, self.I, **kwargs)
 
     def set_OK(self):
         def medianstd(x):
@@ -423,8 +448,12 @@ class FitterIV(Fitter):
         return self.OK
 
     def set_norm(self):
-        self.X = (self.V.astype('d') - self.Vm)/self.dV
-        self.Y = (self.I.astype('d') - self.Im)/self.dI*2 - 1
+        if self.cut_at_min:
+            M = self.im+1
+        else:
+            M = self.V.size
+        self.X = (self.V[:M].astype('d') - self.Vm)/self.dV
+        self.Y = (self.I[:M].astype('d') - self.Im)/self.dI*2 - 1
         return self.X, self.Y
 
     def set_unnorm(self):
@@ -441,7 +470,7 @@ class FitterIV(Fitter):
 
         self.p0 = unnormalize(self.P0, self.Vm, self.VM, self.Im, self.IM)
         self.p  = unnormalize(self.P , self.Vm, self.VM, self.Im, self.IM)
-        return self.p0, self.p
+        return self.p, self.p0
 
     def set_guess(self):
         def find_i0(x):
@@ -451,8 +480,7 @@ class FitterIV(Fitter):
         I0 = 1.
         i0 = find_i0(I)
         Vf = (V[i0]+V[i0+1])/2
-        im = I.argmin()
-        Te = (V[im]-Vf)/np.log(1-I[im]/I0)
+        Te = (V[self.im]-Vf)/np.log(1-I[self.im]/I0)
 
         self.P0 = np.array([I0, Vf, Te])
         return self.P0
@@ -462,43 +490,38 @@ class FitterIV(Fitter):
 
 
 class IVChar:
-    def __init__(self, V, I):
-        ind = V.x.argsort()
-        self.V, self.I = V[ind], I[ind]
+    def __init__(self, V, I, **kwargs):
+        self.V, self.I = V, I
+        self.fitter_IV = FitterIV(self.V.x, self.I.x, **kwargs)
 
-        self.fitter_IV = FitterIV(self.V.x, self.I.x)
-        self.OK = self.fitter_IV.is_OK()
-
-        self.p = self.p0 = None
-
-    def get_IV(self):
-        return self.V.x, self.I.x
-
-    def get_IV_norm(self):
-        return self.fitter_IV.get_norm()
-    
-    def get_IV_fit(self):
-        self.p0, self.p = self.fitter_IV.fit()
-        return self.fitter_IV.eval()
-
+    def fit(self, out=None):
+        if out is None:
+            out = np.empty(3)
+        try:
+            out[:] = self.fitter_IV.fit()
+        except RuntimeError:
+            out[:] = np.nan
+        return out
+        
     def plot(self, newfig=True, fun='get_xy', lines=None):
         return self.fitter_IV.plot(newfig, fun, lines)
 
 
 class IVGroup:
-    def __init__(self, V, II, s=slice(None)):
+    def __init__(self, V, II, s=slice(None), **kwargs):
         self.IV_char = np.empty(len(II), object)
         for j, I in enumerate(II):
-            self.IV_char[j] = IVChar(V[s], I[s])
+            self.IV_char[j] = IVChar(V[s], I[s], **kwargs)
 
     def __getitem__(self, index):
         return self.IV_char[index]
 
-    def is_OK(self):
-        OK = np.empty(self.IV_char.size, bool)
-        for j, IV_char in enumerate(self.IV_char):
-            OK[j] = IV_char.OK
-        return OK
+    def fit(self, out=None):
+        if out is None:
+            out = np.empty((self.IV_char.size, 3))
+        for p, IV_char in zip(out, self.IV_char):
+            IV_char.fit(p)
+        return out
 
     def plot(self, newfig=True, fun='get_xy', lines=None):
         if lines is None:
@@ -509,7 +532,7 @@ class IVGroup:
 
 
 class IVSeries:
-    def __init__(self, V, II):
+    def __init__(self, V, II, **kwargs):
         self.V_range = V.plot_range()
         self.I_range = self._plot_range(II)
 
@@ -521,7 +544,7 @@ class IVSeries:
         self.IV_group = np.empty(N, object)
         for j in xrange(N):
             s = slice(V.iE[j], V.iE[j+1]+1)
-            self.IV_group[j] = IVGroup(V, II, s)
+            self.IV_group[j] = IVGroup(V, II, s, **kwargs)
 
     def __getitem__(self, index):
         return self.IV_group[index]
@@ -530,11 +553,11 @@ class IVSeries:
         I_range = np.array([I.plot_range() for I in II])
         return I_range[:,0].min(), I_range[:,1].max()
 
-    def is_OK(self):
-        OK = np.empty(self.siz, bool)
-        for j, LP_group in enumerate(self.IV_group):
-            OK[j,:] = LP_group.is_OK()
-        return OK
+    def fit(self):
+        out = np.empty(self.siz + (3,))
+        for p, IV_group in zip(out, self.IV_group):
+            IV_group.fit(p)
+        return out
 
     def plot(self, fun='get_xy'):
         figure()
@@ -599,9 +622,9 @@ class Probe:
         for S in self.S.itervalues():
             S.trim(s)
 
-    def IV_series(self):
+    def IV_series(self, **kwargs):
         V = self.S['V']
         II = self.get_type('Current')
-        return IVSeries(V, II)
+        return IVSeries(V, II, **kwargs)
 
 
