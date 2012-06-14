@@ -290,7 +290,7 @@ def wrap_fmin(fun, p0, x, y):
         dy = fun(p, x) - y
         return dy.dot(dy)/dy.size
 
-    return opt.fmin(dy2, p0)
+    return opt.fmin(dy2, p0, disp=False)
 
 def wrap_odr(fun, p0, x, y):
     mod = odr.Model(fun)
@@ -357,12 +357,13 @@ class Fitter:
     def set_engine(self, engine):
         self.engine = engines[engine]
 
-    def fit(self):
+    def fit(self, P0=None):
         if not self.is_OK():
             raise RuntimeError("Cannot fit data that failed is_OK() check")
-            
-        self.P0 = self.get_guess()
-        self.P = self.engine(self.fitfun, self.P0, self.X, self.Y)
+        
+        if P0 is None:
+            P0 = self.get_guess()
+        self.P = self.engine(self.fitfun, P0, self.X, self.Y)
         self.set_unnorm()
 
         return self.p
@@ -428,6 +429,7 @@ class FitterIV(Fitter):
         self.dI = self.IM - self.Im
 
         self.cut_at_min = cut_at_min
+        self.M = self.V.size
 
         Fitter.__init__(self, self.V, self.I, **kwargs)
 
@@ -449,11 +451,9 @@ class FitterIV(Fitter):
 
     def set_norm(self):
         if self.cut_at_min:
-            M = self.im+1
-        else:
-            M = self.V.size
-        self.X = (self.V[:M].astype('d') - self.Vm)/self.dV
-        self.Y = (self.I[:M].astype('d') - self.Im)/self.dI*2 - 1
+            self.M = self.im+1
+        self.X = (self.V[:self.M].astype('d') - self.Vm)/self.dV
+        self.Y = (self.I[:self.M].astype('d') - self.Im)/self.dI*2 - 1
         return self.X, self.Y
 
     def set_unnorm(self):
@@ -487,6 +487,23 @@ class FitterIV(Fitter):
 
     def fitfun(self, P, X):
         return P[0]*(1.-np.exp((X-P[1])/P[2]))
+
+    def fit(self):
+        Fitter.fit(self)
+        save = self.X, self.Y
+        while True:
+            self.M *= 0.95
+            self.X, self.Y = self.X[:self.M], self.Y[:self.M]
+            P_old = self.P
+            Fitter.fit(self, P0=self.P)
+            
+            if np.any(self.P > P_old) or (self.eval_norm(self.X[-1]) > 0.):
+                self.P = P_old
+                break
+
+        self.X, self.Y = save
+        self.set_unnorm()
+        return self.p
 
 
 class IVChar:
