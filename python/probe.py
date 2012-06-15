@@ -6,6 +6,7 @@ import copy
 from matplotlib.pyplot import figure, plot, draw, hold, xlim, ylim
 from tight_figure import tight_figure as figure
 
+import scipy.interpolate as interp
 import scipy.optimize as opt
 import scipy.odr as odr
 
@@ -122,6 +123,43 @@ class IOMds(IO):
         raise NotImplementedError("Saving to MDS not implemented")
 
 
+class PiecewisePolynomial():
+    def __init__(self, c, x, fill=None):
+        self.c, self.x, self.fill = c, x, fill
+        self.N = self.x.size
+        self.siz = self.c.shape[2:]
+
+    def __getitem__(self, index):
+        index = (slice(None), slice(None)) + index
+        return PiecewisePolynomial(self.c[index], self.x, self.fill)
+
+    def __call__(self, xi, side='right'):
+        ind = np.searchsorted(self.x, xi, side) - 1
+        outl, outr = ind < 0, ind > self.N-2
+        ind[outl], ind[outr] = 0, self.N-2
+        
+        dx = xi - self.x[ind]
+
+        y = self.c[0,ind].copy()
+        for a in self.c[1:]:
+            y = y*dx + a[ind]
+
+        if self.fill is not None:
+            y[outl | outr] = self.fill
+        return y
+
+    def plot(self, newfig=True):
+        xl, xr = self.x[:-1], self.x[1:]
+        yl, yr = self(xl, 'right'), self(xr, 'left')
+
+        siz = ((self.N-1)*2,)
+        x = np.concatenate((xl[:,None], xr[:,None]), 1).reshape(siz)
+        y = np.concatenate((yl[:,None], yr[:,None]), 1).reshape(siz + self.siz)
+        
+        if newfig: figure()
+        return plot(x, y)
+
+
 class PeriodPhaseFinder():
     def __init__(self, x):
         self.x = x
@@ -140,7 +178,7 @@ class PeriodPhaseFinder():
     def cumdist(self, p):
         d, i = p[0], p[1]
         M = self.x.size
-        iE = np.round(np.arange(i,M,d/2)).astype('i')
+        iE = np.round(np.arange(i,M-1,d/2)).astype('i')
         
         dx = np.diff(self.x[iE])
         D = -np.sqrt(dx.dot(dx)/dx.size)
@@ -558,6 +596,7 @@ class IVSeries:
         N = V.iE.size-1
         self.siz = (N, len(II))
 
+        self.ti = V.t[V.iE]
         self.IV_group = np.empty(N, object)
         for j in xrange(N):
             s = slice(V.iE[j], V.iE[j+1]+1)
@@ -574,7 +613,9 @@ class IVSeries:
         out = np.empty(self.siz + (3,))
         for p, IV_group in zip(out, self.IV_group):
             IV_group.fit(p)
-        return out
+
+        PP = PiecewisePolynomial(out[None], self.ti)
+        return PP
 
     def plot(self, fun='get_xy'):
         figure()
