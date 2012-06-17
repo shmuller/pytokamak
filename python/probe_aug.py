@@ -24,6 +24,8 @@ class ProbeAUG(probe.Probe):
         self.nodes = ('VOL3', 'VOL1', 'CUR1', 'CUR2', 't')
 
         self.Vcal = (5.0952, -190.8193)
+        self.I1cal = (1., 0.)
+        self.I2cal = (0.5559, 0.)
 
     def mapsig(self):
         s = slice(2048, None)
@@ -39,8 +41,14 @@ class ProbeAUG(probe.Probe):
         R[:] -= R[0]
         V[:] = self.Vcal[0]*(-V) + self.Vcal[1]
 
-        I1[:] = I1[:100].mean() - I1
-        I2[:] = I2[:100].mean() - I2
+        I1[:] = I1[:1000].mean() - I1
+        I2[:] = I2[:1000].mean() - I2
+
+        if self.shn < 27687:
+            I2[:] = -I2
+
+        I1[:] = self.I1cal[0]*I1 + self.I1cal[1]
+        I2[:] = self.I2cal[0]*I2 + self.I2cal[1]
 
         R = probe.PositionSignal(t, R, 'R')
         V = probe.VoltageSignal(t, V, 'V')
@@ -49,6 +57,16 @@ class ProbeAUG(probe.Probe):
                   'V': V,
                   'I1': probe.CurrentSignal(t, I1, 'I1', V),
                   'I2': probe.CurrentSignal(t, I2, 'I2', V)}
+
+    def current_calib(self):
+        I1, I2 = self.S['I1'].x, self.S['I2'].x
+        cnd1 = (I1 != I1.min()) & (I1 != I1.max())
+        cnd2 = (I2 != I2.min()) & (I2 != I2.max())
+        cnd = cnd1 & cnd2
+        I1, I2 = I1[cnd], I2[cnd]
+
+        fact = I1.dot(I2)/I2.dot(I2)
+        return fact
 
 
 if __name__ == "__main__":

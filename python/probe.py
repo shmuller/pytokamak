@@ -3,7 +3,8 @@ import os
 import h5py
 import copy
 
-from matplotlib.pyplot import figure, plot, draw, hold, xlim, ylim
+from matplotlib.pyplot import figure, plot, draw, hold, \
+                              xlim, ylim, xlabel, ylabel, grid
 from tight_figure import tight_figure as figure
 
 import scipy.interpolate as interp
@@ -127,9 +128,10 @@ class PiecewisePolynomial():
     def __init__(self, c, x, fill=None):
         self.c, self.x, self.fill = c, x, fill
         self.N = self.x.size
-        self.siz = self.c.shape[2:]
+        self.shape = self.c.shape[2:]
 
     def __getitem__(self, index):
+        if not isinstance(index, tuple): index = (index,)
         index = (slice(None), slice(None)) + index
         return PiecewisePolynomial(self.c[index], self.x, self.fill)
 
@@ -148,13 +150,17 @@ class PiecewisePolynomial():
             y[outl | outr] = self.fill
         return y
 
+    @property
+    def T(self):
+        return PiecewisePolynomial(self.c.swapaxes(2,3), self.x, self.fill)
+
     def plot(self, newfig=True):
         xl, xr = self.x[:-1], self.x[1:]
         yl, yr = self(xl, 'right'), self(xr, 'left')
 
-        siz = ((self.N-1)*2,)
-        x = np.concatenate((xl[:,None], xr[:,None]), 1).reshape(siz)
-        y = np.concatenate((yl[:,None], yr[:,None]), 1).reshape(siz + self.siz)
+        shape = ((self.N-1)*2,)
+        x = np.concatenate((xl[:,None], xr[:,None]), 1).reshape(shape)
+        y = np.concatenate((yl[:,None], yr[:,None]), 1).reshape(shape + self.shape)
         
         if newfig: figure()
         return plot(x, y)
@@ -228,7 +234,8 @@ class Signal:
     def __getitem__(self, index):
         return self.__init__(self.t[index], self.x[index], self.name, self.type)
 
-    def len(self):
+    @property
+    def size(self):
         return self.x.size
 
     def copy(self):
@@ -457,12 +464,12 @@ class Fitter:
 
 class FitterIV(Fitter):
     def __init__(self, V, I, cut_at_min=True, **kwargs):
-        ind = V.argsort()
-        self.V, self.I = V[ind], I[ind]
+        self.ind = V.argsort()
+        self.V, self.I = V[self.ind], I[self.ind]
 
         self.im = self.I.argmin()
         self.Vm, self.VM = self.V[0], self.V[-1]
-        self.Im, self.IM = self.I[self.im], np.median(self.I[:I.size/2])
+        self.Im, self.IM = self.I[self.im], np.median(self.I[:self.I.size/2])
         self.dV = self.VM - self.Vm
         self.dI = self.IM - self.Im
 
@@ -557,7 +564,16 @@ class IVChar:
         except RuntimeError:
             out[:] = np.nan
         return out
-        
+    
+    def eval(self, out=None):
+        if out is None:
+            out = np.empty(self.I.size)
+        out.fill(np.nan)
+        f = self.fitter_IV
+        if f.p is not None:
+            out[f.ind[:f.M]] = f.fitfun(f.p, f.x[:f.M])
+        return out
+
     def plot(self, newfig=True, fun='get_xy', lines=None):
         return self.fitter_IV.plot(newfig, fun, lines)
 
@@ -578,6 +594,13 @@ class IVGroup:
             IV_char.fit(p)
         return out
 
+    def eval(self, out=None):
+        if out is None:
+            out = np.empty((self.IV_char.size, self.IV_char[0].I.size))
+        for I, IV_char in zip(out, self.IV_char):
+            IV_char.eval(I)
+        return out
+
     def plot(self, newfig=True, fun='get_xy', lines=None):
         if lines is None:
             if newfig: figure()
@@ -588,18 +611,19 @@ class IVGroup:
 
 class IVSeries:
     def __init__(self, V, II, **kwargs):
-        self.V_range = V.plot_range()
-        self.I_range = self._plot_range(II)
-
         if V.iE is None:
             V.chop_sweeps()
         N = V.iE.size-1
         self.siz = (N, len(II))
-
         self.ti = V.t[V.iE]
+        
+        self.V, self.II = V, II
+        self.V_range = V.plot_range()
+        self.I_range = self._plot_range(II)
+
         self.IV_group = np.empty(N, object)
         for j in xrange(N):
-            s = slice(V.iE[j], V.iE[j+1]+1)
+            s = self._slice(j)
             self.IV_group[j] = IVGroup(V, II, s, **kwargs)
 
     def __getitem__(self, index):
@@ -609,6 +633,9 @@ class IVSeries:
         I_range = np.array([I.plot_range() for I in II])
         return I_range[:,0].min(), I_range[:,1].max()
 
+    def _slice(self, j):
+        return slice(self.V.iE[j], self.V.iE[j+1]+1)
+
     def fit(self):
         out = np.empty(self.siz + (3,))
         for p, IV_group in zip(out, self.IV_group):
@@ -617,7 +644,20 @@ class IVSeries:
         PP = PiecewisePolynomial(out[None], self.ti)
         return PP
 
-    def plot(self, fun='get_xy'):
+    def eval(self):
+        out = np.empty((len(self.II), self.II[0].size))
+        for j, IV_group in enumerate(self.IV_group):
+            s = self._slice(j)
+            IV_group.eval(out[:,s])
+        return out
+
+    def plot(self):
+        figure()
+        IIfit = self.eval()
+        for I, Ifit in zip(self.II, IIfit):
+            plot(I.t, I.x, I.t, Ifit)
+        
+    def animate(self, fun='get_xy'):
         figure()
         if fun == 'get_xy':
             xlim(self.V_range)
@@ -638,6 +678,13 @@ class Probe:
 
         self.IO_mds = self.IO_file = None
         self.nodes = ()
+        self.PP = self.IV_series = None
+
+        self.xlabel = "t [s]"
+        self.ylabel = ("Isat [au]", "Vf [V]", "Te [eV]")
+
+    def __getitem__(self, index):
+        return self.S[index]
 
     def mapsig(self):
         pass
@@ -666,9 +713,8 @@ class Probe:
         istype = lambda x: x.type == type
         return filter(istype, self.S.itervalues())
 
-    def plot(self):
+    def plot_raw(self):
         figure()
-        hold(True)
         for S in self.S.itervalues():
             S.plot(newfig=False)
 
@@ -680,9 +726,33 @@ class Probe:
         for S in self.S.itervalues():
             S.trim(s)
 
-    def IV_series(self, **kwargs):
+    def corr_capa(self):
+        for I in self.get_type('Current'):
+            I.x[:] -= I.I_capa()
+
+    def calc_IV_series(self, **kwargs):
         V = self.S['V']
         II = self.get_type('Current')
         return IVSeries(V, II, **kwargs)
+
+    def analyze(self, corr_capa=False):
+        self.load()
+        self.trim()
+        if corr_capa:
+            self.corr_capa()
+        self.IV_series = self.calc_IV_series(engine='fmin')
+        self.PP = self.IV_series.fit()
+        return self.PP, self.IV_series
+
+    def plot(self):
+        if self.PP is None:
+            self.analyze()
+        fig = figure(figsize=(10,10))
+        for i, PP in enumerate(self.PP.T):
+            fig.add_subplot(3, 1, 1+i)
+            PP.plot(False)
+            grid(True)
+            ylabel(self.ylabel[i])
+        xlabel(self.xlabel)
 
 
