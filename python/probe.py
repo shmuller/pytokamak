@@ -3,7 +3,7 @@ import os
 import h5py
 import copy
 
-from matplotlib.pyplot import figure, plot, draw, hold, \
+from matplotlib.pyplot import figure, plot, ion, draw, hold, \
                               xlim, ylim, xlabel, ylabel, grid
 from tight_figure import tight_figure as figure
 
@@ -125,15 +125,15 @@ class IOMds(IO):
 
 
 class PiecewisePolynomial():
-    def __init__(self, c, x, fill=None):
-        self.c, self.x, self.fill = c, x, fill
+    def __init__(self, c, x, fill=None, ind=None):
+        self.c, self.x, self.fill, self.ind = c, x, fill, ind
         self.N = self.x.size
         self.shape = self.c.shape[2:]
 
     def __getitem__(self, index):
         if not isinstance(index, tuple): index = (index,)
         index = (slice(None), slice(None)) + index
-        return PiecewisePolynomial(self.c[index], self.x, self.fill)
+        return PiecewisePolynomial(self.c[index], self.x, self.fill, self.ind)
 
     def __call__(self, xi, side='right'):
         ind = np.searchsorted(self.x, xi, side) - 1
@@ -152,11 +152,17 @@ class PiecewisePolynomial():
 
     @property
     def T(self):
-        return PiecewisePolynomial(self.c.swapaxes(2,3), self.x, self.fill)
+        return PiecewisePolynomial(self.c.swapaxes(2,3), self.x, self.fill, self.ind)
 
-    def plot(self, newfig=True):
+    def plot(self, newfig=True, x=None):
         xl, xr = self.x[:-1], self.x[1:]
         yl, yr = self(xl, 'right'), self(xr, 'left')
+
+        if x is not None:
+            if self.ind is None:
+                raise RuntimeError("'ind' must be set for alternative x axis")
+            x = x[self.ind]
+            xl, xr = x[:-1], x[1:]
 
         shape = ((self.N-1)*2,)
         x = np.concatenate((xl[:,None], xr[:,None]), 1).reshape(shape)
@@ -641,7 +647,7 @@ class IVSeries:
         for p, IV_group in zip(out, self.IV_group):
             IV_group.fit(p)
 
-        PP = PiecewisePolynomial(out[None], self.ti)
+        PP = PiecewisePolynomial(out[None], self.ti, ind=self.V.iE)
         return PP
 
     def eval(self):
@@ -658,6 +664,7 @@ class IVSeries:
             plot(I.t, I.x, I.t, Ifit)
         
     def animate(self, fun='get_xy'):
+        ion()
         figure()
         if fun == 'get_xy':
             xlim(self.V_range)
@@ -680,13 +687,19 @@ class Probe:
         self.nodes = ()
         self.PP = self.IV_series = None
 
-        self.xlabel = "t [s]"
-        self.ylabel = ("Isat [au]", "Vf [V]", "Te [eV]")
+        self.xlab = "t [s]"
+        self.ylab = ("Isat [au]", "Vf [V]", "Te [eV]")
 
     def __getitem__(self, index):
-        return self.S[index]
+        if not isinstance(index, tuple):
+            return self.S[index]
+        else:
+            return tuple([self.S[i] for i in index])
 
     def mapsig(self):
+        pass
+
+    def calib(self):
         pass
         
     def load_mds(self):
@@ -700,7 +713,7 @@ class Probe:
     def save(self):
         self.IO_file.save(self.x)
 
-    def load(self):
+    def load(self, trim=True, calib=True, corr_capa=False):
         try:
             self.x = self.IO_file.load(self.nodes)
         except:
@@ -708,6 +721,12 @@ class Probe:
             self.save()
 
         self.mapsig()
+        if trim: 
+            self.trim()
+        if calib:
+            self.calib()
+        if corr_capa:
+            self.corr_capa()
 
     def get_type(self, type):
         istype = lambda x: x.type == type
@@ -735,24 +754,28 @@ class Probe:
         II = self.get_type('Current')
         return IVSeries(V, II, **kwargs)
 
-    def analyze(self, corr_capa=False):
-        self.load()
-        self.trim()
-        if corr_capa:
-            self.corr_capa()
+    def analyze(self, **kwargs):
+        self.load(**kwargs)
         self.IV_series = self.calc_IV_series(engine='fmin')
         self.PP = self.IV_series.fit()
-        return self.PP, self.IV_series
 
-    def plot(self):
+    def plot(self, x=None):
         if self.PP is None:
             self.analyze()
-        fig = figure(figsize=(10,10))
-        for i, PP in enumerate(self.PP.T):
-            fig.add_subplot(3, 1, 1+i)
-            PP.plot(False)
-            grid(True)
-            ylabel(self.ylabel[i])
-        xlabel(self.xlabel)
 
+        if x is None:
+            xlab = self.xlab
+        elif x == 'R':
+            x = self['R'].x
+            xlab = "R [mm]"
+
+        fig = figure(figsize=(10,10))
+        ax = None
+        for i, PP in enumerate(self.PP.T):
+            ax = fig.add_subplot(3, 1, 1+i, sharex=ax)
+            ax.autoscale_view(tight=True)
+            PP.plot(False, x=x)
+            grid(True)
+            ylabel(self.ylab[i])
+        xlabel(xlab)
 

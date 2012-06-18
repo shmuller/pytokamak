@@ -1,5 +1,7 @@
 import numpy as np
 
+import scipy.interpolate as interp
+
 import probe
 reload(probe)
 
@@ -23,6 +25,7 @@ class ProbeAUG(probe.Probe):
         self.IO_file = IOFileAUG(shn)
         self.nodes = ('VOL3', 'VOL1', 'CUR1', 'CUR2', 't')
 
+        self.Rcal = (442./5.6779, -106.6648)
         self.Vcal = (5.0952, -190.8193)
         self.I1cal = (1., 0.)
         self.I2cal = (0.5559, 0.)
@@ -38,17 +41,15 @@ class ProbeAUG(probe.Probe):
         I1 = x['CUR1']
         I2 = x['CUR2']
 
-        R[:] -= R[0]
-        V[:] = self.Vcal[0]*(-V) + self.Vcal[1]
+        M = 5000
+        R[:] -= R[-M:].mean()
+        V[:] = -V
 
-        I1[:] = I1[:1000].mean() - I1
-        I2[:] = I2[:1000].mean() - I2
+        I1[:] = I1[:M].mean() - I1
+        I2[:] = I2[:M].mean() - I2
 
         if self.shn < 27687:
             I2[:] = -I2
-
-        I1[:] = self.I1cal[0]*I1 + self.I1cal[1]
-        I2[:] = self.I2cal[0]*I2 + self.I2cal[1]
 
         R = probe.PositionSignal(t, R, 'R')
         V = probe.VoltageSignal(t, V, 'V')
@@ -58,7 +59,16 @@ class ProbeAUG(probe.Probe):
                   'I1': probe.CurrentSignal(t, I1, 'I1', V),
                   'I2': probe.CurrentSignal(t, I2, 'I2', V)}
 
+    def calib(self):
+        R, V, I1, I2 = self['R', 'V', 'I1', 'I2']
+        R.x[:] = self.Rcal[0]*R.x + self.Rcal[1]
+        V.x[:] = self.Vcal[0]*V.x + self.Vcal[1]
+
+        I1.x[:] = self.I1cal[0]*I1.x + self.I1cal[1]
+        I2.x[:] = self.I2cal[0]*I2.x + self.I2cal[1]
+
     def current_calib(self):
+        self.load(trim=True, calib=False)
         I1, I2 = self.S['I1'].x, self.S['I2'].x
         cnd1 = (I1 != I1.min()) & (I1 != I1.max())
         cnd2 = (I2 != I2.min()) & (I2 != I2.max())
@@ -67,6 +77,13 @@ class ProbeAUG(probe.Probe):
 
         fact = I1.dot(I2)/I2.dot(I2)
         return fact
+
+    def position_calib(self):
+        self.load(trim=True, calib=False)
+        R = self['R']
+        sp = interp.UnivariateSpline(R.t, R.x, s=10)
+        Rs = sp(R.t)
+        return Rs.max()
 
 
 if __name__ == "__main__":
