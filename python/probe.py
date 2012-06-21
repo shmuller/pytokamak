@@ -468,9 +468,38 @@ class Fitter:
         return lines
 
 
+def LP_unnormalize(P, Vm, VM, Im, IM):
+    dV, dI = VM-Vm, IM-Im
+    a = 2./dI
+    b = -(Im*a+1)
+
+    p = np.empty_like(P)
+    p[0] = (P[0]-b)/a
+    p[1] = (P[1]+P[2]*np.log(1.-b/P[0]))*dV+Vm
+    p[2] = P[2]*dV
+    return p
+
+def LP_normalize(p, Vm, VM, Im, IM):
+    dV, dI = VM-Vm, IM-Im
+    a = 2./dI
+    b = -(Im*a+1)
+
+    P = np.empty_like(p)
+    P[0] = a*p[0]+b
+    P[1] = (p[1]-p[2]*np.log(1.-b/P[0])-Vm)/dV
+    P[2] = p[2]/dV
+    return P
+
+
 class FitterIV(Fitter):
-    def __init__(self, V, I, cut_at_min=True, **kwargs):
-        self.ind = V.argsort()
+    def __init__(self, V, I, mask=None, cut_at_min=True, **kw):
+        self.mask_ind = np.arange(V.size)
+        if mask is not None:
+            self.mask_ind = self.mask_ind[mask]
+
+        self.sort_ind = V[self.mask_ind].argsort()
+        self.ind = self.mask_ind[self.sort_ind]
+
         self.V, self.I = V[self.ind], I[self.ind]
 
         self.im = self.I.argmin()
@@ -482,7 +511,10 @@ class FitterIV(Fitter):
         self.cut_at_min = cut_at_min
         self.M = self.V.size
 
-        Fitter.__init__(self, self.V, self.I, **kwargs)
+        Fitter.__init__(self, self.V, self.I, **kw)
+
+    def get_ind(self):
+        return self.ind[:self.M]
 
     def set_OK(self):
         def medianstd(x):
@@ -508,19 +540,8 @@ class FitterIV(Fitter):
         return self.X, self.Y
 
     def set_unnorm(self):
-        def unnormalize(P, Vm, VM, Im, IM):
-            dV, dI = VM-Vm, IM-Im
-            a = 2./dI
-            b = -(Im*a+1)
-
-            p = np.empty_like(P)
-            p[0] = (P[0]-b)/a
-            p[1] = (P[1]+P[2]*np.log(1.-b/P[0]))*dV+Vm
-            p[2] = P[2]*dV
-            return p
-
-        self.p0 = unnormalize(self.P0, self.Vm, self.VM, self.Im, self.IM)
-        self.p  = unnormalize(self.P , self.Vm, self.VM, self.Im, self.IM)
+        self.p0 = LP_unnormalize(self.P0, self.Vm, self.VM, self.Im, self.IM)
+        self.p  = LP_unnormalize(self.P , self.Vm, self.VM, self.Im, self.IM)
         return self.p, self.p0
 
     def set_guess(self):
@@ -558,9 +579,9 @@ class FitterIV(Fitter):
 
 
 class IVChar:
-    def __init__(self, V, I, **kwargs):
+    def __init__(self, V, I, mask=None, **kw):
         self.V, self.I = V, I
-        self.fitter_IV = FitterIV(self.V.x, self.I.x, **kwargs)
+        self.fitter_IV = FitterIV(self.V.x, self.I.x, **kw)
 
     def fit(self, out=None):
         if out is None:
@@ -571,13 +592,12 @@ class IVChar:
             out[:] = np.nan
         return out
     
-    def eval(self, out=None):
+    def mask(self, out=None):
         if out is None:
-            out = np.empty(self.I.size)
-        out.fill(np.nan)
-        f = self.fitter_IV
-        if f.p is not None:
-            out[f.ind[:f.M]] = f.fitfun(f.p, f.x[:f.M])
+            out = np.empty(self.I.size, bool)
+        out.fill(False)
+        if self.fitter_IV.p is not None:
+            out[self.fitter_IV.get_ind()] = True
         return out
 
     def plot(self, newfig=True, fun='get_xy', lines=None):
@@ -585,10 +605,10 @@ class IVChar:
 
 
 class IVGroup:
-    def __init__(self, V, II, s=slice(None), **kwargs):
+    def __init__(self, V, II, s=slice(None), **kw):
         self.IV_char = np.empty(len(II), object)
         for j, I in enumerate(II):
-            self.IV_char[j] = IVChar(V[s], I[s], **kwargs)
+            self.IV_char[j] = IVChar(V[s], I[s], **kw)
 
     def __getitem__(self, index):
         return self.IV_char[index]
@@ -600,11 +620,11 @@ class IVGroup:
             IV_char.fit(p)
         return out
 
-    def eval(self, out=None):
+    def mask(self, out=None):
         if out is None:
-            out = np.empty((self.IV_char.size, self.IV_char[0].I.size))
+            out = np.empty((self.IV_char.size, self.IV_char[0].I.size), bool)
         for I, IV_char in zip(out, self.IV_char):
-            IV_char.eval(I)
+            IV_char.mask(I)
         return out
 
     def plot(self, newfig=True, fun='get_xy', lines=None):
@@ -616,21 +636,19 @@ class IVGroup:
 
 
 class IVSeries:
-    def __init__(self, V, II, **kwargs):
-        if V.iE is None:
-            V.chop_sweeps()
-        N = V.iE.size-1
+    def __init__(self, V, II, iE, **kw):       
+        self.V, self.II, self.iE = V, II, iE
+        N = iE.size-1
         self.siz = (N, len(II))
-        self.ti = V.t[V.iE]
-        
-        self.V, self.II = V, II
+        self.ti = V.t[iE]
+
         self.V_range = V.plot_range()
         self.I_range = self._plot_range(II)
 
         self.IV_group = np.empty(N, object)
         for j in xrange(N):
             s = self._slice(j)
-            self.IV_group[j] = IVGroup(V, II, s, **kwargs)
+            self.IV_group[j] = IVGroup(V, II, s, **kw)
 
     def __getitem__(self, index):
         return self.IV_group[index]
@@ -640,21 +658,29 @@ class IVSeries:
         return I_range[:,0].min(), I_range[:,1].max()
 
     def _slice(self, j):
-        return slice(self.V.iE[j], self.V.iE[j+1]+1)
+        return slice(self.iE[j], self.iE[j+1]+1)
 
     def fit(self):
         out = np.empty(self.siz + (3,))
         for p, IV_group in zip(out, self.IV_group):
             IV_group.fit(p)
 
-        PP = PiecewisePolynomial(out[None], self.ti, ind=self.V.iE)
-        return PP
+        self.PP = PiecewisePolynomial(out[None], self.ti, ind=self.iE)
+        return self.PP
 
-    def eval(self):
-        out = np.empty((len(self.II), self.II[0].size))
+    def mask(self):
+        out = np.zeros((len(self.II), self.II[0].size), bool)
         for j, IV_group in enumerate(self.IV_group):
             s = self._slice(j)
-            IV_group.eval(out[:,s])
+            IV_group.mask(out[:,s])
+        return out
+
+    def eval(self):
+        V = self.V
+        PP = self.PP(V.t)
+        fitfun = self[0][0].fitter_IV.fitfun
+        out = fitfun(PP.T, V.x)
+        out[~self.mask()] = np.nan
         return out
 
     def plot(self):
@@ -677,6 +703,71 @@ class IVSeries:
         for IV_group in self.IV_group:
             lines = IV_group.plot(False, fun, lines)
             draw()
+
+
+
+class FitterIV2(Fitter):
+    def __init__(self, V, I, mask, p0, **kw):
+        self.V, self.I = V[mask], I[mask]
+        self.Vm, self.VM = self.V.min(), self.V.max()
+        self.Im, self.IM = self.I.min(), self.I.max()
+        self.dV = self.VM - self.Vm
+        self.dI = self.IM - self.Im
+
+    def set_norm(self):
+        self.X = (self.V.astype('d') - self.Vm)/self.dV
+        self.Y = (self.I.astype('d') - self.Im)/self.dI*2 - 1
+        return self.X, self.Y
+
+    def set_unnorm(self):
+        self.p = LP_unnormalize(self.P , self.Vm, self.VM, self.Im, self.IM)
+        return self.p
+
+
+class IVSeries2:
+    def __init__(self, V, II, PP, mask, iE=None, **kw):
+        self.V, self.II, self.PP, self.mask, self.iE = V, II, PP, mask, iE
+
+    def plot(self, i, j):
+        s = slice(self.iE[i], self.iE[j]+1)
+        V = self.V[s]
+        I = self.II[0][s]
+        pp = self.PP[s, 0]
+        m = self.mask[0, s]
+
+        t = V.t[m]
+        V = V.x[m]
+        I = I.x[m]
+        pm = pp[m]
+
+        print pp.shape
+
+        def fitfun(p, V): 
+            return p[0]*(1.-np.exp((V-p[1])/p[2]))
+
+        a = (t-t[0])/(t[-1]-t[0])
+
+        def fitfun2(p, V):
+            Is = p[0] + a*(p[3]-p[0])
+            Vf = p[1] + a*(p[4]-p[1])
+            Te = p[2] + a*(p[5]-p[2])
+            return Is*(1.-np.exp((V-Vf)/Te))
+
+        Ifit = fitfun(pm.T, V)
+
+        """
+        p0 = pm.mean(0)
+        p = wrap_fmin(fitfun, p0, V, I)
+        Ifit2 = fitfun(p, V)
+        """
+
+        p0 = np.r_[pm[0], pm[-1]]
+        p = wrap_fmin(fitfun2, p0, V, I)
+        Ifit2 = fitfun2(p, V)
+
+        figure()
+        plot(t, I, t, Ifit, t, Ifit2)
+        return p
 
 
 class Probe:
@@ -749,15 +840,29 @@ class Probe:
         for I in self.get_type('Current'):
             I.x[:] -= I.I_capa()
 
-    def calc_IV_series(self, **kwargs):
+    def calc_IV_series(self, **kw):
         V = self.S['V']
         II = self.get_type('Current')
-        return IVSeries(V, II, **kwargs)
+        if V.iE is None:
+            V.chop_sweeps()
+        return IVSeries(V, II, V.iE, **kw)
 
-    def analyze(self, **kwargs):
-        self.load(**kwargs)
+    def analyze(self, **kw):
+        self.load(**kw)
         self.IV_series = self.calc_IV_series(engine='fmin')
         self.PP = self.IV_series.fit()
+
+    def analyze2(self, **kw):
+        if self.IV_series is None:
+            self.analyze(**kw)
+
+        V = self.S['V']
+        II = self.get_type('Current')
+        PP = self.PP(V.t)
+        mask = self.IV_series.mask()
+        
+        iE = self.IV_series.iE
+        self.IV_series2 = IVSeries2(V, II, PP, mask, iE)
 
     def plot(self, x=None):
         if self.PP is None:
@@ -770,12 +875,12 @@ class Probe:
             xlab = "R [mm]"
 
         fig = figure(figsize=(10,10))
-        ax = None
         for i, PP in enumerate(self.PP.T):
-            ax = fig.add_subplot(3, 1, 1+i, sharex=ax)
-            ax.autoscale_view(tight=True)
+            fig.add_linked_subplot(3, 1, 1+i)
+            
             PP.plot(False, x=x)
             grid(True)
             ylabel(self.ylab[i])
         xlabel(xlab)
+        return fig.axes
 
