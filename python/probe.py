@@ -3,9 +3,8 @@ import os
 import h5py
 import copy
 
-from matplotlib.pyplot import figure, plot, ion, draw, hold, \
-                              xlim, ylim, xlabel, ylabel, grid
-from tight_figure import tight_figure as figure
+import matplotlib.pyplot as plt
+import tight_figure
 
 import scipy.interpolate as interp
 import scipy.optimize as opt
@@ -14,6 +13,20 @@ import scipy.odr as odr
 from mdsclient import *
 
 from ipdb import set_trace
+
+reload(tight_figure)
+
+figure = tight_figure.tight_figure
+plot = tight_figure.pickable_plot
+ion = plt.ion
+draw = plt.draw
+hold = plt.hold
+xlim = plt.xlim
+ylim = plt.ylim
+xlabel = plt.xlabel
+ylabel = plt.ylabel
+grid = plt.grid
+
 
 class Data(dict):
     def __init__(self, nodes, X):
@@ -121,48 +134,81 @@ class IOMds(IO):
         return x
 
     def save(self, x):
-        raise NotImplementedError("Saving to MDS not implemented")
+        raise NotImplementedError("Saving to MDS not implemented") 
 
 
-class PiecewisePolynomial():
-    def __init__(self, c, x, fill=None, ind=None):
-        self.c, self.x, self.fill, self.ind = c, x, fill, ind
-        self.N = self.x.size
+class PiecewiseLinear:
+    def __init__(self, y, x):
+        self.y, self.x = y, x
+        self.N = self.x.shape[0]
+        self.shape = self.y.shape[2:]
+
+    def __getitem__(self, index):
+        if not isinstance(index, tuple): index = (index,)
+        index = (slice(None), slice(None)) + index
+        return PiecewiseLinear(self.y[index], self.x)
+
+    def plot(self):
+        shape = (self.N*2,)
+        x = self.x.reshape(shape)
+        y = self.y.reshape(shape + self.shape)
+        plot(x, y)
+
+    def plot2(self):
+        shape = (self.N, 1)
+        nanx = np.empty(shape) + np.nan
+        nany = np.empty(shape + self.shape) + np.nan
+
+        shape = (self.N*3,)
+        x = np.concatenate((self.x, nanx), 1).reshape(shape)
+        y = np.concatenate((self.y, nany), 1).reshape(shape + self.shape)
+        plot(x, y)
+
+
+class PiecewisePolynomial:
+    def __init__(self, c, x, **kw):
+        self.kw = {'fill': None, 'i0': np.arange(x.size), 'i1': None}
+        self.kw.update(kw)
+        for key, val in self.kw.iteritems():
+            setattr(self, key, val)
+
+        self.c, self.x = c, x
+        self.N = self.i0.size
         self.shape = self.c.shape[2:]
 
     def __getitem__(self, index):
         if not isinstance(index, tuple): index = (index,)
         index = (slice(None), slice(None)) + index
-        return PiecewisePolynomial(self.c[index], self.x, self.fill, self.ind)
+        return PiecewisePolynomial(self.c[index], self.x, **self.kw)
 
-    def __call__(self, xi, side='right'):
-        ind = np.searchsorted(self.x, xi, side) - 1
+    def __call__(self, X, side='right'):
+        xi = self.x[self.i0]
+        ind = np.searchsorted(xi, X, side) - 1
         outl, outr = ind < 0, ind > self.N-2
         ind[outl], ind[outr] = 0, self.N-2
         
-        dx = xi - self.x[ind]
+        dX = X - xi[ind]
 
-        y = self.c[0,ind].copy()
+        Y = self.c[0,ind].copy()
         for a in self.c[1:]:
-            y = y*dx + a[ind]
+            Y = Y*dX + a[ind]
 
         if self.fill is not None:
-            y[outl | outr] = self.fill
-        return y
+            Y[outl | outr] = self.fill
+        return Y
 
     @property
     def T(self):
-        return PiecewisePolynomial(self.c.swapaxes(2,3), self.x, self.fill, self.ind)
+        return PiecewisePolynomial(self.c.swapaxes(2,3), self.x, **self.kw)
 
     def plot(self, newfig=True, x=None):
-        xl, xr = self.x[:-1], self.x[1:]
+        xi = self.x[self.i0]
+        xl, xr = xi[:-1], xi[1:]
         yl, yr = self(xl, 'right'), self(xr, 'left')
 
         if x is not None:
-            if self.ind is None:
-                raise RuntimeError("'ind' must be set for alternative x axis")
-            x = x[self.ind]
-            xl, xr = x[:-1], x[1:]
+            xi = x[self.i0]
+            xl, xr = xi[:-1], xi[1:]
 
         shape = ((self.N-1)*2,)
         x = np.concatenate((xl[:,None], xr[:,None]), 1).reshape(shape)
@@ -172,7 +218,7 @@ class PiecewisePolynomial():
         return plot(x, y)
 
 
-class PeriodPhaseFinder():
+class PeriodPhaseFinder:
     def __init__(self, x):
         self.x = x
         self.di = np.zeros(2)
@@ -638,7 +684,7 @@ class IVGroup:
 class IVSeries:
     def __init__(self, V, II, iE, **kw):       
         self.V, self.II, self.iE = V, II, iE
-        N = iE.size-1
+        N = iE.shape[0]
         self.siz = (N, len(II))
         self.ti = V.t[iE]
 
@@ -658,14 +704,15 @@ class IVSeries:
         return I_range[:,0].min(), I_range[:,1].max()
 
     def _slice(self, j):
-        return slice(self.iE[j], self.iE[j+1]+1)
+        return slice(self.iE[j,0], self.iE[j,1]+1)
 
     def fit(self):
         out = np.empty(self.siz + (3,))
         for p, IV_group in zip(out, self.IV_group):
             IV_group.fit(p)
 
-        self.PP = PiecewisePolynomial(out[None], self.ti, ind=self.iE)
+        i0 = np.r_[self.iE[:,0], self.iE[-1,1]]
+        self.PP = PiecewisePolynomial(out[None], self.V.t, i0=i0)
         return self.PP
 
     def mask(self):
@@ -684,10 +731,15 @@ class IVSeries:
         return out
 
     def plot(self):
-        figure()
+        fig = figure()
+        n = len(self.II)
         IIfit = self.eval()
-        for I, Ifit in zip(self.II, IIfit):
+        for i, I, Ifit in zip(xrange(n), self.II, IIfit):
+            ax = fig.add_linked_subplot(n, 1, 1+i)
             plot(I.t, I.x, I.t, Ifit)
+            grid(True)
+            ylabel(I.name)
+        xlabel("t [s]")
         
     def animate(self, fun='get_xy'):
         ion()
@@ -776,7 +828,7 @@ class Probe:
 
         self.IO_mds = self.IO_file = None
         self.nodes = ()
-        self.PP = self.IV_series = None
+        self.PP = self.IV_series = self.S = None
 
         self.xlab = "t [s]"
         self.ylab = ("Isat [au]", "Vf [V]", "Te [eV]")
@@ -823,10 +875,18 @@ class Probe:
         istype = lambda x: x.type == type
         return filter(istype, self.S.itervalues())
 
-    def plot_raw(self):
-        figure()
-        for S in self.S.itervalues():
-            S.plot(newfig=False)
+    def plot_raw(self, **kw):
+        if self.S is None:
+            self.load(**kw)
+        fig = figure()
+        types = ['Current', 'Voltage', 'Position']
+        for i, typ in enumerate(types):
+            ax = fig.add_linked_subplot(3, 1, 1+i)
+            grid(True)
+            ylabel(typ)
+            for S in self.get_type(typ):
+                S.plot(False)
+        xlabel(self.xlab)
 
     def trim(self):
         S = self.get_type('Position')
@@ -840,22 +900,38 @@ class Probe:
         for I in self.get_type('Current'):
             I.x[:] -= I.I_capa()
 
-    def calc_IV_series(self, **kw):
+    def calc_IV_series(self, n=1, **kw):
         V = self.S['V']
         II = self.get_type('Current')
         if V.iE is None:
             V.chop_sweeps()
-        return IVSeries(V, II, V.iE, **kw)
+        iE = np.c_[V.iE[:-n], V.iE[n:]]
+        return IVSeries(V, II, iE, **kw)
 
     def analyze(self, **kw):
         self.load(**kw)
         self.IV_series = self.calc_IV_series(engine='fmin')
         self.PP = self.IV_series.fit()
 
-    def analyze2(self, **kw):
+        Isat = self.PP.c[0,:,:,0].T
+        dens = np.e*np.sqrt(Isat[0]*Isat[1])
+        Mach = 0.5*np.log(Isat[0]/Isat[1])
+        
+        c = self.PP.c.copy()
+        c[0,:,0,0] = dens
+        c[0,:,1,0] = Mach
+        self.PP_Mach = PiecewisePolynomial(c, self.PP.x, **self.PP.kw)
+        
+    def analyze2(self, n=2, **kw):
         if self.IV_series is None:
             self.analyze(**kw)
 
+        V = self.S['V']
+        II = self.get_type('Current')
+        self.IV_series2 = self.calc_IV_series(n=2, engine='fmin')
+        self.PP2 = self.IV_series2.fit()
+
+        """
         V = self.S['V']
         II = self.get_type('Current')
         PP = self.PP(V.t)
@@ -863,10 +939,17 @@ class Probe:
         
         iE = self.IV_series.iE
         self.IV_series2 = IVSeries2(V, II, PP, mask, iE)
+        """
 
-    def plot(self, x=None):
+    def plot(self, x=None, PP='PP'):
         if self.PP is None:
             self.analyze()
+
+        if PP == 'PP':
+            ylab = self.ylab
+        else:
+            ylab = ("n [au], M",) + self.ylab[1:]
+        PP = getattr(self, PP)
 
         if x is None:
             xlab = self.xlab
@@ -875,12 +958,12 @@ class Probe:
             xlab = "R [mm]"
 
         fig = figure(figsize=(10,10))
-        for i, PP in enumerate(self.PP.T):
+        for i, pp in enumerate(PP.T):
             fig.add_linked_subplot(3, 1, 1+i)
             
-            PP.plot(False, x=x)
+            pp.plot(False, x=x)
             grid(True)
-            ylabel(self.ylab[i])
+            ylabel(ylab[i])
         xlabel(xlab)
         return fig.axes
 
