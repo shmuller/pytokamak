@@ -5,24 +5,24 @@ import scipy.interpolate as interp
 import probe
 reload(probe)
 
-class IOMdsAUG(probe.IOMds):
+class IOMdsLPS(probe.IOMds):
     def __init__(self, *args):
         probe.IOMds.__init__(self, *args)
         self.mdsport = "8001"
         self.mdsfmt = 'augsignal(%d,"LPS","%s","AUGD")'
 
 
-class IOFileAUG(probe.IOFile):
+class IOFileLPS(probe.IOFile):
     def __init__(self, shn=27695):
-        probe.IOFile.__init__(self, shn=shn, subdir="AUG")
+        probe.IOFile.__init__(self, shn=shn, suffix="_LPS", subdir="AUG")
 
 
-class ProbeAUG(probe.Probe):
+class ProbeLPS(probe.Probe):
     def __init__(self, shn=27695, sock=None):
         probe.Probe.__init__(self, shn, sock)
 
-        self.IO_mds = IOMdsAUG(shn, sock)
-        self.IO_file = IOFileAUG(shn)
+        self.IO_mds = IOMdsLPS(shn, sock)
+        self.IO_file = IOFileLPS(shn)
         self.nodes = ('VOL3', 'VOL1', 'CUR1', 'CUR2', 't')
 
         self.Rcal = (442./5.6779, -106.6648)
@@ -89,9 +89,9 @@ class ProbeAUG(probe.Probe):
 if __name__ == "__main__":
     shn = 27695
 
-    XPR = ProbeAUG(shn=shn)
-    XPR.load()
+    LPS = ProbeLPS(shn=shn)
+    LPS.load()
 
-    XPR.plot()
+    LPS.plot_raw()
     show()
 

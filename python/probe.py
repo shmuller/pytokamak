@@ -17,7 +17,7 @@ from ipdb import set_trace
 reload(tight_figure)
 
 figure = tight_figure.tight_figure
-plot = tight_figure.pickable_plot
+plot = plt.plot
 ion = plt.ion
 draw = plt.draw
 hold = plt.hold
@@ -70,12 +70,12 @@ class IO:
 
 
 class IOFile(IO):
-    def __init__(self, shn=0, subdir=""):
-        self.shn, self.subdir = shn, subdir
+    def __init__(self, shn=0, suffix="", subdir=""):
+        self.shn, self.suffix, self.subdir = shn, suffix, subdir
 
         pth = os.environ['DATAPATH']
         pth = os.path.join(pth, self.subdir)
-        fname = str(self.shn) + '.h5'
+        fname = str(self.shn) + self.suffix + '.h5'
         
         self.h5name = os.path.join(pth, fname)
 
@@ -116,7 +116,7 @@ class IOMds(IO):
         if node == 't':
             node = self.nodes[self.nodes.index('t')-1]
             if node == 't':
-                raise ValueError("Need other node name to obtain 't'")
+                raise RuntimeError("Need other node name to obtain 't'")
             mdsfmt = 'dim_of(%s)' % mdsfmt
 
         return mdsfmt % (self.shn, node)
