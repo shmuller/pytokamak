@@ -1064,5 +1064,53 @@ class Probe:
             grid(True)
             ylabel(ylab[i])
         xlabel(xlab)
-        return fig.axes
+
+
+        fig2 = figure(figsize=(6,5))
+        ax = fig2.add_subplot(1, 1, 1)
+        ti = self.IV_series.ti
+        V_range, I_range = self.IV_series.V_range, self.IV_series.I_range
+        corners = (V_range[0], I_range[0]), (V_range[1], I_range[1])
+        #ax.dataLim.update_from_data_xy(corners, ignore=True)
+        ax.set_xlim(V_range)
+        ax.set_ylim(I_range)
+        ax.grid(True)
+
+        def set_visible(lines, value):
+            for line in lines:
+                line.set_visible(value)
+
+        def on_resize(event):
+            set_visible(ax.lines, False)
+            fig2.canvas.draw()
+            ax.background = fig2.canvas.copy_from_bbox(ax.bbox)
+            set_visible(ax.lines, True)
+
+        fig2.canvas.mpl_connect('resize_event', on_resize)
+
+        on_resize(None)
+        
+        def on_move(event):
+            t_event = event.xdata
+            if t_event is not None:
+                c = (ti[:,0] <= t_event) & (t_event < ti[:,1])
+                IV_char = self.IV_series.IV_group[c][0].IV_char
+                V = IV_char[0].fitter_IV.V
+                II = np.array([x.fitter_IV.I for x in IV_char])
+
+                if len(ax.lines) == 0:
+                    ax.plot(V, II.T)
+                else:
+                    fig2.canvas.restore_region(ax.background)
+                    for line, I in zip(ax.lines, II):
+                        line.set_data(V, I)
+                        ax.draw_artist(line)
+                fig2.canvas.blit(ax.bbox)
+
+        cid = fig.canvas.mpl_connect('motion_notify_event', on_move)
+
+        def on_close(event):
+            fig.canvas.mpl_disconnect(cid)
+
+        fig2.canvas.mpl_connect('close_event', on_close)
 

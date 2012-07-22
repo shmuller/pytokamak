@@ -47,25 +47,29 @@ class ProbeLPS(probe.Probe):
 
         I1[:] = I1[:M].mean() - I1
         I2[:] = I2[:M].mean() - I2
-
+        
         if self.shn < 27687:
             I2[:] = -I2
+        
+        It = I1 + I2
 
-        R = probe.PositionSignal(t, R, 'R')
-        V = probe.VoltageSignal(t, V, 'V')
+        R = probe.PositionSignal(t, R, name='R')
+        V = probe.VoltageSignal(t, V, name='V')
 
         self.S = {'R': R,
                   'V': V,
-                  'I1': probe.CurrentSignal(t, I1, 'I1', V),
-                  'I2': probe.CurrentSignal(t, I2, 'I2', V)}
+                  'I1': probe.CurrentSignal(t, I1, V, name='I1'),
+                  'I2': probe.CurrentSignal(t, I2, V, name='I2'),
+                  'It': probe.CurrentSignal(t, It, V, name='It')}
 
     def calib(self):
-        R, V, I1, I2 = self['R', 'V', 'I1', 'I2']
+        R, V, I1, I2, It = self['R', 'V', 'I1', 'I2', 'It']
         R.x[:] = self.Rcal[0]*R.x + self.Rcal[1]
         V.x[:] = self.Vcal[0]*V.x + self.Vcal[1]
 
         I1.x[:] = self.I1cal[0]*I1.x + self.I1cal[1]
         I2.x[:] = self.I2cal[0]*I2.x + self.I2cal[1]
+        It.x[:] = I1.x + I2.x
 
     def current_calib(self):
         self.load(trim=True, calib=False)
