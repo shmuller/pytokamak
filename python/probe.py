@@ -4,7 +4,6 @@ import h5py
 import copy
 
 import matplotlib.pyplot as plt
-import tight_figure
 
 import scipy.interpolate as interp
 import scipy.optimize as opt
@@ -14,9 +13,10 @@ from mdsclient import *
 
 from ipdb import set_trace
 
+import tight_figure
 reload(tight_figure)
 
-figure = tight_figure.tight_figure
+figure = tight_figure.pickable_linked_figure
 plot = plt.plot
 ion = plt.ion
 draw = plt.draw
@@ -26,6 +26,25 @@ ylim = plt.ylim
 xlabel = plt.xlabel
 ylabel = plt.ylabel
 grid = plt.grid
+
+from collections import Mapping
+
+class DictView(Mapping):
+    def __init__(self, source, valid_keys):
+        self.source, self.valid_keys = source, valid_keys
+
+    def __getitem__(self, key):
+        if key in self.valid_keys:
+            return self.source[key]
+        else:
+            raise KeyError(key)
+
+    def __len__(self):
+        return len(self.valid_keys)
+
+    def __iter__(self):
+        for key in self.valid_keys:
+            yield key
 
 
 class Data(dict):
@@ -284,7 +303,7 @@ class Signal:
         self.t, self.x, self.name, self.type = t, x, name, type
 
     def __getitem__(self, index):
-        return self.__init__(self.t[index], self.x[index], self.name, self.type)
+        return Signal(self.t[index], self.x[index], self.name, self.type)
 
     @property
     def size(self):
@@ -316,23 +335,97 @@ class Signal:
         dx_dt = delta(self.x)/delta(self.t)
         return dx_dt
 
+    def crossings(self, lvl, threshold):
+        def cross(lvl, x0, x1):
+            return (x0 < lvl) & (lvl < x1)
+        
+        def group(ind):
+            di = np.diff(np.r_[0,ind])
+            j = np.flatnonzero(di > threshold*np.median(di))
+            ind0, ind1 = ind[j], ind[np.r_[j[1:]-1, -1]] + 1
+            return ind0, ind1
+
+        x0, x1 = self.x[:-1], self.x[1:]
+        cnd = cross(lvl, x0, x1) | cross(lvl, x1, x0)
+        ind0, ind1 = group(np.flatnonzero(cnd))
+
+        is_rising = self.x[ind0] < self.x[ind1]
+        return ind0, ind1, is_rising
+
+    def apply_fun(self, fun, ind0=0, ind1=None):
+        slices = map(slice, ind0, ind1)
+        res = [fun(self.x[s]) for s in slices]
+        return np.array(res)
+    
+    def apply_argfun(self, argfun, ind0=0, ind1=None):
+        return ind0 + self.apply_fun(argfun, ind0, ind1)
+    
+    def local_argmin(self, *args):
+        return self.apply_argfun(np.argmin, *args)
+
+    def local_argmax(self, *args):
+        return self.apply_argfun(np.argmax, *args)
+
     def plot(self, newfig=True):
         if newfig: figure()
         plot(self.t, self.x.T)
 
 
 class PositionSignal(Signal):
-    def __init__(self, t, x, name=""):
-        Signal.__init__(self, t, x, name, 'Position')
+    def __init__(self, t, x, **kw):
+        _kw = dict(
+                name="",
+                baseline_slice=slice(None, 1000), 
+                lvl_fact=20,
+                dist_threshold=1000)
+        _kw.update(kw)
+        self.__dict__.update(_kw)
+        self.kw = DictView(self.__dict__, _kw.keys())
+        self._t_ind = None
 
+        Signal.__init__(self, t, x, self.name, 'Position')
+        
     def __getitem__(self, index):
-        return PositionSignal(self.t[index], self.x[index], self.name)
+        return PositionSignal(self.t[index], self.x[index], **self.kw)
+
+    def get_baseline(self):
+        return self.x[self.baseline_slice]
+
+    def get_crossings(self):
+        x = self.get_baseline()
+        xm, xs = x.mean(), x.std()
+        lvl = xm + self.lvl_fact*xs
+        return self.crossings(lvl, self.dist_threshold)
 
     def get_t_ind(self):
-        i0 = np.argmax(self.x)
-        i1 = np.where(self.x[i0:] < self.x[0])[0][0]
-        i1 += i0
-        return i0, i1
+        if self._t_ind is None:
+            self.set_t_ind()
+        return self._t_ind
+
+    def set_t_ind(self):
+        ind0, ind1, is_rising = self.get_crossings()
+        i0, i1 = ind0[is_rising], ind1[~is_rising]
+        iM = self.local_argmax(i0, i1)
+        self._t_ind = i0, iM, i1
+
+    t_ind = property(get_t_ind, set_t_ind)
+
+    def regions(self, fun=None):
+        i0, iM, i1 = self.t_ind
+        return map(fun, i0, i1)
+
+    def get_slices(self):
+        return self.regions(fun=slice)
+
+    def get_mask(self):
+        return np.concatenate(self.regions(fun=np.arange))
+
+    def plot_plunges(self):
+        self.plot(self)
+        i0, iM, i1 = self.t_ind
+        plot(self.t[i0], self.x[i0], 'r*')
+        plot(self.t[i1], self.x[i1], 'g*')
+        plot(self.t[iM], self.x[iM], 'm*')
 
 
 class VoltageSignal(Signal):
@@ -355,7 +448,7 @@ class VoltageSignal(Signal):
 
 
 class CurrentSignal(Signal):
-    def __init__(self, t, x, name="", V=None, C=None):
+    def __init__(self, t, x, V=None, name="", C=None):
         Signal.__init__(self, t, x, name, 'Current')
         self.V, self.C = V, C
 
@@ -609,13 +702,14 @@ class FitterIV(Fitter):
     def fit(self):
         Fitter.fit(self)
         save = self.X, self.Y
+        Y0 = 0.
         while True:
             self.M *= 0.95
             self.X, self.Y = self.X[:self.M], self.Y[:self.M]
             P_old = self.P
             Fitter.fit(self, P0=self.P)
             
-            if np.any(self.P > P_old) or (self.eval_norm(self.X[-1]) > 0.):
+            if np.any(self.P > P_old) or (self.eval_norm(self.X[-1]) > Y0):
                 self.P = P_old
                 break
 
@@ -735,7 +829,7 @@ class IVSeries:
         n = len(self.II)
         IIfit = self.eval()
         for i, I, Ifit in zip(xrange(n), self.II, IIfit):
-            ax = fig.add_linked_subplot(n, 1, 1+i)
+            ax = fig.add_subplot(n, 1, 1+i)
             plot(I.t, I.x, I.t, Ifit)
             grid(True)
             ylabel(I.name)
@@ -831,7 +925,7 @@ class Probe:
         self.PP = self.IV_series = self.S = None
 
         self.xlab = "t [s]"
-        self.ylab = ("Isat [au]", "Vf [V]", "Te [eV]")
+        self.ylab = ("Isat [A]", "Vf [V]", "Te [eV]")
 
     def __getitem__(self, index):
         if not isinstance(index, tuple):
@@ -856,7 +950,7 @@ class Probe:
     def save(self):
         self.IO_file.save(self.x)
 
-    def load(self, trim=True, calib=True, corr_capa=False):
+    def load(self, plunge=None, trim=True, calib=True, corr_capa=False):
         try:
             self.x = self.IO_file.load(self.nodes)
         except:
@@ -865,7 +959,7 @@ class Probe:
 
         self.mapsig()
         if trim: 
-            self.trim()
+            self.trim(plunge)
         if calib:
             self.calib()
         if corr_capa:
@@ -880,19 +974,24 @@ class Probe:
             self.load(**kw)
         fig = figure()
         types = ['Current', 'Voltage', 'Position']
+        
         for i, typ in enumerate(types):
-            ax = fig.add_linked_subplot(3, 1, 1+i)
+            ax = fig.add_subplot(3, 1, 1+i)
             grid(True)
             ylabel(typ)
             for S in self.get_type(typ):
-                S.plot(False)
+                S.plot(newfig=False)
         xlabel(self.xlab)
 
-    def trim(self):
+    def trim(self, plunge=None):
         S = self.get_type('Position')
-        i0, i1 = S[0].get_t_ind()
+        i0, iM, i1 = S[0].t_ind
 
-        s = slice(i1)
+        if plunge is None:
+            s = np.concatenate(map(np.arange, i0, i1))
+        else:
+            s = slice(i0[plunge], i1[plunge])
+
         for S in self.S.itervalues():
             S.trim(s)
 
@@ -959,7 +1058,7 @@ class Probe:
 
         fig = figure(figsize=(10,10))
         for i, pp in enumerate(PP.T):
-            fig.add_linked_subplot(3, 1, 1+i)
+            fig.add_subplot(3, 1, 1+i)
             
             pp.plot(False, x=x)
             grid(True)
