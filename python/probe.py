@@ -47,6 +47,44 @@ class DictView(Mapping):
             yield key
 
 
+class MouseMotionObserverViewer:
+    def __init__(self, observers, viewer, plotfun):
+        self.observers, self.viewer = observers, viewer
+        self.plotfun = plotfun
+
+        self.observer_canvas = self.observers[0].figure.canvas
+        self.viewer_canvas = self.viewer.figure.canvas
+        
+        self.cid = self.observer_canvas.mpl_connect('motion_notify_event', self.on_move)
+        self.viewer_canvas.mpl_connect('resize_event', self.on_resize)
+        self.viewer_canvas.mpl_connect('close_event', self.on_close)
+
+        self.on_resize(None)
+
+    def set_viewer_visible(self, value):
+        for line in self.viewer.lines:
+            line.set_visible(value)
+
+    def on_resize(self, event):
+        self.set_viewer_visible(False)
+        self.viewer_canvas.draw()
+        self.background = self.viewer_canvas.copy_from_bbox(self.viewer.bbox)
+        self.set_viewer_visible(True)
+
+    def on_move(self, event):
+        if event.inaxes in self.observers:
+            self.viewer_canvas.restore_region(self.background)
+                
+            self.plotfun(event)
+
+            for line in self.viewer.lines:
+                self.viewer.draw_artist(line)
+            self.viewer_canvas.blit(self.viewer.bbox)
+
+    def on_close(self, event):
+        self.observer_canvas.mpl_disconnect(self.cid)
+
+
 class Data(dict):
     def __init__(self, nodes, X):
         self.nodes, self.X = nodes, X
@@ -586,12 +624,15 @@ class Fitter:
         else:
             return self.x, (self.y,)
 
-    def plot(self, newfig=True, fun='get_xy', lines=None):
+    def plot(self, ax=None, fun='get_xy', lines=None):
         x, y = getattr(self, fun)()
+        sty = (dict(linewidth=1.5),)
         
+        if ax is None:
+            ax = figure().gca()
+
         if lines is None: lines = []
         Nl, Ny = len(lines), len(y)
-        if newfig and Nl == 0: figure()
 
         for li, yi in zip(lines, y):
             li.set_data(x, yi)
@@ -600,8 +641,14 @@ class Fitter:
         for li in lines[Ny:]:
             li.set_visible(False)
 
-        for yi in y[Nl:]:
-            li, = plot(x, yi, linewidth=1.5)
+        if Nl > 0:
+            color = lines[0].get_color()
+        else:
+            color = ax._get_lines.color_cycle.next()
+            sty = (dict(),) + sty
+
+        for yi, styi in zip(y[Nl:], sty):
+            li, = ax.plot(x, yi, color=color, **styi)
             lines.append(li)
 
         return lines
@@ -740,8 +787,8 @@ class IVChar:
             out[self.fitter_IV.get_ind()] = True
         return out
 
-    def plot(self, newfig=True, fun='get_xy', lines=None):
-        return self.fitter_IV.plot(newfig, fun, lines)
+    def plot(self, ax=None, fun='get_xy', lines=None):
+        return self.fitter_IV.plot(ax, fun, lines)
 
 
 class IVGroup:
@@ -767,12 +814,16 @@ class IVGroup:
             IV_char.mask(I)
         return out
 
-    def plot(self, newfig=True, fun='get_xy', lines=None):
-        if lines is None:
-            if newfig: figure()
-            return [x.plot(False, fun) for x in self.IV_char]
+    def plot(self, ax=None, fun='get_xy'):
+        if ax is None:
+            ax = figure().gca
+
+        cache = getattr(ax, 'lines_cache', None) 
+
+        if cache is None:
+            ax.lines_cache = [x.plot(ax, fun) for x in self.IV_char]
         else:
-            return [x.plot(False, fun, l) for x, l in zip(self.IV_char, lines)]
+            ax.lines_cache = [x.plot(ax, fun, l) for x, l in zip(self.IV_char, cache)]
 
 
 class IVSeries:
@@ -837,17 +888,16 @@ class IVSeries:
         
     def animate(self, fun='get_xy'):
         ion()
-        figure()
+        ax = figure().gca()
         if fun == 'get_xy':
-            xlim(self.V_range)
-            ylim(self.I_range)
+            ax.set_xlim(self.V_range)
+            ax.set_ylim(self.I_range)
         else:
-            xlim(( 0.0, 1.0))
-            ylim((-1.2, 1.2))
+            ax.set_xlim(( 0.0, 1.0))
+            ax.set_ylim((-1.2, 1.2))
 
-        lines = None
         for IV_group in self.IV_group:
-            lines = IV_group.plot(False, fun, lines)
+            IV_group.plot(ax, fun)
             draw()
 
 
@@ -1076,41 +1126,12 @@ class Probe:
         ax.set_ylim(I_range)
         ax.grid(True)
 
-        def set_visible(lines, value):
-            for line in lines:
-                line.set_visible(value)
-
-        def on_resize(event):
-            set_visible(ax.lines, False)
-            fig2.canvas.draw()
-            ax.background = fig2.canvas.copy_from_bbox(ax.bbox)
-            set_visible(ax.lines, True)
-
-        fig2.canvas.mpl_connect('resize_event', on_resize)
-
-        on_resize(None)
-        
-        def on_move(event):
+        def plotfun(event):
             t_event = event.xdata
-            if t_event is not None:
-                c = (ti[:,0] <= t_event) & (t_event < ti[:,1])
-                IV_char = self.IV_series.IV_group[c][0].IV_char
-                V = IV_char[0].fitter_IV.V
-                II = np.array([x.fitter_IV.I for x in IV_char])
+            c = (ti[:,0] <= t_event) & (t_event < ti[:,1])
+            IV_group = self.IV_series.IV_group[c][0]
 
-                if len(ax.lines) == 0:
-                    ax.plot(V, II.T)
-                else:
-                    fig2.canvas.restore_region(ax.background)
-                    for line, I in zip(ax.lines, II):
-                        line.set_data(V, I)
-                        ax.draw_artist(line)
-                fig2.canvas.blit(ax.bbox)
+            IV_group.plot(ax, 'get_xy')
 
-        cid = fig.canvas.mpl_connect('motion_notify_event', on_move)
-
-        def on_close(event):
-            fig.canvas.mpl_disconnect(cid)
-
-        fig2.canvas.mpl_connect('close_event', on_close)
+        self.MMOV = MouseMotionObserverViewer(fig.axes, ax, plotfun)
 
