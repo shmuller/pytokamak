@@ -1106,7 +1106,47 @@ class Probe:
             x = self['R'].x
             xlab = "R [mm]"
 
-        fig = figure(figsize=(10,10))
+        
+        class CharacteristicsViewer:
+            def __init__(self, IV_series):
+                self.IV_series = IV_series
+                self.MMOV = None
+
+            def toggle(self, event):
+                fig = event.inaxes.figure
+                if self.MMOV is not None:
+                    self.MMOV.viewer_canvas.manager.destroy()
+                    self.MMOV = None
+                    return
+
+                def on_close(event):
+                    self.MMOV = None
+
+                fig2 = figure(figsize=(6,5))
+                fig2.canvas.mpl_connect('close_event', on_close)
+                ax = fig2.add_subplot(1, 1, 1)
+                ti = self.IV_series.ti
+                V_range, I_range = self.IV_series.V_range, self.IV_series.I_range
+                corners = (V_range[0], I_range[0]), (V_range[1], I_range[1])
+                #ax.dataLim.update_from_data_xy(corners, ignore=True)
+                ax.set_xlim(V_range)
+                ax.set_ylim(I_range)
+                ax.grid(True)
+
+                def plotfun(event):
+                    t_event = event.xdata
+                    c = (ti[:,0] <= t_event) & (t_event < ti[:,1])
+                    IV_group = self.IV_series.IV_group[c][0]
+
+                    IV_group.plot(ax, 'get_xy')
+
+                self.MMOV = MouseMotionObserverViewer(fig.axes, ax, plotfun)
+
+        characteristics_viewer = CharacteristicsViewer(self.IV_series)
+
+        menu_entries_ax = (('Characteristics viewer', characteristics_viewer.toggle),)
+
+        fig = figure(figsize=(10,10), menu_entries_ax=menu_entries_ax)
         for i, pp in enumerate(PP.T):
             fig.add_subplot(3, 1, 1+i)
             
@@ -1114,24 +1154,4 @@ class Probe:
             grid(True)
             ylabel(ylab[i])
         xlabel(xlab)
-
-
-        fig2 = figure(figsize=(6,5))
-        ax = fig2.add_subplot(1, 1, 1)
-        ti = self.IV_series.ti
-        V_range, I_range = self.IV_series.V_range, self.IV_series.I_range
-        corners = (V_range[0], I_range[0]), (V_range[1], I_range[1])
-        #ax.dataLim.update_from_data_xy(corners, ignore=True)
-        ax.set_xlim(V_range)
-        ax.set_ylim(I_range)
-        ax.grid(True)
-
-        def plotfun(event):
-            t_event = event.xdata
-            c = (ti[:,0] <= t_event) & (t_event < ti[:,1])
-            IV_group = self.IV_series.IV_group[c][0]
-
-            IV_group.plot(ax, 'get_xy')
-
-        self.MMOV = MouseMotionObserverViewer(fig.axes, ax, plotfun)
 
