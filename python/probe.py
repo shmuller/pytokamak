@@ -9,6 +9,11 @@ import scipy.interpolate as interp
 import scipy.optimize as opt
 import scipy.odr as odr
 
+import logging
+reload(logging)
+logging.basicConfig(level=logging.DEBUG)
+logger = logging
+
 from mdsclient import *
 
 from ipdb import set_trace
@@ -57,21 +62,24 @@ class MouseMotionObserverViewer:
         
         self.cid = self.observer_canvas.mpl_connect('motion_notify_event', self.on_move)
         self.viewer_canvas.mpl_connect('resize_event', self.on_resize)
-        self.viewer_canvas.mpl_connect('close_event', self.on_close)
 
         self.on_resize(None)
 
-    def set_viewer_visible(self, value):
-        for line in self.viewer.lines:
-            line.set_visible(value)
-
     def on_resize(self, event):
-        self.set_viewer_visible(False)
+        logger.debug("Resizing")
+        save_vis = [line.get_visible() for line in self.viewer.lines]
+        for line in self.viewer.lines:
+            line.set_visible(False)
+        
         self.viewer_canvas.draw()
         self.background = self.viewer_canvas.copy_from_bbox(self.viewer.bbox)
-        self.set_viewer_visible(True)
+        
+        for line, vis in zip(self.viewer.lines, save_vis):
+            line.set_visible(vis)
+            self.viewer.draw_artist(line)
 
     def on_move(self, event):
+        logger.debug("Moving")
         if event.inaxes in self.observers:
             self.viewer_canvas.restore_region(self.background)
                 
@@ -81,7 +89,8 @@ class MouseMotionObserverViewer:
                 self.viewer.draw_artist(line)
             self.viewer_canvas.blit(self.viewer.bbox)
 
-    def on_close(self, event):
+    def __del__(self):
+        logger.debug("Destroying")
         self.observer_canvas.mpl_disconnect(self.cid)
 
 
@@ -907,6 +916,7 @@ class IVSeriesViewer:
         self.MMOV = None
 
     def on_close(self, event):
+        logger.debug("Closing")
         self.MMOV = None
 
     def plotfun(self, event):
@@ -923,7 +933,6 @@ class IVSeriesViewer:
             return
             
         fig2 = figure(figsize=(6,5))
-        fig2.canvas.mpl_connect('close_event', self.on_close)
         self.ax = fig2.add_subplot(1, 1, 1)
         V_range, I_range = self.IV_series.V_range, self.IV_series.I_range
         #corners = (V_range[0], I_range[0]), (V_range[1], I_range[1])
@@ -932,7 +941,10 @@ class IVSeriesViewer:
         self.ax.set_ylim(I_range)
         self.ax.grid(True)
 
+        fig2.canvas.mpl_connect('close_event', self.on_close)
+
         self.MMOV = MouseMotionObserverViewer(fig.axes, self.ax, self.plotfun)
+        fig2.show()
 
 
 class FitterIV2(Fitter):
@@ -1151,4 +1163,7 @@ class Probe:
             grid(True)
             ylabel(ylab[i])
         xlabel(xlab)
+
+        fig.IV_series_viewer = IV_series_viewer
+        return fig
 

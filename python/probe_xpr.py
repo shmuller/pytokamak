@@ -2,6 +2,12 @@ import numpy as np
 
 import scipy.interpolate as interp
 
+if __name__ == "__main__":
+    import matplotlib
+    #matplotlib.use('TkAgg')
+    matplotlib.use('Qt4Agg')
+    import matplotlib.pyplot as plt
+
 import probe
 reload(probe)
 
@@ -27,8 +33,8 @@ class ProbeXPR(probe.Probe):
 
         self.Rcal = ((170+72)/3.3630, -72)
         self.Vcal = (100., -69.5700)
-        self.I1cal = (20./10, 0.)  # mA/mV = A/V
-        self.I2cal = (20./10, 0.)
+        self.I1cal = (0.5*20./10, 0.)  # mA/mV = A/V (0.5 from missing 50 Ohm term.)
+        self.I2cal = (0.5*20./10, 0.)
 
     def mapsig(self):
         x = self.x
@@ -78,11 +84,13 @@ class ProbeXPR(probe.Probe):
 
 
 if __name__ == "__main__":
-    shn = 28435
+    shn = 28469
 
     XPR = ProbeXPR(shn=shn)
-    XPR.load()
+    XPR.analyze(plunge=0)
 
-    XPR.plot_raw()
-    show()
+    XPR.plot()
+    plt.show()
+
+
 
