@@ -62,50 +62,39 @@ class ProbeLPS(probe.Probe):
                   'VF': probe.VoltageSignal(t, VF, name='VF')}
 
     def calib(self):
-        #Rcal = (442./5.6779, -106.6648)
-        #Vcal = (5.0952, -190.8193)
-        #I1cal = (1., 0.)
-        #I2cal = (0.5559, 0.)
-        
-        R, V, I1, I2, VF = self['R', 'V', 'I1', 'I2', 'VF']
-
-        #ampR  = probe.Amp(fact=(170+72)/3.3630, offs=-72)
-        #ampV  = probe.Amp(fact=100., offs=-69.227)
-
         fixpoints = (-1.8767, -106), (3.8011, 336)
         ampR = probe.Amp(fixpoints=fixpoints)
         ampV = probe.Amp(fact=100., offs=-183.76)
 
-        ampI1 = probe.Amp(fact=0.5*50./10)  # mA/mV = A/V (0.5 from missing 50 Ohm term.)
-        ampI2 = probe.Amp(fact=0.5*50./10)
+        ampI1 = probe.Amp(fact=0.5*20./10)  # mA/mV = A/V (0.5 from missing 50 Ohm term.)
+        ampI2 = probe.Amp(fact=0.5*20./10)
         ampVF = probe.Amp(fact=100.)
 
         inv = probe.Amp(fact=-1.)
         amp1x5 = probe.Amp(fact=2.58)
         amp2x5 = probe.Amp(fact=4.84)
 
-        ampI1 *= inv*amp1x5.inv()
+        ampI1 *= amp1x5.inv()
         ampI2 *= amp2x5.inv()
+
+        if self.shn < 28426:
+            ampI1 *= inv
 
         if self.shn < 27687:
             ampI2 *= inv
-        
+    
+        R, V, I1, I2, VF = self['R', 'V', 'I1', 'I2', 'VF']
+
         R  *= ampR
         V  *= ampV
         I1 *= ampI1
         I2 *= ampI2
         VF *= ampVF
 
-        M = 5000
-        I1.x[:] -= I1.x[-M:].mean()
-        I2.x[:] -= I2.x[-M:].mean()
-        VF.x[:] -= VF.x[-M:].mean()
-        
-        #if self.shn < 27687:
-        #    I2.x[:] = -I2.x
-        
-        #if self.shn >= 28426:
-        #    I1.x[:] = -I1.x
+        s = slice(-5000, None)
+        I1.norm_to_region(s)
+        I2.norm_to_region(s)
+        VF.norm_to_region(s)
 
         self.S['It'] = probe.CurrentSignal(I1.t, I1.x + I2.x, V, name='It')
         

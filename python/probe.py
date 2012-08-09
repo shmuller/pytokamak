@@ -439,9 +439,7 @@ class Signal:
         return tuple(x[i])
 
     def norm_to_region(self, cnd):
-        s = self.copy()
-        s.x[:] -= self.x[cnd].mean()
-        return s
+        self.x[:] -= self.x[cnd].mean()
 
     def deriv(self):
         delta = lambda x: np.r_[x[1]-x[0], x[2:]-x[:-2], x[-1]-x[-2]]
@@ -573,7 +571,8 @@ class CurrentSignal(Signal):
         dV_dtc = self.V.deriv()[cnd]
         N = (dV_dtc*dV_dtc).sum()
 
-        dI = self.norm_to_region(cnd)
+        dI = self.copy()
+        dI.norm_to_region(cnd)
         self.C = (dI.x[cnd]*dV_dtc).sum()/N
 
     def I_capa(self):
