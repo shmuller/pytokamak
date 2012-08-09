@@ -11,7 +11,7 @@ import scipy.odr as odr
 
 import logging
 reload(logging)
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.WARN)
 logger = logging
 
 from mdsclient import *
@@ -32,7 +32,8 @@ xlabel = plt.xlabel
 ylabel = plt.ylabel
 grid = plt.grid
 
-from collections import Mapping
+from collections import Mapping, OrderedDict, namedtuple
+
 
 class DictView(Mapping):
     def __init__(self, source, valid_keys):
@@ -130,6 +131,11 @@ class IO:
 
         return Data(nodes, X)
 
+        #data = namedtuple('data', self.nodes)
+        #x = data(*X)
+        #x = {node: self.get_node(node).astype('f') for node in nodes}
+        #return x
+
     def save(self, x):
         for node, val in x.iteritems():
             self.put_node(node, val)
@@ -176,6 +182,9 @@ class IOMds(IO):
     def __init__(self, shn=0, sock=None):
         self.shn, self.sock = shn, sock
         self.mdsport, self.mdsfmt = "8000", ""
+        self.datadeco = "data(%s)"
+        self.timedeco = "dim_of(%s)"
+        self.sizedeco = "size(%s)"
 
     def _mdsstr(self, node):
         mdsfmt = self.mdsfmt
@@ -183,12 +192,14 @@ class IOMds(IO):
             node = self.nodes[self.nodes.index('t')-1]
             if node == 't':
                 raise RuntimeError("Need other node name to obtain 't'")
-            mdsfmt = 'dim_of(%s)' % mdsfmt
+            mdsfmt = self.timedeco % mdsfmt
+        else:
+            mdsfmt = self.datadeco % mdsfmt
 
         return mdsfmt % (self.shn, node)
 
     def get_size(self, node):
-        return mdsvalue(self.sock,'size(%s)' % self._mdsstr(node))
+        return mdsvalue(self.sock, self.sizedeco % self._mdsstr(node))
 
     def get_node(self, node):
         return mdsvalue(self.sock, self._mdsstr(node))
@@ -255,8 +266,11 @@ class PiecewisePolynomial:
         
         dX = X - xi[ind]
 
-        Y = self.c[0,ind].copy()
-        for a in self.c[1:]:
+        #Y = reduce(lambda Y, c: Y*dX + c[ind], self.c)
+        
+        c = self.c
+        Y = c[0,ind].copy()
+        for a in c[1:]:
             Y = Y*dX + a[ind]
 
         if self.fill is not None:
@@ -345,12 +359,64 @@ class PeriodPhaseFinder:
         return self.iE
 
 
+class Amp:
+    def __init__(self, fact=1., offs=0., fixpoints=None):
+        if fixpoints is not None:
+            (x0, y0), (x1, y1) = fixpoints
+            self.fact = (y1-y0)/(x1-x0)
+            self.offs = y0 - self.fact*x0
+        else:
+            self.fact, self.offs = fact, offs
+
+    def __call__(self, x):
+        return x*self.fact + self.offs
+
+    def apply(self, x):
+        x[:] = self(x)
+        return x
+
+    def __mul__(self, other):
+        if isinstance(other, Amp):
+            fact = self.fact*other.fact
+            offs = self.fact*other.offs + self.offs
+            return Amp(fact, offs)
+        else:
+            return self(other)
+
+    def __imul__(self, other):
+        if isinstance(other, Amp):
+            self.offs += self.fact*other.offs
+            self.fact *= other.fact
+        else:
+            self.offs *= other
+            self.fact *= other
+        return self
+
+    def inv(self):
+        ifact = 1./self.fact
+        ioffs = -self.offs*ifact
+        return Amp(ifact, ioffs)
+
+
 class Signal:
     def __init__(self, t, x, name="", type=None):
         self.t, self.x, self.name, self.type = t, x, name, type
 
     def __getitem__(self, index):
         return Signal(self.t[index], self.x[index], self.name, self.type)
+
+    def __add__(self, other):
+        return Signal(self.t, other+self.x, self.name, self.type)
+
+    def __mul__(self, other):
+        return Signal(self.t, other*self.x, self.name, self.type)
+
+    def __imul__(self, other):
+        if isinstance(other, Amp):
+            other.apply(self.x)
+        else:
+            self.x[:] *= other
+        return self
 
     @property
     def size(self):
