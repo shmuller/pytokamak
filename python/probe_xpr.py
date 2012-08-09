@@ -11,15 +11,30 @@ if __name__ == "__main__":
 import probe
 #reload(probe)
 
+import sig
+#reload(sig)
 
-class IOMdsAUG(probe.IOMds):
+
+IOMds = probe.IOMds
+IOFile = probe.IOFile
+Digitizer = probe.Digitizer
+Amp = probe.Amp
+Probe = probe.Probe
+
+ampUnity = Amp(fact=1., offs=0.)
+ampInv   = Amp(fact=-1., offs=0.)
+amp12Bit = Amp(fact=10./4095, offs=-5.)
+amp14Bit = Amp(fact=20./16383, offs=-10.)
+
+
+class IOMdsAUG(IOMds):
     def __init__(self, *args, **kw):
         # augsignal(_shot, _diag, _signame, _experiment, _edition, 
         #   _t1, _t2, _oshot, _oedition, _qual)
 
         diag = kw.pop('diag', 'XPR')
 
-        probe.IOMds.__init__(self, *args, **kw)
+        IOMds.__init__(self, *args, **kw)
         self.mdsport = "8001"
         self.mdsfmt = '_s = augsignal(%%d,"%s","%%s","AUGD",*,*,*,*,*,"raw")' % diag
 
@@ -28,41 +43,63 @@ class IOMdsAUG(probe.IOMds):
         self.sizedeco = '%s; size(_s)'
 
 
-class IOFileAUG(probe.IOFile):
+class IOFileAUG(IOFile):
     def __init__(self, shn, diag='XPR'):
-        probe.IOFile.__init__(self, shn=shn, suffix="_"+diag, subdir="AUG")
+        IOFile.__init__(self, shn=shn, suffix="_"+diag, subdir="AUG")
 
 
-class ProbeXPoint(probe.Probe):
-    def __init__(self, shn, sock=None, diag='XPR', nodes=()):
-        probe.Probe.__init__(self, shn, sock)
+class DigitizerXPR(Digitizer):
+    def __init__(self, shn, sock=None):
+        Digitizer.__init__(self, shn, sock)
 
-        self.IO_mds = IOMdsAUG(shn, sock, diag=diag)
-        self.IO_file = IOFileAUG(shn, diag=diag)
-        self.nodes = nodes
+        self.IO_mds = IOMdsAUG(shn, sock, diag='XPR')
+        self.IO_file = IOFileAUG(shn, diag='XPR')
+        self.nodes = ('S1', 'S2', 'S3', 'S4', 'S5', 'S6', 'S7', 'S8', 't')
+
+        self.amp = {node: amp14Bit for node in self.nodes}
+        self.amp['t'] = ampUnity
+
+
+class DigitizerLPS(Digitizer):
+    def __init__(self, shn, sock=None):
+        Digitizer.__init__(self, shn, sock)
+
+        self.IO_mds = IOMdsAUG(shn, sock, diag='LPS')
+        self.IO_file = IOFileAUG(shn, diag='LPS')
+        self.nodes = ('CUR1', 'VOL1', 'CUR2', 'VOL2', 'VOL3', 'VOL4', 't')
+
+        self.amp = {node: amp12Bit for node in self.nodes}
+        self.amp['t'] = ampUnity
+
+        for node in ('CUR1', 'VOL3'):
+            self.amp[node] = ampInv*amp12Bit
+
+
+class ProbeXPoint(Probe):
+    def __init__(self, digitizer=None):
+        Probe.__init__(self, digitizer)
 
         self.window = slice(None)
         self.b2V = self.mapping = self.amp = None
 
     def mapsig(self):
-        x = self.x
-        s = self.window
+        x = self.x[self.window]
 
-        t  = x['t'][s]
-        R  = self.b2V['R']*x[self.mapping['R']][s].astype('d')
-        V  = self.b2V['V']*x[self.mapping['V']][s].astype('d')
-        I1 = self.b2V['I1']*x[self.mapping['I1']][s].astype('d')
-        I2 = self.b2V['I2']*x[self.mapping['I2']][s].astype('d')
-        VF = self.b2V['VF']*x[self.mapping['VF']][s].astype('d')
+        t  = x['t']
+        R  = x[self.mapping['R']].astype('d')
+        V  = x[self.mapping['V']].astype('d')
+        I1 = x[self.mapping['I1']].astype('d')
+        I2 = x[self.mapping['I2']].astype('d')
+        VF = x[self.mapping['VF']].astype('d')
 
-        R = probe.PositionSignal(t, R, name='R')
-        V = probe.VoltageSignal(t, V, name='V')
+        R = sig.PositionSignal(R, t, name='R')
+        V = sig.VoltageSignal(V, t, name='V')
 
         self.S = {'R': R,
                   'V': V,
-                  'I1': probe.CurrentSignal(t, I1, V, name='I1'),
-                  'I2': probe.CurrentSignal(t, I2, V, name='I2'),
-                  'VF': probe.VoltageSignal(t, VF, name='VF')}
+                  'I1': sig.CurrentSignal(I1, t, V, name='I1'),
+                  'I2': sig.CurrentSignal(I2, t, V, name='I2'),
+                  'VF': sig.VoltageSignal(VF, t, name='VF')}
 
     def calib(self):
         R, V, I1, I2, VF = self['R', 'V', 'I1', 'I2', 'VF']
@@ -78,7 +115,7 @@ class ProbeXPoint(probe.Probe):
         I2.norm_to_region(s)
         VF.norm_to_region(s)
 
-        self.S['It'] = probe.CurrentSignal(I1.t, I1.x + I2.x, V, name='It')
+        self.S['It'] = sig.CurrentSignal(I1.x + I2.x, I1.t, V, name='It')
 
     def position_calib(self):
         R = self['R']
@@ -93,59 +130,52 @@ class ProbeXPoint(probe.Probe):
 
 class ProbeXPR(ProbeXPoint):
     def __init__(self, shn, sock=None):
-        nodes = ('S1', 'S2', 'S3', 'S4', 'S5', 'S6', 'S7', 'S8', 't')
+        digitizer = DigitizerXPR(shn, sock)
 
-        ProbeXPoint.__init__(self, shn, sock, diag='XPR', nodes=nodes)
+        ProbeXPoint.__init__(self, digitizer)
 
         self.window = slice(None)
         self.mapping = dict(R='S5', V='S1', I1='S4', I2='S2', VF='S6')
         
-        b2V = probe.Amp(fact=20./16383, offs=-10.)
-        self.b2V = dict(R=b2V, V=b2V, I1=b2V, I2=b2V, VF=b2V)
-
         fixpoints = (3.6812, -72), (7.0382, 170)
-        ampR = probe.Amp(fixpoints=fixpoints)
-        ampV = probe.Amp(fact=100., offs=-69.2227)
+        ampR = Amp(fixpoints=fixpoints)
+        ampV = Amp(fact=100., offs=-69.2227)
 
-        ampI1 = probe.Amp(fact=0.5*20./10)  # mA/mV = A/V (0.5 from missing 50 Ohm term.)
-        ampI2 = probe.Amp(fact=0.5*20./10)
-        ampVF = probe.Amp(fact=100.)
+        ampI1 = Amp(fact=0.5*20./10)  # mA/mV = A/V (0.5 from missing 50 Ohm term.)
+        ampI2 = Amp(fact=0.5*20./10)
+        ampVF = Amp(fact=100.)
 
         self.amp = dict(R=ampR, V=ampV, I1=ampI1, I2=ampI2, VF=ampVF)
 
 
 class ProbeLPS(ProbeXPoint):
     def __init__(self, shn, sock=None):
-        nodes = ('CUR1', 'VOL1', 'CUR2', 'VOL2', 'VOL3', 'VOL4', 't')
+        digitizer = DigitizerLPS(shn, sock)
 
-        ProbeXPoint.__init__(self, shn, sock, diag='LPS', nodes=nodes)
+        ProbeXPoint.__init__(self, digitizer)
 
         self.window = slice(2048, None)
         self.mapping = dict(R='VOL3', V='VOL1', I1='CUR1', I2='CUR2', VF='VOL2')
 
-        inv = probe.Amp(fact=-1.)
-        b2V = probe.Amp(fact=10./4095, offs=-5.)
-        self.b2V = dict(R=inv*b2V, V=b2V, I1=inv*b2V, I2=b2V, VF=b2V)
-
         fixpoints = (-1.8767, -106), (3.8011, 336)
-        ampR = probe.Amp(fixpoints=fixpoints)
-        ampV = probe.Amp(fact=100., offs=-183.76)
+        ampR = Amp(fixpoints=fixpoints)
+        ampV = Amp(fact=100., offs=-183.76)
 
-        ampI1 = probe.Amp(fact=0.5*20./10)  # mA/mV = A/V (0.5 from missing 50 Ohm term.)
-        ampI2 = probe.Amp(fact=0.5*20./10)
-        ampVF = probe.Amp(fact=100.)
+        ampI1 = Amp(fact=0.5*20./10)  # mA/mV = A/V (0.5 from missing 50 Ohm term.)
+        ampI2 = Amp(fact=0.5*20./10)
+        ampVF = Amp(fact=100.)
 
-        amp1x5 = probe.Amp(fact=2.58)
-        amp2x5 = probe.Amp(fact=4.84)
+        amp1x5 = Amp(fact=2.58)
+        amp2x5 = Amp(fact=4.84)
 
         ampI1 *= amp1x5.inv()
         ampI2 *= amp2x5.inv()
 
         if shn < 28426:
-            ampI1 *= inv
+            ampI1 *= ampInv
 
         if shn < 27687:
-            ampI2 *= inv
+            ampI2 *= ampInv
 
         self.amp = dict(R=ampR, V=ampV, I1=ampI1, I2=ampI2, VF=ampVF)
 
