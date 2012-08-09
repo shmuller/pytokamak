@@ -168,8 +168,11 @@ class Amp:
 
     def __imul__(self, other):
         if isinstance(other, Amp):
-            self.offs += self.fact*other.offs
+            self.offs *= other.fact
+            self.offs += other.offs
             self.fact *= other.fact
+            #self.offs += self.fact*other.offs
+            #self.fact *= other.fact
         else:
             self.offs *= other
             self.fact *= other
@@ -179,6 +182,9 @@ class Amp:
         ifact = 1./self.fact
         ioffs = -self.offs*ifact
         return Amp(ifact, ioffs)
+
+    def copy(self):
+        return Amp(self.fact, self.offs)
 
 
 class Signal:
@@ -441,9 +447,11 @@ class Digitizer:
 
     def load_raw_mds(self):
         self.x = self.IO_mds.load(self.nodes)
+        return self.x
         
     def load_raw_file(self):
         self.x = self.IO_file.load(self.nodes)
+        return self.x
 
     def load_raw(self):
         try:
@@ -451,6 +459,7 @@ class Digitizer:
         except:
             self.x = self.IO_mds.load(self.nodes)
             self.save()
+        return self.x
     
     def save(self):
         self.IO_file.save(self.x)
@@ -472,6 +481,22 @@ class Digitizer:
 
     def load(self):
         return self._load_calib(self.load_raw)
+
+    def calib_offset(self):
+        self.load_raw()
+        offs = [np.median(self.x[node]) for node in self.nodes]
+        return offs
+
+    def plot(self):
+        fig = figure()
+        nodes = list(self.nodes)
+        nodes.remove('t')
+        n = len(nodes)
+        t = self.x['t']
+        for i, node in enumerate(nodes):
+            ax = fig.add_subplot(n, 1, 1+i)
+            ax.grid(True)
+            ax.plot(t, self.x[node])
 
 
 
