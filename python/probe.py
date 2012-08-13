@@ -16,6 +16,7 @@ import tight_figure
 reload(tight_figure)
 
 figure = tight_figure.pickable_linked_figure
+axes = plt.axes
 plot = plt.plot
 ion = plt.ion
 draw = plt.draw
@@ -686,20 +687,26 @@ class Probe:
         istype = lambda x: x.type == type
         return filter(istype, self.S.itervalues())
 
-    def plot_raw(self, **kw):
+    def plot_raw(self, fig=None, **kw):
         if self.S is None:
             self.load(**kw)
-        fig = figure()
-        types = ['Current', 'Voltage', 'Position']
-        
-        for i, typ in enumerate(types):
-            ax = fig.add_subplot(3, 1, 1+i)
-            grid(True)
-            ylabel(typ)
-            for S in self.get_type(typ):
-                S.plot(newfig=False)
-        xlabel(self.xlab)
 
+        types = ['Current', 'Voltage', 'Position']
+        if fig is None:
+            fig = figure()
+            for i, typ in enumerate(types):
+                ax = fig.add_subplot(3, 1, 1+i)
+                grid(True)
+                ylabel(typ)
+            xlabel(self.xlab)
+        
+        ax = fig.axes
+        for i, typ in enumerate(types):
+            for S in self.get_type(typ):
+                axes(ax[i])
+                S.plot(newfig=False)
+        return fig
+        
     def trim(self, plunge=None):
         S = self.get_type('Position')
         i0, iM, i1 = S[0].t_ind

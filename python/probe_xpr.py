@@ -53,7 +53,7 @@ class IOFileAUG(IOFile):
 
 class DigitizerXPR(Digitizer):
     def __init__(self, shn, sock=None):
-        Digitizer.__init__(self, shn, sock)
+        Digitizer.__init__(self, shn, sock, name='XPR')
 
         self.IO_mds = IOMdsAUG(shn, sock, diag='XPR')
         self.IO_file = IOFileAUG(shn, diag='XPR')
@@ -65,10 +65,27 @@ class DigitizerXPR(Digitizer):
         self.amp = {node: amp14Bit.copy() for node in self.nodes}
         self.amp['t'] = ampUnity.copy()
 
+    def update_window(self):
+        """Detect failing data readout and cut window
+        """
+        t = self.x['t']
+        dt = np.abs(np.diff(t))
+        cnd = dt > 2*dt[0]
+        iM = np.argmax(cnd)
+        if cnd[iM] == True:
+            if t[iM] > 1.0:
+                self.window = slice(None, iM+1)
+            else:
+                self.window = np.flatnonzero((-1. <= t) & (t <= 10.))
+        
+    def calib(self):
+        self.update_window()
+        Digitizer.calib(self)
+
 
 class DigitizerLPS(Digitizer):
     def __init__(self, shn, sock=None):
-        Digitizer.__init__(self, shn, sock)
+        Digitizer.__init__(self, shn, sock, name='LPS')
 
         self.IO_mds = IOMdsAUG(shn, sock, diag='LPS')
         self.IO_file = IOFileAUG(shn, diag='LPS')
@@ -87,10 +104,12 @@ class DigitizerLPS(Digitizer):
 
 
 class ProbeXPR(Probe):
-    def __init__(self, shn, sock=None):
+    def __init__(self, shn, sock=None, dig=None):
         self.config = config.campaign.find_shot(shn)
+        if dig is None:
+            dig = self.config.dig
         
-        if self.config.digitizer == 'LPS':
+        if dig == 'LPS':
             DigitizerClass = DigitizerLPS
         else:
             DigitizerClass = DigitizerXPR
@@ -99,7 +118,7 @@ class ProbeXPR(Probe):
         Probe.__init__(self, digitizer)
 
     def mapsig(self):
-        mapping = self.config.mapping
+        mapping = self.config.mapping[self.digitizer.name]
 
         x = self.x[self.digitizer.window]
 
@@ -120,7 +139,7 @@ class ProbeXPR(Probe):
                   'VF': VoltageSignal(VF, t, name='VF')}
 
     def calib(self):
-        amp = self.config.amp
+        amp = self.config.amp[self.digitizer.name]
 
         R, V, I1, I2, VF = self['R', 'V', 'I1', 'I2', 'VF']
 

@@ -451,8 +451,8 @@ class CurrentSignal(Signal):
 
 
 class Digitizer:
-    def __init__(self, shn=0, sock=None):
-        self.shn, self.sock = shn, sock
+    def __init__(self, shn=0, sock=None, name=""):
+        self.shn, self.sock, self.name = shn, sock, name
 
         self.IO_mds = self.IO_file = None
         self.nodes = ()

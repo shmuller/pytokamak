@@ -15,7 +15,7 @@ fixpoints = (-1.8767, -106), (3.8011, 336)
 ampR_LPS  = Amp(fixpoints=fixpoints)
 ampV_LPS  = Amp(fact=100., offs=-183.76)
 
-def_LPS = dict(digitizer='LPS', mapping=mapping_LPS, ampR=ampR_LPS, ampV=ampV_LPS)
+def_LPS = dict(dig='LPS', mapping=mapping_LPS, ampR=ampR_LPS, ampV=ampV_LPS)
 
 # XPR defaults
 mapping_XPR = dict(R='S5', V='S1', I1='S4', I2='S2', VF='S6')
@@ -24,7 +24,10 @@ fixpoints = (3.6812, -72), (7.0382, 170)
 ampR_XPR = Amp(fixpoints=fixpoints)
 ampV_XPR = Amp(fact=100., offs=-69.2227)
 
-def_XPR = dict(digitizer='XPR', mapping=mapping_XPR, ampR=ampR_XPR, ampV=ampV_XPR)
+def_XPR = dict(dig='XPR', mapping=mapping_XPR, ampR=ampR_XPR, ampV=ampV_XPR)
+
+def_XPR_LPS = dict(alt_dig=def_LPS)
+def_XPR_LPS.update(def_XPR)
 
 
 ampVF = Amp(fact=100.)
@@ -54,7 +57,7 @@ CurrentProbe2 = {
     
 class Shot:
     def __init__(self, comment="", expt=None, shn=None,
-            digitizer=None, mapping=None, amp=None,
+            dig=None, mapping=None, amp=None, alt_dig=None,
             ampR  = None, 
             ampV  = None, 
             ampI1 = CurrentProbe1[20],
@@ -64,12 +67,28 @@ class Shot:
         if amp is None:
             amp = dict(R=ampR, V=ampV, I1=ampI1, I2=ampI2, VF=ampVF)
 
+        if not mapping.has_key(dig):
+            mapping = {dig: mapping}
+        if not amp.has_key(dig):
+            amp = {dig: amp}
+
         self.comment = comment
         self.expt = expt
         self.shn = shn
-        self.digitizer = digitizer
+        self.dig = dig
         self.mapping = mapping
         self.amp = amp
+
+        if alt_dig is not None:
+            self.add_dig(**alt_dig)
+
+    def add_dig(self, dig=None, mapping=None, amp=None, ampR=None, ampV=None):
+        if amp is None:
+            a = self.amp[self.dig]
+            amp = dict(R=ampR, V=ampV, I1=a['I1'], I2=a['I2'], VF=a['VF'])
+
+        self.mapping[dig] = mapping
+        self.amp[dig] = amp
 
     def copy(self, comment="", expt=None, shn=None):
         if expt is None: 
@@ -77,15 +96,15 @@ class Shot:
         if shn is None:
             shn = self.shn
         return Shot(comment=comment, expt=expt, shn=shn,
-            digitizer=self.digitizer, mapping=self.mapping, amp=self.amp)
+            dig=self.dig, mapping=self.mapping, amp=self.amp)
 
     def __repr__(self):
         return "%d: %s" % (self.shn, self.comment)
 
 
 class Experiment:
-    def __init__(self, date=None):
-        self.date = date
+    def __init__(self, date=None, campaign=None):
+        self.date, self.campaign = date, campaign
         self.x = OrderedDict()
 
     def __getitem__(self, indx):
@@ -114,7 +133,7 @@ class Campaign:
         return self.x[indx]
 
     def add_experiment(self, *args, **kw):
-        E = Experiment(*args, **kw)
+        E = Experiment(*args, campaign=self, **kw)
         self.x[kw['date']] = E
         return E
 
@@ -141,11 +160,6 @@ E.add(27684, "",
 
 E.rep(27685, 27684)
 E.rep(27686, 27684, "Both current probes on tip 1")
-
-"""
-if shn < 27687:
-    ampI2 *= ampInv
-"""
 
 E.add(27687, "Changed direction of 2nd current probe",
              ampI1 = ampInv*CurrentProbe1[10]*Preamp1[5],
@@ -213,10 +227,40 @@ E.rep(28252, 28245, "354 mm, 1.75 s, 20 mA/div, preamps 2x -> 1.8 s acc.")
 E.rep(28253, 28245, "304 mm, 1.75 s, 20 mA/div, preamps 2x (repeat 28250)")
 E.rep(28254, 28245, "304 mm, 1.75 s, 20 mA/div, preamps 2x (repeat 28251)")
 
-"""
-if shn < 28426:
-    ampI1 *= ampInv
-"""
+
+############################################
+E = campaign.add_experiment(date="20120712")
+
+E.add(28379, "Fixed probe @2564.05 mm", 
+             ampI1 = ampInv*CurrentProbe1[20]*Preamp1[2],
+             ampI2 = CurrentProbe2[20]*Preamp2[2], **def_XPR_LPS)
+
+E.rep(28380, 28379, "Fixed probe @2569.05 mm -> no data")
+E.rep(28381, 28379, "-200 V bias -> Kepco breaks in at 0.5 s")
+E.rep(28382, 28379, "@2569.10 mm, sweep -> data all the way to 6 s")
+E.rep(28383, 28379, "@2589.08 mm, DC offset with small sweep -> worked")
+
+
+############################################
+E = campaign.add_experiment(date="20120713")
+
+E.add(28389, "Fixed probe @2569.05 mm, -180 V with sweep", 
+             ampI1 = ampInv*CurrentProbe1[20]*Preamp1[2],
+             ampI2 = CurrentProbe2[20]*Preamp2[2], **def_XPR_LPS)
+
+E.rep(28390, 28389, "-80 V / 150 V sweep at 100 Hz")
+E.rep(28394, 28389)
+
+
+E.add(28395, "Turn 2nd current probe", 
+             ampI1 = CurrentProbe1[20]*Preamp1[2],
+             ampI2 = CurrentProbe2[20]*Preamp2[2], **def_XPR_LPS)
+
+E.rep(28403, 28395)
+E.rep(28404, 28395)
+E.rep(28405, 28395)
+E.rep(28406, 28395)
+E.rep(28407, 28395)
 
 
 ############################################
@@ -224,14 +268,17 @@ E = campaign.add_experiment(date="20120717")
 
 E.add(28419, "Fcn gen. 20 Vpp, +8 VDC, 0.5 kHz (saturates in Isat regime)", 
              ampI1 = CurrentProbe1[5],
-             ampI2 = CurrentProbe2[5], **def_XPR)
+             ampI2 = CurrentProbe2[5], **def_XPR_LPS)
 
 E.rep(28420, 28419, "Fcn gen. 12 Vpp, 4 VDC")
+E.rep(28421, 28419)
+E.rep(28422, 28419)
+E.rep(28423, 28419)
 E.rep(28424, 28419, "Asym. waveform, 7 Vpp, 1 VDC, 200 Hz")
 
 E.add(28425, "6.9 Vpp, 1 VDC, 100 Hz, 1 mA/div", 
              ampI1 = CurrentProbe1[1],
-             ampI2 = CurrentProbe2[1], **def_XPR)
+             ampI2 = CurrentProbe2[1], **def_XPR_LPS)
 
 E.rep(28426, 28425, "First data! Kepco breaks in in Isat")
 E.rep(28427, 28425, "Change sweep pars -> Kepco still breaks")
@@ -239,11 +286,11 @@ E.rep(28428, 28425, "Back to other fcn gen. -> saturated at 1 mA/div")
 
 E.add(28429, "Back to 5 mA/div -> no data", 
              ampI1 = CurrentProbe1[5],
-             ampI2 = CurrentProbe2[5], **def_XPR)
+             ampI2 = CurrentProbe2[5], **def_XPR_LPS)
 
 E.add(28434, "20 mA/div, 0.1 kHz, all 3 tips on bias voltage", 
              ampI1 = CurrentProbe1[20],
-             ampI2 = CurrentProbe2[20], **def_XPR)
+             ampI2 = CurrentProbe2[20], **def_XPR_LPS)
 
 E.rep(28435, 28434, "0.5 kHz, plunge at 1 s")
 E.rep(28436, 28434)
@@ -254,7 +301,7 @@ E = campaign.add_experiment(date="20120719")
 
 E.add(28442, "0.5 kHz, 3rd pin VF", 
              ampI1 = CurrentProbe1[20],
-             ampI2 = CurrentProbe2[20], **def_XPR)
+             ampI2 = CurrentProbe2[20], **def_XPR_LPS)
 
 E.rep(28444, 28442, "Max plunge at 1.75 s and 3.95 s")
 E.rep(28445, 28442, "100 V Kepco")
@@ -273,7 +320,7 @@ E = campaign.add_experiment(date="20120720")
 
 E.add(28455, "Acquisition with turned-off Kepco", 
              ampI1 = CurrentProbe1[20],
-             ampI2 = CurrentProbe2[20], **def_XPR)
+             ampI2 = CurrentProbe2[20], **def_XPR_LPS)
 
 E.rep(28466, 28455, "0.5 kHz, 16 Vpp, Kepco offset just avoids saturation")
 E.rep(28467, 28455)
@@ -288,8 +335,9 @@ E.rep(28473, 28455, "He again: 1 plunges at 150 mm")
 E = campaign.add_experiment(date="20120726")
 
 E.add(28504, "Calibration, no signals attached", 
-             mapping = mapping_XPR,
+             dig = 'XPR', mapping = mapping_XPR,
              ampR = ampUnity, ampV = ampUnity, ampVF = ampUnity,
+             alt_dig = dict(dig='LPS', mapping=mapping_LPS, ampR=ampUnity, ampV=ampUnity),
              ampI1 = CurrentProbe1[20],
              ampI2 = CurrentProbe2[20])
 
