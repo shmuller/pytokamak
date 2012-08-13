@@ -105,20 +105,33 @@ class IOFile(IO):
         self._f.close()
 
 
+class TdiError(Exception):
+    pass
+
 class IOMds(IO):
     def __init__(self, shn=0, sock=None):
-        self.shn, self.sock = shn, sock
+        self.shn, self._sock = shn, sock
         self.mdsport, self.mdsfmt = "8000", ""
         self.datadeco = "data(%s)"
         self.timedeco = "dim_of(%s)"
         self.sizedeco = "size(%s)"
+
+    def get_sock(self):
+        if self._sock is None:
+            self.set_sock()
+        return self._sock
+
+    def set_sock(self):
+        self._sock = mdsconnect('localhost:' + str(self.mdsport))
+
+    sock = property(get_sock, set_sock)
 
     def _mdsstr(self, node):
         mdsfmt = self.mdsfmt
         if node == 't':
             node = self.nodes[self.nodes.index('t')-1]
             if node == 't':
-                raise RuntimeError("Need other node name to obtain 't'")
+                raise TdiError("Need other node name to obtain 't'")
             mdsfmt = self.timedeco % mdsfmt
         else:
             mdsfmt = self.datadeco % mdsfmt
@@ -126,19 +139,19 @@ class IOMds(IO):
         return mdsfmt % (self.shn, node)
 
     def get_size(self, node):
-        return mdsvalue(self.sock, self.sizedeco % self._mdsstr(node))
+        return self.mdsvalue(self.sizedeco % self._mdsstr(node))
 
     def get_node(self, node):
-        return mdsvalue(self.sock, self._mdsstr(node))
-
-    def load(self, nodes):
-        if self.sock is None:
-            self.sock = mdsconnect('localhost:' + str(self.mdsport))
-        x = IO.load(self, nodes)
-        return x
+        return self.mdsvalue(self._mdsstr(node))
 
     def save(self, x):
-        raise NotImplementedError("Saving to MDS not implemented") 
+        raise NotImplementedError("Saving to MDS not implemented")
+
+    def mdsvalue(self, *args):
+        ret = mdsvalue(self.sock, *args)
+        if isinstance(ret, str) and ret.startswith("Tdi"):
+            raise TdiError(ret)
+        return ret
 
 
 class Amp:
@@ -443,6 +456,7 @@ class Digitizer:
 
         self.IO_mds = self.IO_file = None
         self.nodes = ()
+        self.window = slice(None)
         self.amp = None
 
     def load_raw_mds(self):

@@ -74,6 +74,8 @@ class DigitizerLPS(Digitizer):
         self.IO_file = IOFileAUG(shn, diag='LPS')
         self.nodes = ('CUR1', 'VOL1', 'CUR2', 'VOL2', 'VOL3', 'VOL4', 't')
 
+        self.window = slice(2048, None)
+
         #f = 10./4095
         #offs = (0,0,0,0,0,0,0)
         #self.amp = {node: Amp(fact=f, offs=-f*o) for node, o in zip(self.nodes, offs)}
@@ -84,15 +86,22 @@ class DigitizerLPS(Digitizer):
             self.amp[node] *= ampInv
 
 
-class ProbeXPoint(Probe):
-    def __init__(self, digitizer=None):
+class ProbeXPR(Probe):
+    def __init__(self, shn, sock=None):
+        self.config = config.campaign.find_shot(shn)
+        
+        if self.config.digitizer == 'LPS':
+            DigitizerClass = DigitizerLPS
+        else:
+            DigitizerClass = DigitizerXPR
+
+        digitizer = DigitizerClass(shn, sock)
         Probe.__init__(self, digitizer)
-        self.config = None
 
     def mapsig(self):
-        window, mapping = self.config.window, self.config.mapping
+        mapping = self.config.mapping
 
-        x = self.x[window]
+        x = self.x[self.digitizer.window]
 
         t  = x['t']
         R  = x[mapping['R']].astype('d')
@@ -137,62 +146,7 @@ class ProbeXPoint(Probe):
     def voltage_calib(self):
         self.load(trim=False, calib=False)
         return self['V'].x.mean()
-
-
-class ProbeXPR(ProbeXPoint):
-    def __init__(self, shn, sock=None):
-        digitizer = DigitizerXPR(shn, sock)
-
-        ProbeXPoint.__init__(self, digitizer)
-
-        self.window = slice(None)
-        self.mapping = dict(R='S5', V='S1', I1='S4', I2='S2', VF='S6')
-        
-        fixpoints = (3.6812, -72), (7.0382, 170)
-        ampR = Amp(fixpoints=fixpoints)
-        ampV = Amp(fact=100., offs=-69.2227)
-        
-        ampI1 = Amp(fact=0.5*20./10)  # mA/mV = A/V (0.5 from missing 50 Ohm term.)
-        ampI2 = Amp(fact=0.5*20./10)
-        ampVF = Amp(fact=100.)
-
-        self.amp = dict(R=ampR, V=ampV, I1=ampI1, I2=ampI2, VF=ampVF)
-
-
-class ProbeLPS(ProbeXPoint):
-    def __init__(self, shn, sock=None):
-        digitizer = DigitizerLPS(shn, sock)
-
-        ProbeXPoint.__init__(self, digitizer)
-
-        self.config = config.campaign.find_shot(shn)
-
-        """
-        self.window = slice(2048, None)
-        self.mapping = dict(R='VOL3', V='VOL1', I1='CUR1', I2='CUR2', VF='VOL2')
-
-        fixpoints = (-1.8767, -106), (3.8011, 336)
-        ampR = Amp(fixpoints=fixpoints)
-        ampV = Amp(fact=100., offs=-183.76)
-        
-        ampI1 = Amp(fact=0.5*20./10)  # mA/mV = A/V (0.5 from missing 50 Ohm term.)
-        ampI2 = Amp(fact=0.5*20./10)
-        ampVF = Amp(fact=100.)
-
-        amp1x5 = Amp(fact=2.58)
-        amp2x5 = Amp(fact=4.84)
-
-        ampI1 *= amp1x5.inv()
-        ampI2 *= amp2x5.inv()
-
-        if shn < 28426:
-            ampI1 *= ampInv
-
-        if shn < 27687:
-            ampI2 *= ampInv
-
-        self.amp = dict(R=ampR, V=ampV, I1=ampI1, I2=ampI2, VF=ampVF)
-        """
+   
 
 if __name__ == "__main__":
     shn = 28469

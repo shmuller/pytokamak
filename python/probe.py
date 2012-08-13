@@ -464,7 +464,7 @@ class IVGroup:
 
     def plot(self, ax=None, fun='get_xy'):
         if ax is None:
-            ax = figure().gca
+            ax = figure().gca()
 
         cache = getattr(ax, 'lines_cache', None) 
 
@@ -562,8 +562,9 @@ class IVSeriesViewer:
         t_event = event.xdata
         ti = self.IV_series.ti
         c = (ti[:,0] <= t_event) & (t_event < ti[:,1])
-        IV_group = self.IV_series.IV_group[c][0]
-        IV_group.plot(self.ax, 'get_xy')
+        IV_group = self.IV_series.IV_group[c]
+        if IV_group.size > 0:
+            IV_group[0].plot(self.ax, 'get_xy')
 
     def toggle(self, event):
         fig = event.inaxes.figure
