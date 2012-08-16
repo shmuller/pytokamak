@@ -9,10 +9,16 @@ import matplotlib.pyplot as plt
 import tight_figure
 reload(tight_figure)
 
-from mdsclient import *
-
-figure = tight_figure.pickable_linked_figure
+figure = tight_figure.pickable_linked_lod_figure
 plot = plt.plot
+ion = plt.ion
+
+def get_axes(ax=None):
+    if ax is None:
+        ax = figure().gca()
+    return ax
+
+from mdsclient import *
 
 from collections import Mapping
 
@@ -99,9 +105,7 @@ class IOFile(IO):
 
     def save(self, x):
         self._f = h5py.File(self.h5name,"w")
-
         IO.save(self, x)
-
         self._f.close()
 
 
@@ -279,9 +283,9 @@ class Signal:
     def local_argmax(self, *args):
         return self.apply_argfun(np.argmax, *args)
 
-    def plot(self, newfig=True):
-        if newfig: figure()
-        plot(self.t, self.x.T)
+    def plot(self, ax=None):
+        ax = get_axes(ax)
+        return ax.plot(self.t, self.x.T)
 
 
 class PeriodPhaseFinder:
@@ -394,12 +398,13 @@ class PositionSignal(Signal):
     def get_mask(self):
         return np.concatenate(self.regions(fun=np.arange))
 
-    def plot_plunges(self):
-        self.plot(self)
+    def plot_plunges(self, ax=None):
+        ax = get_axes(ax)
+        Signal.plot(self, ax)
         i0, iM, i1 = self.t_ind
-        plot(self.t[i0], self.x[i0], 'r*')
-        plot(self.t[i1], self.x[i1], 'g*')
-        plot(self.t[iM], self.x[iM], 'm*')
+        ax.plot(self.t[i0], self.x[i0], 'r*')
+        ax.plot(self.t[i1], self.x[i1], 'g*')
+        ax.plot(self.t[iM], self.x[iM], 'm*')
 
 
 class VoltageSignal(Signal):
@@ -415,10 +420,11 @@ class VoltageSignal(Signal):
         PPF.chop_sweeps()
         self.iE = PPF.get_iE()
 
-    def plot(self, newfig=True):
-        Signal.plot(self, newfig)
+    def plot(self, ax=None):
+        ax = get_axes(ax)
+        Signal.plot(self, ax)
         if self.iE is not None:
-            plot(self.t[self.iE], self.x[self.iE], 'r+')
+            ax.plot(self.t[self.iE], self.x[self.iE], 'r+')
 
 
 class CurrentSignal(Signal):

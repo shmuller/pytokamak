@@ -72,11 +72,11 @@ class DigitizerXPR(Digitizer):
         dt = np.abs(np.diff(t))
         cnd = dt > 2*dt[0]
         iM = np.argmax(cnd)
+
+        stop = None
         if cnd[iM] == True:
-            if t[iM] > 1.0:
-                self.window = slice(None, iM+1)
-            else:
-                self.window = np.flatnonzero((-1. <= t) & (t <= 10.))
+            stop = iM+1
+        self.window = slice(None, stop)
         
     def calib(self):
         self.update_window()

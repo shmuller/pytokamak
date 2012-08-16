@@ -11,22 +11,6 @@ logger = logging
 
 from ipdb import set_trace
 
-import matplotlib.pyplot as plt
-import tight_figure
-reload(tight_figure)
-
-figure = tight_figure.pickable_linked_figure
-axes = plt.axes
-plot = plt.plot
-ion = plt.ion
-draw = plt.draw
-hold = plt.hold
-xlim = plt.xlim
-ylim = plt.ylim
-xlabel = plt.xlabel
-ylabel = plt.ylabel
-grid = plt.grid
-
 from sig import *
 
 class ArrayView(np.ndarray):
@@ -89,13 +73,14 @@ class PiecewiseLinear:
         index = (slice(None), slice(None)) + index
         return PiecewiseLinear(self.y[index], self.x)
 
-    def plot(self):
+    def plot(self, ax=None):
         shape = (self.N*2,)
         x = self.x.reshape(shape)
         y = self.y.reshape(shape + self.shape)
-        plot(x, y)
+        ax = get_axes(ax)
+        return ax.plot(x, y)
 
-    def plot2(self):
+    def plot2(self, ax=None):
         shape = (self.N, 1)
         nanx = np.empty(shape) + np.nan
         nany = np.empty(shape + self.shape) + np.nan
@@ -103,7 +88,8 @@ class PiecewiseLinear:
         shape = (self.N*3,)
         x = np.concatenate((self.x, nanx), 1).reshape(shape)
         y = np.concatenate((self.y, nany), 1).reshape(shape + self.shape)
-        plot(x, y)
+        ax = get_axes(ax)
+        return ax.plot(x, y)
 
 
 class PiecewisePolynomial:
@@ -145,7 +131,7 @@ class PiecewisePolynomial:
     def T(self):
         return PiecewisePolynomial(self.c.swapaxes(2,3), self.x, **self.kw)
 
-    def plot(self, newfig=True, x=None):
+    def plot(self, ax=None, x=None):
         xi = self.x[self.i0]
         xl, xr = xi[:-1], xi[1:]
         yl, yr = self(xl, 'right'), self(xr, 'left')
@@ -158,8 +144,8 @@ class PiecewisePolynomial:
         x = np.concatenate((xl[:,None], xr[:,None]), 1).reshape(shape)
         y = np.concatenate((yl[:,None], yr[:,None]), 1).reshape(shape + self.shape)
         
-        if newfig: figure()
-        return plot(x, y)
+        ax = get_axes(ax)
+        return ax.plot(x, y)
 
 
 def wrap_fmin(fun, p0, x, y):
@@ -276,9 +262,8 @@ class Fitter:
     def plot(self, ax=None, fun='get_xy', lines=None):
         x, y = getattr(self, fun)()
         sty = (dict(linewidth=1.5),)
-        
-        if ax is None:
-            ax = figure().gca()
+       
+        ax = get_axes(ax)
 
         if lines is None: lines = []
         Nl, Ny = len(lines), len(y)
@@ -464,11 +449,8 @@ class IVGroup:
         return out
 
     def plot(self, ax=None, fun='get_xy'):
-        if ax is None:
-            ax = figure().gca()
-
-        cache = getattr(ax, 'lines_cache', None) 
-
+        ax = get_axes(ax)
+        cache = getattr(ax, 'lines_cache', None)
         if cache is None:
             ax.lines_cache = [x.plot(ax, fun) for x in self.IV_char]
         else:
@@ -530,14 +512,15 @@ class IVSeries:
         IIfit = self.eval()
         for i, I, Ifit in zip(xrange(n), self.II, IIfit):
             ax = fig.add_subplot(n, 1, 1+i)
-            plot(I.t, I.x, I.t, Ifit)
-            grid(True)
-            ylabel(I.name)
-        xlabel("t [s]")
+            ax.plot(I.t, I.x, I.t, Ifit)
+            ax.grid(True)
+            ax.set_ylabel(I.name)
+        ax.set_xlabel("t [s]")
         
     def animate(self, fun='get_xy'):
         ion()
-        ax = figure().gca()
+        fig = figure()
+        ax = fig.gca()
         if fun == 'get_xy':
             ax.set_xlim(self.V_range)
             ax.set_ylim(self.I_range)
@@ -547,8 +530,8 @@ class IVSeries:
 
         for IV_group in self.IV_group:
             IV_group.plot(ax, fun)
-            draw()
-
+            fig.canvas.draw()
+            
 
 class IVSeriesViewer:
     def __init__(self, IV_series):
@@ -561,11 +544,9 @@ class IVSeriesViewer:
 
     def plotfun(self, event):
         t_event = event.xdata
-        ti = self.IV_series.ti
-        c = (ti[:,0] <= t_event) & (t_event < ti[:,1])
-        IV_group = self.IV_series.IV_group[c]
-        if IV_group.size > 0:
-            IV_group[0].plot(self.ax, 'get_xy')
+        ti = self.IV_series.ti[:,1]
+        i = min(np.searchsorted(ti, t_event), ti.size-1)
+        self.IV_series.IV_group[i].plot(self.ax, 'get_xy')
 
     def toggle(self, event):
         fig = event.inaxes.figure
@@ -647,8 +628,8 @@ class IVSeries2:
         p = wrap_fmin(fitfun2, p0, V, I)
         Ifit2 = fitfun2(p, V)
 
-        figure()
-        plot(t, I, t, Ifit, t, Ifit2)
+        ax = get_axes()
+        ax.plot(t, I, t, Ifit, t, Ifit2)
         return p
 
 
@@ -696,15 +677,13 @@ class Probe:
             fig = figure()
             for i, typ in enumerate(types):
                 ax = fig.add_subplot(3, 1, 1+i)
-                grid(True)
-                ylabel(typ)
-            xlabel(self.xlab)
+                ax.grid(True)
+                ax.set_ylabel(typ)
+            ax.set_xlabel(self.xlab)
         
-        ax = fig.axes
-        for i, typ in enumerate(types):
+        for typ, ax in zip(types, fig.axes):
             for S in self.get_type(typ):
-                axes(ax[i])
-                S.plot(newfig=False)
+                S.plot(ax)
         return fig
         
     def trim(self, plunge=None):
@@ -732,7 +711,8 @@ class Probe:
         return IVSeries(V, II, iE, **kw)
 
     def analyze(self, **kw):
-        self.load(**kw)
+        if self.S is None:
+            self.load(**kw)
         self.IV_series = self.calc_IV_series(engine='fmin')
         self.PP = self.IV_series.fit()
 
@@ -786,12 +766,12 @@ class Probe:
 
         fig = figure(figsize=(10,10), menu_entries_ax=menu_entries_ax)
         for i, pp in enumerate(PP.T):
-            fig.add_subplot(3, 1, 1+i)
+            ax = fig.add_subplot(3, 1, 1+i)
             
-            pp.plot(False, x=x)
-            grid(True)
-            ylabel(ylab[i])
-        xlabel(xlab)
+            pp.plot(ax, x=x)
+            ax.grid(True)
+            ax.set_ylabel(ylab[i])
+        ax.set_xlabel(xlab)
 
         fig.IV_series_viewer = IV_series_viewer
         return fig
