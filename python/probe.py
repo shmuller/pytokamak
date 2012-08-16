@@ -527,10 +527,17 @@ class IVSeries:
         else:
             ax.set_xlim(( 0.0, 1.0))
             ax.set_ylim((-1.2, 1.2))
+        
+        canvas = fig.canvas
+        canvas.draw()
+        background = canvas.copy_from_bbox(ax.bbox)
 
         for IV_group in self.IV_group:
+            canvas.restore_region(background)
             IV_group.plot(ax, fun)
-            fig.canvas.draw()
+            for line in ax.lines:
+                ax.draw_artist(line)
+            canvas.blit(ax.bbox)
             
 
 class IVSeriesViewer:
@@ -653,11 +660,11 @@ class Probe:
     def calib(self):
         pass
         
-    def load(self, loadfun='load', plunge=None, trim=True, calib=True, corr_capa=False):
+    def load(self, loadfun='load', plunge=None, calib=True, corr_capa=False):
         self.x = getattr(self.digitizer, loadfun)()
 
         self.mapsig()
-        if trim: 
+        if plunge is not None:
             self.trim(plunge)
         if calib:
             self.calib()
@@ -686,11 +693,11 @@ class Probe:
                 S.plot(ax)
         return fig
         
-    def trim(self, plunge=None):
+    def trim(self, plunge='all'):
         S = self.get_type('Position')
         i0, iM, i1 = S[0].t_ind
 
-        if plunge is None:
+        if plunge == 'all':
             s = np.concatenate(map(np.arange, i0, i1))
         else:
             s = slice(i0[plunge], i1[plunge])
