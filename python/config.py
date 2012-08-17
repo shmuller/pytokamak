@@ -8,8 +8,20 @@ Amp = probe.Amp
 ampUnity = Amp(fact=1.)
 ampInv   = Amp(fact=-1.)
 
+class Map:
+    def __init__(self, R, V, I):
+        self.R, self.V, self.I, self.VI = R, V, I, zip(V, I)
+
+        self.uniqueV = set(V)
+        self.uniqueI = set(I)
+        self.uniqueV.discard(None)
+        self.uniqueI.discard(None)
+
+        self.uniqueVI = self.uniqueV.union(self.uniqueI)
+
+
 # LPS defaults
-mapping_LPS = dict(R='VOL3', V=['VOL1', 'VOL1', 'VOL2'], I=['CUR1', 'CUR2', None])
+mapping_LPS = Map(R='VOL3', V=['VOL1', 'VOL1', 'VOL2'], I=['CUR1', 'CUR2', None])
 
 fixpoints = (-1.8767, -106), (3.8011, 336)
 ampR_LPS  = Amp(fixpoints=fixpoints)
@@ -18,8 +30,8 @@ ampV_LPS  = Amp(fact=100., offs=-183.76)
 def_LPS = dict(dig='LPS', mapping=mapping_LPS, ampR=ampR_LPS, ampV=ampV_LPS)
 
 # XPR defaults
-mapping_XPR = dict(R='S5', V=['S1', 'S1', 'S6'], I=['S4', 'S2', None])
-        
+mapping_XPR = Map(R='S5', V=['S1', 'S1', 'S6'], I=['S4', 'S2', None])
+
 fixpoints = (3.6812, -72), (7.0382, 170)
 ampR_XPR = Amp(fixpoints=fixpoints)
 ampV_XPR = Amp(fact=100., offs=-69.2227)
@@ -31,6 +43,8 @@ def_XPR_LPS.update(def_XPR)
 
 
 ampVF = Amp(fact=100.)
+
+mapping_amp = Map(R='ampR', V=['ampV', None, ampVF], I=['ampI1', 'ampI2', None])
 
 Preamp1 = {
      2: Amp(fact=1.032).inv(), 
@@ -72,11 +86,11 @@ class Shot:
             ampVF = ampVF):
 
         if amp is None:
-            amp = dict(R=ampR, V=[ampV, None, ampVF], I=[ampI1, ampI2, None])
+            amp = Map(R=ampR, V=[ampV, None, ampVF], I=[ampI1, ampI2, None])
 
-        if not mapping.has_key(dig):
+        if not isinstance(mapping, dict):
             mapping = {dig: mapping}
-        if not amp.has_key(dig):
+        if not isinstance(amp, dict):
             amp = {dig: amp}
 
         self.comment = comment
@@ -92,7 +106,7 @@ class Shot:
     def add_dig(self, dig=None, mapping=None, amp=None, ampR=None, ampV=None):
         if amp is None:
             a = self.amp[self.dig]
-            amp = dict(R=ampR, V=[ampV, None, a['V'][2]], I=a['I'])
+            amp = Map(R=ampR, V=[ampV, None, a.V[2]], I=a.I)
 
         self.mapping[dig] = mapping
         self.amp[dig] = amp

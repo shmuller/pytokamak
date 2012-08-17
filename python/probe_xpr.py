@@ -124,14 +124,12 @@ class ProbeXPR(Probe):
         x = self.x[self.digitizer.window]
 
         t = x['t']
-        R = x[mapping['R']].astype('d')
+        R = x[mapping.R].astype('d')
         self.S = dict(R=PositionSignal(R, t, name='R'))
 
-        unique_keys = set(mapping['V'] + mapping['I'])
-        unique_keys.discard(None)
-        unique_sigs = {k: x[k].astype('d') for k in unique_keys}
+        unique_sigs = {k: x[k].astype('d') for k in mapping.uniqueVI}
 
-        for i, (mapV, mapI) in enumerate(zip(mapping['V'], mapping['I']), start=1):
+        for i, (mapV, mapI) in enumerate(mapping.VI, start=1):
             if mapV is None:
                 V = None
             else:
@@ -145,7 +143,7 @@ class ProbeXPR(Probe):
         amp = self.config.amp[self.digitizer.name]
         
         s = slice(-5000, None)
-        for i, (ampV, ampI) in enumerate(zip(amp['V'], amp['I']), start=1):
+        for i, (ampV, ampI) in enumerate(amp.VI, start=1):
             S = self.S[i]
             if isinstance(S, CurrentSignal):
                 S *= ampI
@@ -156,7 +154,7 @@ class ProbeXPR(Probe):
                 V *= ampV
             S.norm_to_region(s)
 
-        self.S['R'] *= amp['R']
+        self.S['R'] *= amp.R
         self.S['V'] = self.S[1].V
         self.S['It'] = self.S[1] + self.S[2]
 
