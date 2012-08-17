@@ -37,30 +37,38 @@ class Map:
 
 # LPS defaults
 mapping_LPS = Map(R='VOL3', V=['VOL1', 'VOL1', 'VOL2'], I=['CUR1', 'CUR2', None])
+mapping_LPS_allI = Map(R='VOL3', V=['VOL1', 'VOL1', 'VOL1'], I=['CUR1', 'CUR2', 'VOL2'])
 
 fixpoints = (-1.8767, -106), (3.8011, 336)
 ampR_LPS  = Amp(fixpoints=fixpoints)
 ampV_LPS  = Amp(fact=100., offs=-183.76)
 
 def_LPS = dict(dig='LPS', mapping=mapping_LPS, ampR=ampR_LPS, ampV=ampV_LPS)
+allI_LPS = dict(dig='LPS', mapping=mapping_LPS_allI, ampR=ampR_LPS, ampV=ampV_LPS)
 
 # XPR defaults
 mapping_XPR = Map(R='S5', V=['S1', 'S1', 'S6'], I=['S4', 'S2', None])
+mapping_XPR_allI = Map(R='S5', V=['S1', 'S1', 'S1'], I=['S4', 'S2', 'S6'])
 
 fixpoints = (3.6812, -72), (7.0382, 170)
 ampR_XPR = Amp(fixpoints=fixpoints)
 ampV_XPR = Amp(fact=100., offs=-69.2227)
 
 def_XPR = dict(dig='XPR', mapping=mapping_XPR, ampR=ampR_XPR, ampV=ampV_XPR)
+allI_XPR = dict(dig='XPR', mapping=mapping_XPR_allI, ampR=ampR_XPR, ampV=ampV_XPR)
 
+# LPS and XPR simultaneously
 def_XPR_LPS = dict(alt_dig=def_LPS)
 def_XPR_LPS.update(def_XPR)
+
+allI_XPR_LPS = dict(alt_dig=allI_LPS)
+allI_XPR_LPS.update(allI_XPR)
 
 
 ampVF = Amp(fact=100.)
 
-def_amp = Map(R='ampR', V=['ampV', None, ampVF], I=['ampI1', 'ampI2', None])
-
+def_amp  = Map(R='ampR', V=['ampV', None, ampVF], I=['ampI1', 'ampI2', None])
+allI_amp = Map(R='ampR', V=['ampV', None, None] , I=['ampI1', 'ampI2', 'ampI3'])
 
 Preamp1 = {
      2: Amp(fact=1.032).inv(), 
@@ -345,8 +353,10 @@ E.add(28429, "Back to 5 mA/div -> no data",
              ampI2 = CurrentProbe2[5], **def_XPR_LPS)
 
 E.add(28434, "20 mA/div, 0.1 kHz, all 3 tips on bias voltage", 
+             amp_template = allI_amp,
              ampI1 = CurrentProbe1[20],
-             ampI2 = CurrentProbe2[20], **def_XPR_LPS)
+             ampI2 = CurrentProbe2[20], 
+             ampI3 = CurrentProbe3[20], **allI_XPR_LPS)
 
 E.rep(28435, 28434, "0.5 kHz, plunge at 1 s")
 E.rep(28436, 28434)
