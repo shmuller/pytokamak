@@ -1,3 +1,4 @@
+import copy
 import numpy as np
 
 import scipy.interpolate as interp
@@ -122,39 +123,42 @@ class ProbeXPR(Probe):
 
         x = self.x[self.digitizer.window]
 
-        t  = x['t']
-        R  = x[mapping['R']].astype('d')
-        V  = x[mapping['V']].astype('d')
-        I1 = x[mapping['I1']].astype('d')
-        I2 = x[mapping['I2']].astype('d')
-        VF = x[mapping['VF']].astype('d')
+        t = x['t']
+        R = x[mapping['R']].astype('d')
+        self.S = dict(R=PositionSignal(R, t, name='R'))
 
-        R = PositionSignal(R, t, name='R')
-        V = VoltageSignal(V, t, name='V')
+        unique_keys = set(mapping['V'] + mapping['I'])
+        unique_keys.discard(None)
+        unique_sigs = {k: x[k].astype('d') for k in unique_keys}
 
-        self.S = {'R': R,
-                  'V': V,
-                  'I1': CurrentSignal(I1, t, V, name='I1'),
-                  'I2': CurrentSignal(I2, t, V, name='I2'),
-                  'VF': VoltageSignal(VF, t, name='VF')}
+        for i, (mapV, mapI) in enumerate(zip(mapping['V'], mapping['I']), start=1):
+            if mapV is None:
+                V = None
+            else:
+                V = VoltageSignal(unique_sigs[mapV], t, name='V%d' % i)
+            if mapI is None:
+                self.S[i] = V
+            else:
+                self.S[i] = CurrentSignal(unique_sigs[mapI], t, V, name='I%d' % i)
 
     def calib(self):
         amp = self.config.amp[self.digitizer.name]
-
-        R, V, I1, I2, VF = self['R', 'V', 'I1', 'I2', 'VF']
-
-        R  *= amp['R']
-        V  *= amp['V']
-        I1 *= amp['I1']
-        I2 *= amp['I2']
-        VF *= amp['VF']
-
+        
         s = slice(-5000, None)
-        I1.norm_to_region(s)
-        I2.norm_to_region(s)
-        VF.norm_to_region(s)
+        for i, (ampV, ampI) in enumerate(zip(amp['V'], amp['I']), start=1):
+            S = self.S[i]
+            if isinstance(S, CurrentSignal):
+                S *= ampI
+                V = S.V
+            else:
+                V = S
+            if V is not None and ampV is not None:
+                V *= ampV
+            S.norm_to_region(s)
 
-        self.S['It'] = CurrentSignal(I1.x + I2.x, I1.t, V, name='It')
+        self.S['R'] *= amp['R']
+        self.S['V'] = self.S[1].V
+        self.S['It'] = self.S[1] + self.S[2]
 
     def position_calib(self):
         R = self['R']

@@ -9,7 +9,7 @@ ampUnity = Amp(fact=1.)
 ampInv   = Amp(fact=-1.)
 
 # LPS defaults
-mapping_LPS = dict(R='VOL3', V='VOL1', I1='CUR1', I2='CUR2', VF='VOL2')
+mapping_LPS = dict(R='VOL3', V=['VOL1', 'VOL1', 'VOL2'], I=['CUR1', 'CUR2', None])
 
 fixpoints = (-1.8767, -106), (3.8011, 336)
 ampR_LPS  = Amp(fixpoints=fixpoints)
@@ -18,7 +18,7 @@ ampV_LPS  = Amp(fact=100., offs=-183.76)
 def_LPS = dict(dig='LPS', mapping=mapping_LPS, ampR=ampR_LPS, ampV=ampV_LPS)
 
 # XPR defaults
-mapping_XPR = dict(R='S5', V='S1', I1='S4', I2='S2', VF='S6')
+mapping_XPR = dict(R='S5', V=['S1', 'S1', 'S6'], I=['S4', 'S2', None])
         
 fixpoints = (3.6812, -72), (7.0382, 170)
 ampR_XPR = Amp(fixpoints=fixpoints)
@@ -54,7 +54,14 @@ CurrentProbe2 = {
     20: Amp(fact=0.5*20/10),
     50: Amp(fact=0.5*50/10)}
 
-    
+CurrentProbe3 = {
+     1: Amp(fact=0.5*1/10), # mA/mV = A/V (0.5 from missing 50 Ohm term.)
+     5: Amp(fact=0.5*5/10),
+    10: Amp(fact=0.5*10/10),
+    20: Amp(fact=0.5*20/10),
+    50: Amp(fact=0.5*50/10)}
+
+
 class Shot:
     def __init__(self, comment="", expt=None, shn=None,
             dig=None, mapping=None, amp=None, alt_dig=None,
@@ -65,7 +72,7 @@ class Shot:
             ampVF = ampVF):
 
         if amp is None:
-            amp = dict(R=ampR, V=ampV, I1=ampI1, I2=ampI2, VF=ampVF)
+            amp = dict(R=ampR, V=[ampV, None, ampVF], I=[ampI1, ampI2, None])
 
         if not mapping.has_key(dig):
             mapping = {dig: mapping}
@@ -85,7 +92,7 @@ class Shot:
     def add_dig(self, dig=None, mapping=None, amp=None, ampR=None, ampV=None):
         if amp is None:
             a = self.amp[self.dig]
-            amp = dict(R=ampR, V=ampV, I1=a['I1'], I2=a['I2'], VF=a['VF'])
+            amp = dict(R=ampR, V=[ampV, None, a['V'][2]], I=a['I'])
 
         self.mapping[dig] = mapping
         self.amp[dig] = amp
@@ -136,6 +143,10 @@ class Campaign:
         E = Experiment(*args, campaign=self, **kw)
         self.x[kw['date']] = E
         return E
+
+    @property
+    def shots(self):
+        return np.concatenate([E.shots for E in self.x.itervalues()])
 
     def find_shot(self, shn):
         for E in self.x.itervalues():

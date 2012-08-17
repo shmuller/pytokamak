@@ -433,7 +433,12 @@ class CurrentSignal(Signal):
         self.V, self.C = V, C
 
     def __getitem__(self, index):
-        return CurrentSignal(self.x[index], self.t[index], self.name)
+        return CurrentSignal(self.x[index], self.t[index], self.V[index], 
+                             self.name, self.C)
+
+    def __add__(self, other):
+        return CurrentSignal(self.x + other.x, self.t, self.V,
+                             self.name + '+' + other.name)
 
     def capa_pickup(self):
         cnd = self.t - self.t[0] < 0.05

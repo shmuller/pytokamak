@@ -691,6 +691,8 @@ class Probe:
         for typ, ax in zip(types, fig.axes):
             for S in self.get_type(typ):
                 S.plot(ax)
+
+        fig.canvas.draw()
         return fig
         
     def trim(self, plunge='all'):
@@ -710,8 +712,8 @@ class Probe:
             I.x[:] -= I.I_capa()
 
     def calc_IV_series(self, n=1, **kw):
-        V = self.S['V']
         II = self.get_type('Current')
+        V = II[0].V
         if V.iE is None:
             V.chop_sweeps()
         iE = np.c_[V.iE[:-n], V.iE[n:]]
@@ -751,7 +753,7 @@ class Probe:
         self.IV_series2 = IVSeries2(V, II, PP, mask, iE)
         """
 
-    def plot(self, x=None, PP='PP'):
+    def plot(self, fig=None, x=None, PP='PP'):
         if self.PP is None:
             self.analyze()
 
@@ -767,19 +769,21 @@ class Probe:
             x = self['R'].x
             xlab = "R [mm]"
 
-        IV_series_viewer = IVSeriesViewer(self.IV_series)
+        if fig is None:
+            IV_series_viewer = IVSeriesViewer(self.IV_series)
+            menu_entries_ax = (('IV viewer', IV_series_viewer.toggle),)
 
-        menu_entries_ax = (('IV viewer', IV_series_viewer.toggle),)
+            fig = figure(figsize=(10,10), menu_entries_ax=menu_entries_ax)
+            for i in xrange(3):
+                ax = fig.add_subplot(3, 1, 1+i)
+                ax.grid(True)
+                ax.set_ylabel(ylab[i])
+            ax.set_xlabel(xlab)
+            fig.IV_series_viewer = IV_series_viewer
 
-        fig = figure(figsize=(10,10), menu_entries_ax=menu_entries_ax)
-        for i, pp in enumerate(PP.T):
-            ax = fig.add_subplot(3, 1, 1+i)
-            
+        for pp, ax in zip(PP.T, fig.axes):
             pp.plot(ax, x=x)
-            ax.grid(True)
-            ax.set_ylabel(ylab[i])
-        ax.set_xlabel(xlab)
 
-        fig.IV_series_viewer = IV_series_viewer
+        fig.canvas.draw()
         return fig
 
