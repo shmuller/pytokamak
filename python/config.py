@@ -9,15 +9,30 @@ ampUnity = Amp(fact=1.)
 ampInv   = Amp(fact=-1.)
 
 class Map:
-    def __init__(self, R, V, I):
-        self.R, self.V, self.I, self.VI = R, V, I, zip(V, I)
+    def __init__(self, R, VI=None, V=None, I=None):
+        self.R = R
+        if VI is None:
+            self.VI = np.array(zip(V, I), dtype=object)
+        else:
+            self.VI = np.asarray(VI, dtype=object)
+        self.V, self.I = self.VI[:,0], self.VI[:,1]
 
-        self.uniqueV = set(V)
-        self.uniqueI = set(I)
-        self.uniqueV.discard(None)
-        self.uniqueI.discard(None)
+    def __repr__(self):
+        return repr(self.VI)
 
-        self.uniqueVI = self.uniqueV.union(self.uniqueI)
+    def copy(self):
+        return Map(self.R, self.VI.copy())
+
+    def unique(self, attr):
+        a = np.unique(getattr(self, attr))
+        if a[0] is None:
+            return a[1:]
+        else:
+            return a
+
+    def replace(self, attr, key, value):
+        a = getattr(self, attr)
+        a[a == key] = value
 
 
 # LPS defaults
@@ -44,7 +59,8 @@ def_XPR_LPS.update(def_XPR)
 
 ampVF = Amp(fact=100.)
 
-mapping_amp = Map(R='ampR', V=['ampV', None, ampVF], I=['ampI1', 'ampI2', None])
+def_amp = Map(R='ampR', V=['ampV', None, ampVF], I=['ampI1', 'ampI2', None])
+
 
 Preamp1 = {
      2: Amp(fact=1.032).inv(), 
@@ -77,16 +93,26 @@ CurrentProbe3 = {
 
 
 class Shot:
-    def __init__(self, comment="", expt=None, shn=None,
-            dig=None, mapping=None, amp=None, alt_dig=None,
+    def __init__(self, comment="", expt=None, shn=None, dig=None, 
+            mapping=None, amp_template=def_amp, amp=None, alt_dig=None,
             ampR  = None, 
             ampV  = None, 
             ampI1 = CurrentProbe1[20],
             ampI2 = CurrentProbe2[20],
+            ampI3 = CurrentProbe3[20],
             ampVF = ampVF):
 
         if amp is None:
-            amp = Map(R=ampR, V=[ampV, None, ampVF], I=[ampI1, ampI2, None])
+            amp = amp_template.copy()
+            if amp.R == 'ampR':
+                amp.R = ampR
+            for key, val in (('ampV', ampV), ('ampVF', ampVF)):
+                amp.replace('V', key, val)
+            for key, val in (('ampI1', ampI1), ('ampI2', ampI2), ('ampI3', ampI3)):
+                amp.replace('I', key, val)
+
+        #if amp is None:
+        #    amp = Map(R=ampR, V=[ampV, None, ampVF], I=[ampI1, ampI2, None])
 
         if not isinstance(mapping, dict):
             mapping = {dig: mapping}
@@ -98,6 +124,7 @@ class Shot:
         self.shn = shn
         self.dig = dig
         self.mapping = mapping
+        self.amp_template = amp_template
         self.amp = amp
 
         if alt_dig is not None:
@@ -105,8 +132,12 @@ class Shot:
 
     def add_dig(self, dig=None, mapping=None, amp=None, ampR=None, ampV=None):
         if amp is None:
-            a = self.amp[self.dig]
-            amp = Map(R=ampR, V=[ampV, None, a.V[2]], I=a.I)
+            amp = self.amp[self.dig].copy()
+            amp.R = ampR
+            amp.V[self.amp_template.V == 'ampV'] = ampV
+
+            #a = self.amp[self.dig]
+            #amp = Map(R=ampR, V=[ampV, None, a.V[2]], I=a.I)
 
         self.mapping[dig] = mapping
         self.amp[dig] = amp
@@ -116,8 +147,8 @@ class Shot:
             expt = self.expt
         if shn is None:
             shn = self.shn
-        return Shot(comment=comment, expt=expt, shn=shn,
-            dig=self.dig, mapping=self.mapping, amp=self.amp)
+        return Shot(comment=comment, expt=expt, shn=shn, dig=self.dig, 
+                    mapping=self.mapping, amp_template=self.amp_template, amp=self.amp)
 
     def __repr__(self):
         return "%d: %s" % (self.shn, self.comment)

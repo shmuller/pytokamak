@@ -127,7 +127,7 @@ class ProbeXPR(Probe):
         R = x[mapping.R].astype('d')
         self.S = dict(R=PositionSignal(R, t, name='R'))
 
-        unique_sigs = {k: x[k].astype('d') for k in mapping.uniqueVI}
+        unique_sigs = {k: x[k].astype('d') for k in mapping.unique('VI')}
 
         for i, (mapV, mapI) in enumerate(mapping.VI, start=1):
             if mapV is None:
