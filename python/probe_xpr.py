@@ -40,7 +40,7 @@ class IOMdsAUG(IOMds):
 
         IOMds.__init__(self, *args, **kw)
         self.mdsport = "8001"
-        self.mdsfmt = '_s = augsignal(%%d,"%s","%%s","AUGD",*,*,*,*,*,"raw")' % diag
+        self.mdsfmt = '_s = augsignal(%d,"%s","%%s","AUGD",*,*,*,*,*,"raw")' % (self.shn, diag)
 
         self.datadeco = '%s; word_unsigned(data(_s))'
         self.timedeco = '%s; dim_of(_s)'

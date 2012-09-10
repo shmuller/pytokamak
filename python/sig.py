@@ -115,7 +115,9 @@ class TdiError(Exception):
 class IOMds(IO):
     def __init__(self, shn=0, sock=None):
         self.shn, self._sock = shn, sock
-        self.mdsport, self.mdsfmt = "8000", ""
+        self.mdsport = "8000" 
+        self.mdstree = None
+        self.mdsfmt = "%s"
         self.datadeco = "data(%s)"
         self.timedeco = "dim_of(%s)"
         self.sizedeco = "size(%s)"
@@ -127,6 +129,8 @@ class IOMds(IO):
 
     def set_sock(self):
         self._sock = mdsconnect('localhost:' + str(self.mdsport))
+        if self.mdstree is not None:
+            mdsopen(self._sock, self.mdstree, self.shn)
 
     sock = property(get_sock, set_sock)
 
@@ -140,7 +144,7 @@ class IOMds(IO):
         else:
             mdsfmt = self.datadeco % mdsfmt
 
-        return mdsfmt % (self.shn, node)
+        return mdsfmt % node
 
     def get_size(self, node):
         return self.mdsvalue(self.sizedeco % self._mdsstr(node))
