@@ -1,6 +1,6 @@
 import numpy as np
 
-from config import Map, Experiment, Campaign
+from config import Map, Shot, Experiment, Campaign
 
 import probe
 
@@ -73,7 +73,7 @@ CurrentProbe3 = {
     50: Amp(fact=0.5*50/10)}
 
 
-class Shot:
+class ShotAUG(Shot):
     def __init__(self, comment="", expt=None, shn=None, dig=None, 
             mapping=None, amp_template=def_amp, amp=None, alt_dig=None,
             ampR  = None, 
@@ -83,8 +83,10 @@ class Shot:
             ampI3 = CurrentProbe3[20],
             ampVF = ampVF):
 
+        self.amp_template = amp_template
+
         if amp is None:
-            amp = amp_template.copy()
+            amp = self.amp_template.copy()
             if amp.R == 'ampR':
                 amp.R = ampR
             for key, val in (('ampV', ampV), ('ampVF', ampVF)):
@@ -95,21 +97,7 @@ class Shot:
         #if amp is None:
         #    amp = Map(R=ampR, V=[ampV, None, ampVF], I=[ampI1, ampI2, None])
 
-        if not isinstance(mapping, dict):
-            mapping = {dig: mapping}
-        if not isinstance(amp, dict):
-            amp = {dig: amp}
-
-        self.comment = comment
-        self.expt = expt
-        self.shn = shn
-        self.dig = dig
-        self.mapping = mapping
-        self.amp_template = amp_template
-        self.amp = amp
-
-        if alt_dig is not None:
-            self.add_dig(**alt_dig)
+        Shot.__init__(self, comment, expt, shn, dig, mapping, amp, alt_dig)
 
     def add_dig(self, dig=None, mapping=None, amp=None, ampR=None, ampV=None):
         if amp is None:
@@ -120,23 +108,16 @@ class Shot:
             #a = self.amp[self.dig]
             #amp = Map(R=ampR, V=[ampV, None, a.V[2]], I=a.I)
 
-        self.mapping[dig] = mapping
-        self.amp[dig] = amp
+        Shot.add_dig(self, dig, mapping, amp)
 
     def copy(self, comment="", expt=None, shn=None):
         if expt is None: 
             expt = self.expt
         if shn is None:
             shn = self.shn
-        return Shot(comment=comment, expt=expt, shn=shn, dig=self.dig, 
-                    mapping=self.mapping, amp_template=self.amp_template, amp=self.amp)
-
-    def __repr__(self):
-        return "%d: %s" % (self.shn, self.comment)
-
-
-class ShotAUG(Shot):
-    pass
+        return self.__class__(comment=comment, expt=expt, shn=shn, dig=self.dig, 
+                              mapping=self.mapping, amp_template=self.amp_template, 
+                              amp=self.amp)
 
 
 class ExperimentAUG(Experiment):

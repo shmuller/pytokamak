@@ -29,8 +29,43 @@ class Map:
         a[a == key] = value
 
 
+class Shot:
+    def __init__(self, comment="", expt=None, shn=None, dig=None, 
+                 mapping=None, amp=None, alt_dig=None):
+
+        if not isinstance(mapping, dict):
+            mapping = {dig: mapping}
+        if not isinstance(amp, dict):
+            amp = {dig: amp}
+
+        self.comment = comment
+        self.expt = expt
+        self.shn = shn
+        self.dig = dig
+        self.mapping = mapping
+        self.amp = amp
+
+        if alt_dig is not None:
+            self.add_dig(**alt_dig)
+
+    def add_dig(self, dig, mapping=None, amp=None):
+        self.mapping[dig] = mapping
+        self.amp[dig] = amp
+
+    def copy(self, comment="", expt=None, shn=None):
+        if expt is None: 
+            expt = self.expt
+        if shn is None:
+            shn = self.shn
+        return self.__class__(comment=comment, expt=expt, shn=shn, dig=self.dig, 
+                              mapping=self.mapping, amp=self.amp)
+
+    def __repr__(self):
+        return "%d: %s" % (self.shn, self.comment)
+
+
 class Experiment:
-    def __init__(self, date=None, campaign=None, ShotClass=None):
+    def __init__(self, date=None, campaign=None, ShotClass=Shot):
         self.date, self.campaign, self.ShotClass = date, campaign, ShotClass
         self.x = OrderedDict()
 
