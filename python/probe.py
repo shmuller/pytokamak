@@ -707,6 +707,10 @@ class Probe:
         for S in self.S.itervalues():
             S.trim(s)
 
+    def smooth_I(self, w=10):
+        for I in self.get_type('Current'):
+            I.smooth(w)
+
     def corr_capa(self):
         for I in self.get_type('Current'):
             I.x[:] -= I.I_capa()

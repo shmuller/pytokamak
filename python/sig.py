@@ -19,6 +19,7 @@ def get_axes(ax=None):
     return ax
 
 from mdsclient import *
+from mediansmooth import *
 
 from collections import Mapping
 
@@ -239,6 +240,7 @@ class Signal:
 
     def trim(self, s):
         self.x, self.t = self.x[s], self.t[s]
+        return self
 
     def range(self):
         return self.x.min(), self.x.max()
@@ -250,6 +252,11 @@ class Signal:
 
     def norm_to_region(self, cnd):
         self.x[:] -= self.x[cnd].mean()
+        return self
+
+    def smooth(self, w=100):
+        mediansmooth(self.x, w)
+        return self
 
     def deriv(self):
         delta = lambda x: np.r_[x[1]-x[0], x[2:]-x[:-2], x[-1]-x[-2]]
@@ -289,7 +296,8 @@ class Signal:
 
     def plot(self, ax=None):
         ax = get_axes(ax)
-        return ax.plot(self.t, self.x.T)
+        ax.plot(self.t, self.x.T)
+        return ax
 
 
 class PeriodPhaseFinder:
@@ -429,6 +437,7 @@ class VoltageSignal(Signal):
         Signal.plot(self, ax)
         if self.iE is not None:
             ax.plot(self.t[self.iE], self.x[self.iE], 'r+')
+        return ax
 
 
 class CurrentSignal(Signal):
