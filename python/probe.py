@@ -791,3 +791,14 @@ class Probe:
         fig.canvas.draw()
         return fig
 
+    def plot_R(self, **kw):
+        return self.plot(x='R', **kw)
+
+    def plot_Mach(self, **kw):
+        return self.plot(PP=PP_Mach, **kw)
+
+    def plot_R_Mach(self, **kw):
+        return self.plot(x='R', PP='PP_Mach', **kw)
+
+
+
