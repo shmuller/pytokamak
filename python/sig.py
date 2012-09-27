@@ -9,8 +9,9 @@ import matplotlib.pyplot as plt
 import tight_figure
 reload(tight_figure)
 
-figure = tight_figure.pickable_linked_lod_tight_figure
-#figure = tight_figure.pickable_linked_lod_figure
+#figure = tight_figure.pickable_linked_lod_tight_figure
+figure = tight_figure.pickable_linked_lod_figure
+#figure = tight_figure.pickable_linked_figure
 plot = plt.plot
 ion = plt.ion
 
@@ -22,9 +23,9 @@ def get_axes(ax=None):
 from mdsclient import *
 from mediansmooth import *
 
-from collections import Mapping
+from collections import MutableMapping
 
-class DictView(Mapping):
+class DictView(MutableMapping):
     def __init__(self, source, valid_keys):
         self.source, self.valid_keys = source, valid_keys
 
@@ -40,6 +41,35 @@ class DictView(Mapping):
     def __iter__(self):
         for key in self.valid_keys:
             yield key
+
+    def __setitem__(self, key, value):
+        if key in self.valid_keys:
+            self.source[key] = value
+        else:
+            raise KeyError(key)
+
+    def __delitem__(self, key):
+        self.valid_keys.remove(key)
+
+
+class IOH5:
+    def __init__(self, h5name="test.h5"):
+        self.h5name = h5name
+
+    def save(self, d, compression="gzip"):
+        f = h5py.File(self.h5name, "w")
+        for key, val in d.iteritems():
+            f.create_dataset(key, data=val, compression=compression)
+        f.close()
+
+    def load(self, d=None):
+        f = h5py.File(self.h5name, "r")
+        if d is None: 
+            d = dict()
+        for k in f:
+            d[k] = f[k][:]
+        f.close()
+        return d
 
 
 class IO:
@@ -80,11 +110,11 @@ class IOFile(IO):
     def __init__(self, shn=0, suffix="", subdir=""):
         self.shn, self.suffix, self.subdir = shn, suffix, subdir
 
-        pth = os.environ['DATAPATH']
-        pth = os.path.join(pth, self.subdir)
-        fname = str(self.shn) + self.suffix + '.h5'
+        self.basepath = os.environ['DATAPATH']
+        self.fullpath = os.path.join(self.basepath, self.subdir)
+        self.fname = str(self.shn) + self.suffix + '.h5'
         
-        self.h5name = os.path.join(pth, fname)
+        self.h5name = os.path.join(self.fullpath, self.fname)
 
         IO.__init__(self)
 
@@ -259,10 +289,10 @@ class Signal:
         mediansmooth(self.x, w)
         return self
 
-    def deriv(self):
+    def deriv(self, name=""):
         delta = lambda x: np.r_[x[1]-x[0], x[2:]-x[:-2], x[-1]-x[-2]]
         dx_dt = delta(self.x)/delta(self.t)
-        return dx_dt
+        return Signal(dx_dt, self.t, name, "Derivative of " + self.type)
 
     def crossings(self, lvl, threshold):
         def cross(lvl, x0, x1):
@@ -455,8 +485,11 @@ class CurrentSignal(Signal):
                              self.name + '+' + other.name)
 
     def capa_pickup(self):
+        V = self.V.copy()
+        self.dV_dt = V.deriv()
+
         cnd = self.t - self.t[0] < 0.05
-        dV_dtc = self.V.deriv()[cnd]
+        dV_dtc = self.dV_dt.x[cnd]
         N = (dV_dtc*dV_dtc).sum()
 
         dI = self.copy()
@@ -466,7 +499,7 @@ class CurrentSignal(Signal):
     def I_capa(self):
         if self.C is None:
             self.capa_pickup()
-        return self.C*self.V.deriv()
+        return self.C*self.dV_dt.x
 
     def I_corr(self):
         I_capa = self.I_capa()

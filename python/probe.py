@@ -131,7 +131,12 @@ class PiecewisePolynomial:
     def T(self):
         return PiecewisePolynomial(self.c.swapaxes(2,3), self.x, **self.kw)
 
-    def plot(self, ax=None, x=None):
+    @property
+    def savefields(self):
+        return DictView(self.__dict__, ('c', 'x', 'i0'))
+
+
+    def plot_prepare(self, x=None):
         xi = self.x[self.i0]
         xl, xr = xi[:-1], xi[1:]
         yl, yr = self(xl, 'right'), self(xr, 'left')
@@ -143,7 +148,11 @@ class PiecewisePolynomial:
         shape = ((self.N-1)*2,)
         x = np.concatenate((xl[:,None], xr[:,None]), 1).reshape(shape)
         y = np.concatenate((yl[:,None], yr[:,None]), 1).reshape(shape + self.shape)
-        
+        return x, y
+
+    def plot(self, ax=None, x=None):
+        x, y = self.plot_prepare(x=x)
+                
         ax = get_axes(ax)
         return ax.plot(x, y)
 
@@ -664,13 +673,13 @@ class Probe:
         self.x = getattr(self.digitizer, loadfun)()
 
         self.mapsig()
-        if plunge is not None:
-            self.trim(plunge)
         if calib:
             self.calib()
         if corr_capa:
             self.corr_capa()
-
+        if plunge is not None:
+            self.trim(plunge)
+        
     def get_type(self, type):
         istype = lambda x: x.type == type
         return filter(istype, self.S.itervalues())
@@ -737,7 +746,21 @@ class Probe:
         c[0,:,0,0] = dens
         c[0,:,1,0] = Mach
         self.PP_Mach = PiecewisePolynomial(c, self.PP.x, **self.PP.kw)
-        
+
+    @property
+    def h5name_res(self):
+        return self.digitizer.IO_file.h5name[:-3] + "_res.h5"
+
+    def save_res(self):
+        IO = IOH5(self.h5name_res)
+        d = self.PP.savefields
+        IO.save(d)
+
+    def load_res(self):
+        IO = IOH5(self.h5name_res)
+        d = IO.load()
+        self.PP = PiecewisePolynomial(**d)
+
     def analyze2(self, n=2, **kw):
         if self.IV_series is None:
             self.analyze(**kw)
