@@ -2,6 +2,8 @@ import numpy as np
 
 from collections import OrderedDict
 
+from probe import PositionSignal, VoltageSignal, CurrentSignal
+
 class Map:
     def __init__(self, R, VI=None, V=None, I=None):
         self.R = R
@@ -27,6 +29,33 @@ class Map:
     def replace(self, attr, key, value):
         a = getattr(self, attr)
         a[a == key] = value
+
+
+class Tip:
+    def __init__(self, area, proj_area, pos, 
+            ampI=None, ampV=None, digI=None, digV=None):
+        self.area = area
+        self.proj_area = proj_area
+        self.pos = pos
+        self.ampI = ampI
+        self.ampV = ampV
+        self.digI = digI
+        self.digV = digV
+
+
+class CylindricalTip(Tip):
+    def __init__(self, r, z, *args, **kw):
+        self.r, self.z = r, z
+        area = 2.*np.pi*r*z
+        proj_area = 2*r*z
+        Tip.__init__(self, area, proj_area, *args, **kw)
+
+
+class Head:
+    def __init__(self, tips, ampR=None, digR=None):
+        self.tips = tips
+        self.ampR = ampR
+        self.digR = digR
 
 
 class Shot:
@@ -62,6 +91,39 @@ class Shot:
 
     def __repr__(self):
         return "%d: %s" % (self.shn, self.comment)
+
+    def mapsig(self, x, dig):
+        mapping = self.mapping[dig]
+
+        t = x['t']
+        R = x[mapping.R].astype('d')
+        S = dict(R=PositionSignal(R, t, name='R'))
+
+        unique_sigs = {k: x[k].astype('d') for k in mapping.unique('VI')}
+
+        for i, (mapV, mapI) in enumerate(mapping.VI, start=1):
+            if mapV is None:
+                V = None
+            else:
+                V = VoltageSignal(unique_sigs[mapV], t, name='V%d' % i)
+            if mapI is None:
+                S[i] = V
+            else:
+                S[i] = CurrentSignal(unique_sigs[mapI], t, V, name='I%d' % i)
+
+        return S
+
+    def calib(self, S, dig):
+        amp = self.amp[dig]
+        S['R'] *= amp.R
+        for i, (ampV, ampI) in enumerate(amp.VI, start=1):
+            if isinstance(S[i], CurrentSignal):
+                S[i] *= ampI
+                V = S[i].V
+            else:
+                V = S[i]
+            if V is not None and ampV is not None:
+                V *= ampV
 
 
 class Experiment:

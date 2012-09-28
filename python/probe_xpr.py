@@ -119,42 +119,21 @@ class ProbeXPR(Probe):
         Probe.__init__(self, digitizer)
 
     def mapsig(self):
-        mapping = self.config.mapping[self.digitizer.name]
-
+        
         x = self.x[self.digitizer.window]
 
-        t = x['t']
-        R = x[mapping.R].astype('d')
-        self.S = dict(R=PositionSignal(R, t, name='R'))
+        self.S = self.config.mapsig(x, self.digitizer.name)
 
-        unique_sigs = {k: x[k].astype('d') for k in mapping.unique('VI')}
+    def calib(self):        
+        self.config.calib(self.S, self.digitizer.name)
 
-        for i, (mapV, mapI) in enumerate(mapping.VI, start=1):
-            if mapV is None:
-                V = None
-            else:
-                V = VoltageSignal(unique_sigs[mapV], t, name='V%d' % i)
-            if mapI is None:
-                self.S[i] = V
-            else:
-                self.S[i] = CurrentSignal(unique_sigs[mapI], t, V, name='I%d' % i)
-
-    def calib(self):
-        amp = self.config.amp[self.digitizer.name]
-        
         s = slice(-5000, None)
-        for i, (ampV, ampI) in enumerate(amp.VI, start=1):
-            S = self.S[i]
-            if isinstance(S, CurrentSignal):
-                S *= ampI
-                V = S.V
-            else:
-                V = S
-            if V is not None and ampV is not None:
-                V *= ampV
+        for S in self.get_type('Current'):
             S.norm_to_region(s)
 
-        self.S['R'] *= amp.R
+        for S in self.get_type('Voltage'):
+            S.norm_to_region(s)
+
         self.S['V'] = self.S[1].V
         self.S['It'] = self.S[1] + self.S[2]
 
