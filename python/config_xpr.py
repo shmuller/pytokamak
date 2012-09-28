@@ -2,7 +2,11 @@ import numpy as np
 
 from config import Map, Shot, Experiment, Campaign
 
+from config import CylindricalTip, Head, Shot2
+
 import probe
+
+DictView = probe.DictView
 
 Amp = probe.Amp
 ampUnity = Amp(fact=1.)
@@ -71,6 +75,50 @@ CurrentProbe3 = {
     10: Amp(fact=0.5*10/10),
     20: Amp(fact=0.5*20/10),
     50: Amp(fact=0.5*50/10)}
+
+
+class TipXPR(CylindricalTip):
+    def __init__(self, *args, **kw):
+        CylindricalTip.__init__(self, 0.0005, 0.003, *args, **kw)
+
+
+tip1 = TipXPR(pos='lower left', V_links='ampV', I_links='ampI1')
+tip2 = TipXPR(pos='lower right', V_links='ampV', I_links='ampI2')
+tip3 = TipXPR(pos='upper', V_links='ampVF', I_links=None)
+
+head = Head(tips=(tip1, tip2, tip3), R_links='ampR')
+
+
+amp_settings = dict(
+            ampR  = None, 
+            ampV  = None, 
+            ampI1 = CurrentProbe1[20],
+            ampI2 = CurrentProbe2[20],
+            ampI3 = CurrentProbe3[20],
+            ampVF = ampVF)
+
+amp_mapping_XPR = dict(
+            ampR  = 'S5', 
+            ampV  = 'S1', 
+            ampI1 = 'S4',
+            ampI2 = 'S2',
+            ampI3 = None,
+            ampVF = 'S6')
+
+amp_mapping_LPS = dict(
+            ampR  = 'VOL3', 
+            ampV  = 'VOL1',
+            ampI1 = 'CUR1',
+            ampI2 = 'CUR2',
+            ampI3 =  None ,
+            ampVF = 'VOL2')
+
+amp_mappings = dict(
+            XPR = amp_mapping_XPR,
+            LPS = amp_mapping_LPS)
+
+
+shot2 = Shot2(head, amp_settings, ampR=ampR_XPR, amp_mappings=amp_mappings)
 
 
 class ShotAUG(Shot):

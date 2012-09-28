@@ -31,16 +31,17 @@ class Map:
         a[a == key] = value
 
 
+
 class Tip:
-    def __init__(self, area, proj_area, pos, 
-            ampI=None, ampV=None, digI=None, digV=None):
+    def __init__(self, area, proj_area, pos, V_links=None, I_links=None):
         self.area = area
         self.proj_area = proj_area
         self.pos = pos
-        self.ampI = ampI
-        self.ampV = ampV
-        self.digI = digI
-        self.digV = digV
+        self.V_links = V_links
+        self.I_links = I_links
+
+    def get_V(self, line, field):
+        return None
 
 
 class CylindricalTip(Tip):
@@ -52,10 +53,29 @@ class CylindricalTip(Tip):
 
 
 class Head:
-    def __init__(self, tips, ampR=None, digR=None):
+    def __init__(self, tips, R_links=None):
         self.tips = tips
-        self.ampR = ampR
-        self.digR = digR
+        self.R_links = R_links
+
+
+class Shot2:
+    def __init__(self, head, amp_settings, **kw):
+        
+        for k in amp_settings.keys():
+            try:
+                amp_settings[k] = kw.pop(k)
+            except KeyError:
+                pass
+
+        amp_mappings = kw.pop('amp_mappings')
+
+        lines = {k: dict(amp=amp_settings.copy(), mapping=amp_mapping) 
+                for k, amp_mapping in amp_mappings.iteritems()}
+
+        self.head = head
+        self.amp_settings = amp_settings
+        self.lines = lines
+
 
 
 class Shot:
