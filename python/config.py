@@ -139,13 +139,22 @@ class Shot2:
 
         self.lines = lines
     
-    def copy(self, comment="", expt=None, shn=None, **kw):
+    def copy(self, comment="", expt=None, shn=None, dig=None, 
+            head=None, amp_default=None, lines=None, **kw):
         if expt is None: 
             expt = self.expt
         if shn is None:
             shn = self.shn
-        return self.__class__(comment, expt, shn, self.dig, 
-                              self.head, self.amp_default, self.lines, **kw)
+        if dig is None:
+            dig = self.dig
+        if head is None:
+            head = self.head
+        if amp_default is None:
+            amp_default = self.amp_default
+        if lines is None:
+            lines = self.lines
+        return self.__class__(comment, expt, shn, dig, 
+                              head, amp_default, lines, **kw)
 
     def get(self, line, what, key):
         if key is None:

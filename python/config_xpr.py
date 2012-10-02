@@ -43,6 +43,8 @@ ampVF = Amp(fact=100.)
 def_amp  = Map(R='ampR', V=['ampV', None, ampVF], I=['ampI1', 'ampI2', None])
 allI_amp = Map(R='ampR', V=['ampV', None, None] , I=['ampI1', 'ampI2', 'ampI3'])
 
+def_amp_unity = Map(R=ampUnity, V=[ampUnity, None, ampUnity], I=['ampI1', 'ampI2', None])
+
 Preamp1 = {
      2: Amp(fact=1.032).inv(), 
      5: Amp(fact=2.580).inv()}
@@ -102,7 +104,8 @@ class ShotAUG(Shot):
     def add_dig(self, dig=None, mapping=None, amp=None, ampR=None, ampV=None):
         if amp is None:
             amp = self.amp[self.dig].copy()
-            amp.R = ampR
+            if amp.R == 'ampR':
+                amp.R = ampR
             amp.V[self.amp_template.V == 'ampV'] = ampV
 
             #a = self.amp[self.dig]
@@ -319,9 +322,8 @@ E.rep(28473, 28455, "He again: 1 plunges at 150 mm")
 E = campaign.add_experiment(date="20120726")
 
 E.add(28504, "Calibration, no signals attached", 
-             dig = 'XPR', mapping = mapping_XPR,
-             ampR = ampUnity, ampV = ampUnity, ampVF = ampUnity,
-             alt_dig = dict(dig='LPS', mapping=mapping_LPS, ampR=ampUnity, ampV=ampUnity),
+             dig='XPR', mapping=mapping_XPR, amp_template=def_amp_unity,
+             alt_dig = dict(dig='LPS', mapping=mapping_LPS),
              ampI1 = CurrentProbe1[20],
              ampI2 = CurrentProbe2[20])
 
