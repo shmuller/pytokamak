@@ -12,18 +12,14 @@ if __name__ == "__main__":
 import probe
 #reload(probe)
 
-import config_xpr as config
-#reload(config)
+import config_xpr2 as config
+reload(config)
 
 IOMds = probe.IOMds
 IOFile = probe.IOFile
 Digitizer = probe.Digitizer
 Amp = probe.Amp
 Probe = probe.Probe
-
-PositionSignal = probe.PositionSignal
-VoltageSignal = probe.VoltageSignal
-CurrentSignal = probe.CurrentSignal
 
 ampUnity = Amp(fact=1., offs=0.)
 ampInv   = Amp(fact=-1., offs=0.)
