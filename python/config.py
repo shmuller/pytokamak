@@ -122,39 +122,21 @@ class Shot:
 
 
 class Shot2:
-    def __init__(self, comment="", expt=None, shn=None, dig=None,
-            head=None, amp_default=None, lines=None, **kw):
+    def __init__(self, comment="", **kw):
         self.comment = comment
-        self.expt = expt
-        self.shn = shn
-        self.dig = dig
-        self.head = head
 
-        self.amp_default = amp_default.copy()
-        for k in self.amp_default.iterkeys():
-            try:
-                self.amp_default[k] = kw.pop(k)
-            except KeyError:
-                pass
+        self.attrs = ('expt', 'shn', 'dig', 'head', 'amp_default', 'lines')
+        for attr in self.attrs:
+            setattr(self, attr, kw.pop(attr, None))
 
-        self.lines = lines
-    
-    def copy(self, comment="", expt=None, shn=None, dig=None, 
-            head=None, amp_default=None, lines=None, **kw):
-        if expt is None: 
-            expt = self.expt
-        if shn is None:
-            shn = self.shn
-        if dig is None:
-            dig = self.dig
-        if head is None:
-            head = self.head
-        if amp_default is None:
-            amp_default = self.amp_default
-        if lines is None:
-            lines = self.lines
-        return self.__class__(comment, expt, shn, dig, 
-                              head, amp_default, lines, **kw)
+        self.amp_default = self.amp_default.copy()
+        self.amp_default.update(kw)
+           
+    def copy(self, comment="", **kw):
+        for attr in self.attrs:
+            kw.setdefault(attr, getattr(self, attr))
+
+        return self.__class__(comment, **kw)
 
     def get(self, line, what, key):
         if key is None:
