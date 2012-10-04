@@ -431,15 +431,24 @@ class PositionSignal(Signal):
 
     t_ind = property(get_t_ind, set_t_ind)
 
-    def regions(self, fun=None):
+    def region_boundaries(self, inout=None):
         i0, iM, i1 = self.t_ind
-        return map(fun, i0, i1)
+        if inout == 'in':
+            return np.array([i0, iM])
+        elif inout == 'out':
+            return np.array([iM, i1])
+        else:
+            return np.array([i0, i1])
 
-    def get_slices(self):
-        return self.regions(fun=slice)
+    def regions(self, fun=None, **kw):
+        a, b = self.region_boundaries(**kw)
+        return map(fun, a, b)
 
-    def get_mask(self):
-        return np.concatenate(self.regions(fun=np.arange))
+    def get_slices(self, **kw):
+        return self.regions(fun=slice, **kw)
+
+    def get_mask(self, **kw):
+        return np.concatenate(self.regions(fun=np.arange, **kw))
 
     def plot_plunges(self, ax=None):
         ax = get_axes(ax)

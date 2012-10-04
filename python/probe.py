@@ -1,5 +1,7 @@
 import numpy as np
 
+from collections import Iterable
+
 import scipy.interpolate as interp
 import scipy.optimize as opt
 import scipy.odr as odr
@@ -135,23 +137,30 @@ class PiecewisePolynomial:
     def savefields(self):
         return DictView(self.__dict__, ('c', 'x', 'i0'))
 
+    def _mask(self, w):
+        ind0, ind1 = np.searchsorted(self.i0, w)
+        return np.concatenate(map(np.arange, ind0, ind1))
 
-    def plot_prepare(self, x=None):
-        xi = self.x[self.i0]
+    def plot_prepare(self, x=None, w=None):
+        i0 = self.i0
+        if w is not None:
+            i0 = i0[self._mask(w)]
+
+        xi = self.x[i0]
         xl, xr = xi[:-1], xi[1:]
         yl, yr = self(xl, 'right'), self(xr, 'left')
 
         if x is not None:
-            xi = x[self.i0]
+            xi = x[i0]
             xl, xr = xi[:-1], xi[1:]
 
-        shape = ((self.N-1)*2,)
+        shape = (xl.size + xr.size,)
         x = np.concatenate((xl[:,None], xr[:,None]), 1).reshape(shape)
         y = np.concatenate((yl[:,None], yr[:,None]), 1).reshape(shape + self.shape)
         return x, y
 
-    def plot(self, ax=None, x=None):
-        x, y = self.plot_prepare(x=x)
+    def plot(self, ax=None, x=None, w=None):
+        x, y = self.plot_prepare(x=x, w=w)
                 
         ax = get_axes(ax)
         return ax.plot(x, y)
@@ -669,7 +678,7 @@ class Probe:
     def calib(self):
         pass
         
-    def load(self, loadfun='load', plunge=None, calib=True, corr_capa=False):
+    def load_raw(self, loadfun='load', plunge=None, calib=True, corr_capa=False):
         self.x = getattr(self.digitizer, loadfun)()
 
         self.mapsig()
@@ -761,6 +770,13 @@ class Probe:
         d = IO.load()
         self.PP = PiecewisePolynomial(**d)
 
+    def load(self, **kw):
+        self.load_raw(**kw)
+        try:
+            self.load_res()
+        except:
+            print "No results loaded"
+
     def analyze2(self, n=2, **kw):
         if self.IV_series is None:
             self.analyze(**kw)
@@ -780,7 +796,7 @@ class Probe:
         self.IV_series2 = IVSeries2(V, II, PP, mask, iE)
         """
 
-    def plot(self, fig=None, x=None, PP='PP'):
+    def plot(self, fig=None, x=None, PP='PP', plunge=None, inout=None):
         if self.PP is None:
             self.analyze()
 
@@ -796,6 +812,12 @@ class Probe:
             x = self['R'].x
             xlab = "R [mm]"
 
+        w = self['R'].region_boundaries(inout=inout)
+        if plunge is not None:
+            if not isinstance(plunge, Iterable):
+                plunge = [plunge]
+            w = w[:,plunge]
+
         if fig is None:
             IV_series_viewer = IVSeriesViewer(self.IV_series)
             menu_entries_ax = (('IV viewer', IV_series_viewer.toggle),)
@@ -809,7 +831,7 @@ class Probe:
             fig.IV_series_viewer = IV_series_viewer
 
         for pp, ax in zip(PP.T, fig.axes):
-            pp.plot(ax, x=x)
+            pp.plot(ax, x=x, w=w)
 
         fig.canvas.draw()
         return fig

@@ -5,9 +5,10 @@ from collections import OrderedDict
 from probe import PositionSignal, VoltageSignal, CurrentSignal
 
 class Tip:
-    def __init__(self, area, proj_area, pos, V_keys=None, I_keys=None):
+    def __init__(self, area, proj_area, number, pos, V_keys=None, I_keys=None):
         self.area = area
         self.proj_area = proj_area
+        self.number = number
         self.pos = pos
         self.keys = dict(V=V_keys, I=I_keys)
 
@@ -130,8 +131,9 @@ class Shot2:
             setattr(self, attr, kw.pop(attr, None))
 
         self.amp_default = self.amp_default.copy()
-        self.amp_default.update(kw)
-           
+        for k in set(self.amp_default.keys()) & set(kw.keys()):
+            self.amp_default[k] = kw.pop(k)
+                
     def copy(self, comment="", **kw):
         for attr in self.attrs:
             kw.setdefault(attr, getattr(self, attr))
@@ -169,8 +171,8 @@ class Shot2:
         R = self.unique_sigs[self.head.keys['R']]
         S = dict(R=PositionSignal(R, t, name='R'))
 
-        for i, tip in enumerate(self.head.tips, start=1):
-            keyV, keyI = tip.keys['V'], tip.keys['I']
+        for tip in self.head.tips:
+            i, keyV, keyI = tip.number, tip.keys['V'], tip.keys['I']
             if keyV is None:
                 V = None
             else:
