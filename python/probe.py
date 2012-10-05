@@ -11,7 +11,7 @@ reload(logging)
 logging.basicConfig(level=logging.WARN)
 logger = logging
 
-from ipdb import set_trace
+from pdb import set_trace
 
 from sig import *
 
@@ -141,7 +141,7 @@ class PiecewisePolynomial:
         ind0, ind1 = np.searchsorted(self.i0, w)
         return np.concatenate(map(np.arange, ind0, ind1))
 
-    def plot_prepare(self, x=None, w=None):
+    def eval(self, x=None, w=None):
         i0 = self.i0
         if w is not None:
             i0 = i0[self._mask(w)]
@@ -160,7 +160,7 @@ class PiecewisePolynomial:
         return x, y
 
     def plot(self, ax=None, x=None, w=None):
-        x, y = self.plot_prepare(x=x, w=w)
+        x, y = self.eval(x=x, w=w)
                 
         ax = get_axes(ax)
         return ax.plot(x, y)
@@ -658,6 +658,10 @@ class IVSeries2:
         return p
 
 
+class LoadResultsError(Exception):
+    pass
+
+
 class Probe:
     def __init__(self, digitizer=None):
         self.digitizer = digitizer
@@ -695,7 +699,7 @@ class Probe:
 
     def plot_raw(self, fig=None, **kw):
         if self.S is None:
-            self.load(**kw)
+            self.load_raw(**kw)
 
         types = ['Current', 'Voltage', 'Position']
         if fig is None:
@@ -743,18 +747,42 @@ class Probe:
 
     def analyze(self, **kw):
         if self.S is None:
-            self.load(**kw)
+            self.load_raw(**kw)
         self.IV_series = self.calc_IV_series(engine='fmin')
         self.PP = self.IV_series.fit()
 
+    def results(self, **kw):
+        if self.PP is None:
+            try:
+                self.load(**kw)
+            except LoadResultsError:
+                self.analyze()
+                self.save_res()
+
+        qe = 1.6022e-19
+        mi = 2*1.67e-27
+
+        tips = self.config.head.tips
+
         Isat = self.PP.c[0,:,:,0].T
-        dens = np.e*np.sqrt(Isat[0]*Isat[1])
-        Mach = 0.5*np.log(Isat[0]/Isat[1])
-        
-        c = self.PP.c.copy()
-        c[0,:,0,0] = dens
-        c[0,:,1,0] = Mach
-        self.PP_Mach = PiecewisePolynomial(c, self.PP.x, **self.PP.kw)
+        Vf   = self.PP.c[0,:,:,1].T
+        Te   = self.PP.c[0,:,:,2].T
+
+        Gp = Isat[0]/(qe*tips[0].area)
+        Gm = Isat[1]/(qe*tips[0].area)
+
+        Mach = 0.5*np.log(Gp/Gm)
+        n_cs = np.e*np.sqrt(Gp*Gm)
+
+        Vf = Vf[-1]
+        Te = Te[-1]
+        Ti = Te
+        cs = np.sqrt(qe/mi*(Te+Ti))
+        n  = n_cs/cs
+        pe = qe*n*Te
+
+        c = np.c_[n, Mach, Vf, Te, cs, pe]
+        self.PP_res = PiecewisePolynomial(c[None], self.PP.x, **self.PP.kw)
 
     @property
     def h5name_res(self):
@@ -767,15 +795,15 @@ class Probe:
 
     def load_res(self):
         IO = IOH5(self.h5name_res)
-        d = IO.load()
+        try:
+            d = IO.load()
+        except IOError:
+            raise LoadResultsError("no results available")
         self.PP = PiecewisePolynomial(**d)
 
     def load(self, **kw):
         self.load_raw(**kw)
-        try:
-            self.load_res()
-        except:
-            print "No results loaded"
+        self.load_res()
 
     def analyze2(self, n=2, **kw):
         if self.IV_series is None:
@@ -839,11 +867,6 @@ class Probe:
     def plot_R(self, **kw):
         return self.plot(x='R', **kw)
 
-    def plot_Mach(self, **kw):
-        return self.plot(PP=PP_Mach, **kw)
-
-    def plot_R_Mach(self, **kw):
-        return self.plot(x='R', PP='PP_Mach', **kw)
-
+    
 
 
