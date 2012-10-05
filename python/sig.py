@@ -9,13 +9,13 @@ import matplotlib.pyplot as plt
 import tight_figure
 reload(tight_figure)
 
-#figure = tight_figure.pickable_linked_lod_tight_figure
+tfigure = tight_figure.pickable_linked_lod_tight_figure
 figure = tight_figure.pickable_linked_lod_figure
 #figure = tight_figure.pickable_linked_figure
 plot = plt.plot
 ion = plt.ion
 
-def get_axes(ax=None):
+def get_axes(ax=None, figure=figure):
     if ax is None:
         ax = figure().gca()
     return ax

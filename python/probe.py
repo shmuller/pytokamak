@@ -141,6 +141,10 @@ class PiecewisePolynomial:
         ind0, ind1 = np.searchsorted(self.i0, w)
         return np.concatenate(map(np.arange, ind0, ind1))
 
+    @staticmethod
+    def cat(a, axis=0):
+        return a[0].__array_wrap__(np.concatenate(a, axis))
+
     def eval(self, x=None, w=None):
         i0 = self.i0
         if w is not None:
@@ -155,8 +159,8 @@ class PiecewisePolynomial:
             xl, xr = xi[:-1], xi[1:]
 
         shape = (xl.size + xr.size,)
-        x = np.concatenate((xl[:,None], xr[:,None]), 1).reshape(shape)
-        y = np.concatenate((yl[:,None], yr[:,None]), 1).reshape(shape + self.shape)
+        x = self.cat((xl[:,None], xr[:,None]), 1).reshape(shape)
+        y = self.cat((yl[:,None], yr[:,None]), 1).reshape(shape + self.shape)
         return x, y
 
     def plot(self, ax=None, x=None, w=None):
@@ -658,6 +662,63 @@ class IVSeries2:
         return p
 
 
+class PhysicalResults:
+    def __init__(self, shn, R, i0, meas):
+        self.shn, self.R = shn, R
+
+        self.keys = ('n_cs', 'Mach', 'nv', 'j', 'Vf', 'Te', 'cs', 'n', 'v', 'pe')
+
+        self.units = dict(n_cs='m^-2 s^-1', Mach=None, nv='m^-2 s^-1', j='kA m^-2', 
+                Vf='V', Te='eV', cs='km s^-1', n='m^-3', v='km s^-1', pe='Pa')
+
+        self.fact = dict(n_cs=1, Mach=1, nv=1, j=1e-3, 
+                Vf=1, Te=1, cs=1e-3, n=1, v=1e-3, pe=1)
+
+        res = self.calc_res(meas)
+        
+        self.PP = PiecewisePolynomial(res[None], R.t, i0=i0)
+
+    def calc_res(self, meas):
+        qe = 1.6022e-19
+        mi = 2*1.67e-27
+
+        Gp = meas.jp/qe
+        Gm = meas.jm/qe
+
+        dtype = zip(self.keys, [np.double]*len(self.keys))
+        res = np.empty(Gp.size, dtype).view(np.recarray)
+
+        res.Mach = Mach = 0.5*np.log(Gp/Gm)
+        res.n_cs = n_cs = np.e*np.sqrt(Gp*Gm)
+        res.nv = nv = n_cs*Mach
+        res.j  = qe*nv
+        res.Vf = Vf = meas.Vf
+        res.Te = Te = meas.Te
+
+        Ti = Te
+        res.cs = cs = np.sqrt(qe/mi*(Te+Ti))
+        res.n  = n = n_cs/cs
+        res.v  = v = Mach*cs
+        res.pe = n*qe*Te
+        return res
+
+    def plot(self, ax=None, keys=('Te',)):
+        x, y = self.PP.eval()
+        ax = get_axes(ax, figure=tfigure)
+
+        key = keys[0]
+
+        ylab = key
+        if self.units[key] is not None:
+            ylab += ' [' + self.units[key] + ']'
+        ax.set_ylabel(ylab)
+
+        ax.set_xlabel('t [s]')
+        ax.grid(True)
+        ax.plot(x, self.fact[key]*y[key])
+        return ax
+
+
 class LoadResultsError(Exception):
     pass
 
@@ -759,31 +820,25 @@ class Probe:
                 self.analyze()
                 self.save_res()
 
-        qe = 1.6022e-19
-        mi = 2*1.67e-27
-
         tips = self.config.head.tips
 
         Isat = self.PP.c[0,:,:,0].T
         Vf   = self.PP.c[0,:,:,1].T
         Te   = self.PP.c[0,:,:,2].T
 
-        Gp = Isat[0]/(qe*tips[0].area)
-        Gm = Isat[1]/(qe*tips[0].area)
+        keys = ('jp', 'jm', 'Vf', 'Te')
+        dtype = zip(keys, [np.double]*len(keys))
+        meas = np.empty(Isat.shape[1], dtype).view(np.recarray)
 
-        Mach = 0.5*np.log(Gp/Gm)
-        n_cs = np.e*np.sqrt(Gp*Gm)
+        meas.jp = Isat[0]/tips[0].area
+        meas.jm = Isat[1]/tips[0].area
+        meas.Vf = Vf[-1]
+        meas.Te = Te[-1]
 
-        Vf = Vf[-1]
-        Te = Te[-1]
-        Ti = Te
-        cs = np.sqrt(qe/mi*(Te+Ti))
-        n  = n_cs/cs
-        pe = qe*n*Te
-
-        c = np.c_[n, Mach, Vf, Te, cs, pe]
-        self.PP_res = PiecewisePolynomial(c[None], self.PP.x, **self.PP.kw)
-
+        shn = self.digitizer.shn
+        self.res = PhysicalResults(shn, self['R'], self.PP.i0, meas)
+        return self.res
+        
     @property
     def h5name_res(self):
         return self.digitizer.IO_file.h5name[:-3] + "_res.h5"
