@@ -1,7 +1,5 @@
 import numpy as np
 
-from collections import Iterable
-
 import scipy.interpolate as interp
 import scipy.optimize as opt
 import scipy.odr as odr
@@ -668,11 +666,12 @@ class PhysicalResults:
 
         self.keys = ('n_cs', 'Mach', 'nv', 'j', 'Vf', 'Te', 'cs', 'n', 'v', 'pe')
 
-        self.units = dict(n_cs='m^-2 s^-1', Mach=None, nv='m^-2 s^-1', j='kA m^-2', 
-                Vf='V', Te='eV', cs='km s^-1', n='m^-3', v='km s^-1', pe='Pa')
+        self.units = dict(n_cs='m$^{-2}$ s$^{-1}$', Mach=None, nv='m$^{-2}$ s$^{-1}$', 
+                j='kA m$^{-2}$', Vf='V', Te='eV', cs='km s$^{-1}$', 
+                n='m$^{-3}$', v='km s$^{-1}$', pe='Pa')
 
-        self.fact = dict(n_cs=1, Mach=1, nv=1, j=1e-3, 
-                Vf=1, Te=1, cs=1e-3, n=1, v=1e-3, pe=1)
+        self.fact = dict.fromkeys(self.keys, 1)
+        self.fact['j'] = self.fact['cs'] = self.fact['v'] = 1e-3
 
         res = self.calc_res(meas)
         
@@ -702,21 +701,49 @@ class PhysicalResults:
         res.pe = n*qe*Te
         return res
 
-    def plot(self, ax=None, keys=('Te',)):
-        x, y = self.PP.eval()
+    def plot_key(self, key, x, y, xlab, ax=None):
         ax = get_axes(ax, figure=tfigure)
-
-        key = keys[0]
 
         ylab = key
         if self.units[key] is not None:
             ylab += ' [' + self.units[key] + ']'
         ax.set_ylabel(ylab)
 
-        ax.set_xlabel('t [s]')
+        ax.set_xlabel(xlab)
         ax.grid(True)
-        ax.plot(x, self.fact[key]*y[key])
-        return ax
+        ax.plot(x, self.fact[key]*y[key], label=self.shn)
+
+    def plot(self, fig=None, keys=None, x=None, plunge=None, inout=None):
+        if x is None:
+            xlab = 't [s]'
+        elif x == 'R':
+            x = self.R.x
+            xlab = "R [mm]"
+
+        w = self.R.plunges(plunge, inout)
+
+        x, y = self.PP.eval(x=x, w=w)
+
+        if keys is None:
+            keys = ('n', 'Mach'), ('Te', 'j')
+        keys = np.array(keys, ndmin=2)
+
+        if fig is None:
+            fig = tfigure()
+            gs = gridspec.GridSpec(*keys.shape)
+            for i in xrange(keys.size):
+                fig.add_subplot(gs[i])
+
+        ax = fig.axes
+        for i in xrange(keys.size):
+            self.plot_key(keys.flat[i], x, y, xlab, ax=ax[i])
+
+        fig.axes[0].legend(loc='upper left')
+        fig.canvas.draw()
+        return fig
+
+    def plot_R(self, **kw):
+        return self.plot(x='R', **kw)
 
 
 class LoadResultsError(Exception):
@@ -830,8 +857,8 @@ class Probe:
         dtype = zip(keys, [np.double]*len(keys))
         meas = np.empty(Isat.shape[1], dtype).view(np.recarray)
 
-        meas.jp = Isat[0]/tips[0].area
-        meas.jm = Isat[1]/tips[0].area
+        meas.jp = Isat[0]/tips[0].proj_area
+        meas.jm = Isat[1]/tips[0].proj_area
         meas.Vf = Vf[-1]
         meas.Te = Te[-1]
 
@@ -879,7 +906,7 @@ class Probe:
         self.IV_series2 = IVSeries2(V, II, PP, mask, iE)
         """
 
-    def plot(self, fig=None, x=None, PP='PP', plunge=None, inout=None):
+    def plot(self, fig=None, PP='PP', x=None, plunge=None, inout=None):
         if self.PP is None:
             self.analyze()
 
@@ -895,11 +922,7 @@ class Probe:
             x = self['R'].x
             xlab = "R [mm]"
 
-        w = self['R'].region_boundaries(inout=inout)
-        if plunge is not None:
-            if not isinstance(plunge, Iterable):
-                plunge = [plunge]
-            w = w[:,plunge]
+        w = self['R'].plunges(plunge, inout)
 
         if fig is None:
             IV_series_viewer = IVSeriesViewer(self.IV_series)

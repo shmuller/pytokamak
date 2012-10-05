@@ -6,6 +6,8 @@ import copy
 import scipy.optimize as opt
 
 import matplotlib.pyplot as plt
+import matplotlib.gridspec as gridspec
+
 import tight_figure
 reload(tight_figure)
 
@@ -23,7 +25,7 @@ def get_axes(ax=None, figure=figure):
 from mdsclient import *
 from mediansmooth import *
 
-from collections import MutableMapping
+from collections import MutableMapping, Iterable
 
 class DictView(MutableMapping):
     def __init__(self, source, valid_keys):
@@ -439,6 +441,14 @@ class PositionSignal(Signal):
             return np.array([iM, i1])
         else:
             return np.array([i0, i1])
+
+    def plunges(self, plunge=None, inout=None):
+        w = self.region_boundaries(inout)
+        if plunge is not None:
+            if not isinstance(plunge, Iterable):
+                plunge = [plunge]
+            w = w[:,plunge]
+        return w
 
     def regions(self, fun=None, **kw):
         a, b = self.region_boundaries(**kw)
