@@ -244,17 +244,22 @@ class Amp:
 
 
 class Signal:
-    def __init__(self, x, t, name="", type=None):
-        self.x, self.t, self.name, self.type = x, t, name, type
+    def __init__(self, x, t, **kw):
+        self.x, self.t, self.kw = x, t, kw
+        
+        self.name = kw.get('name', "")
+        self.type = kw.get('type', None)
+        self.units = kw.get('units', "")
+        self.tunits = kw.get('tunits', "s")
 
     def __getitem__(self, index):
-        return Signal(self.x[index], self.t[index], self.name, self.type)
+        return self.__class__(self.x[index], self.t[index], **self.kw)
 
     def __add__(self, other):
-        return Signal(other+self.x, self.t, self.name, self.type)
+        return Signal(other+self.x, self.t, **self.kw)
 
     def __mul__(self, other):
-        return Signal(other*self.x, self.t, self.name, self.type)
+        return Signal(other*self.x, self.t, **self.kw)
 
     def __imul__(self, other):
         try:
@@ -295,7 +300,8 @@ class Signal:
     def deriv(self, name=""):
         delta = lambda x: np.r_[x[1]-x[0], x[2:]-x[:-2], x[-1]-x[-2]]
         dx_dt = delta(self.x)/delta(self.t)
-        return Signal(dx_dt, self.t, name, "Derivative of " + self.type)
+        return Signal(dx_dt, self.t, name=name, 
+                      type="Derivative of " + self.type)
 
     def crossings(self, lvl, threshold):
         def cross(lvl, x0, x1):
@@ -397,20 +403,15 @@ class PeriodPhaseFinder:
 
 class PositionSignal(Signal):
     def __init__(self, x, t, **kw):
-        _kw = dict(
-                name="",
-                baseline_slice=slice(None, 1000), 
-                lvl_fact=20,
-                dist_threshold=1000)
-        _kw.update(kw)
-        self.__dict__.update(_kw)
-        self.kw = DictView(self.__dict__, _kw.keys())
-        self._t_ind = None
+        kw.setdefault('type', 'Position')
+        kw.setdefault('units', 'm')
 
-        Signal.__init__(self, x, t, self.name, 'Position')
-        
-    def __getitem__(self, index):
-        return PositionSignal(self.x[index], self.t[index], **self.kw)
+        Signal.__init__(self, x, t, **kw)
+    
+        self.baseline_slice = kw.get('baseline_slice', slice(None, 1000))
+        self.lvl_fact = kw.get('lvl_fact', 20)
+        self.dist_threshold = kw.get('dist_threshold', 1000)
+        self._t_ind = None
 
     def get_baseline(self):
         return self.x[self.baseline_slice]
@@ -433,6 +434,10 @@ class PositionSignal(Signal):
         self._t_ind = i0, iM, i1
 
     t_ind = property(get_t_ind, set_t_ind)
+
+    def tM(self, plunge=slice(None)):
+        i0, iM, i1 = self.t_ind
+        return self.t[iM[plunge]]
 
     def region_boundaries(self, inout=None):
         i0, iM, i1 = self.t_ind
@@ -471,12 +476,13 @@ class PositionSignal(Signal):
 
 
 class VoltageSignal(Signal):
-    def __init__(self, x, t, name=""):
-        Signal.__init__(self, x, t, name, 'Voltage')
-        self.iE = None
+    def __init__(self, x, t, **kw):
+        kw.setdefault('type', 'Voltage')
+        kw.setdefault('units', 'V')
 
-    def __getitem__(self, index):
-        return VoltageSignal(self.x[index], self.t[index], self.name)
+        Signal.__init__(self, x, t, **kw)
+
+        self.iE = None
 
     def chop_sweeps(self):
         PPF = PeriodPhaseFinder(self.x)
@@ -492,21 +498,26 @@ class VoltageSignal(Signal):
 
 
 class CurrentSignal(Signal):
-    def __init__(self, x, t, V=None, name="", C=None):
-        Signal.__init__(self, x, t, name, 'Current')
-        self.V, self.C = V, C
+    def __init__(self, x, t, **kw):
+        kw.setdefault('type', 'Current')
+        kw.setdefault('units', 'A')
+
+        Signal.__init__(self, x, t, **kw)
+
+        self.V = kw.get('V', None)
+        self.C = kw.get('C', None)
 
     def __getitem__(self, index):
-        return CurrentSignal(self.x[index], self.t[index], self.V[index], 
-                             self.name, self.C)
+        s = Signal.__getitem__(self, index)
+        s.V = s.V[index]
+        return s
 
     def __add__(self, other):
-        return CurrentSignal(self.x + other.x, self.t, self.V,
-                             self.name + '+' + other.name)
+        return CurrentSignal(self.x + other.x, self.t, V=self.V,
+                             name=self.name + '+' + other.name)
 
     def capa_pickup(self):
-        V = self.V.copy()
-        self.dV_dt = V.deriv()
+        self.dV_dt = self.V.deriv()
 
         cnd = self.t - self.t[0] < 0.05
         dV_dtc = self.dV_dt.x[cnd]

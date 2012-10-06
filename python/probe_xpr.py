@@ -10,7 +10,7 @@ if __name__ == "__main__":
     import matplotlib.pyplot as plt
 
 import probe
-#reload(probe)
+reload(probe)
 
 import config_xpr2 as config
 reload(config)

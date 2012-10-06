@@ -94,7 +94,7 @@ class PiecewiseLinear:
 
 class PiecewisePolynomial:
     def __init__(self, c, x, **kw):
-        self.kw = {'fill': None, 'i0': np.arange(x.size), 'i1': None}
+        self.kw = dict(fill=None, i0=np.arange(x.size), i1=None)
         self.kw.update(kw)
         for key, val in self.kw.iteritems():
             setattr(self, key, val)
@@ -718,7 +718,7 @@ class PhysicalResults:
                 mask[y > lim[1]] = True
             return ma.masked_array(y, mask)
 
-    def plot_key(self, key, x, y, ax=None):
+    def plot_key(self, key, x, y, ax=None, label=None):
         ax = get_axes(ax, figure=tfigure)
 
         ylab = key
@@ -728,7 +728,7 @@ class PhysicalResults:
 
         yc = self.clip(y[key], self.lim[key])
 
-        ax.plot(x, self.fact[key]*yc, label=self.shn)
+        ax.plot(x, self.fact[key]*yc, label=label)
 
     def plot(self, fig=None, keys=None, x=None, plunge=None, inout=None):
         if x is None:
@@ -738,6 +738,11 @@ class PhysicalResults:
             xlab = "R [mm]"
 
         w = self.R.plunges(plunge, inout)
+        tM = self.R.tM(plunge)
+        
+        label = "%d.%d" % (self.shn, 1000*tM)
+        if inout == 'out':
+            label += " (out)"
 
         x, y = self.PP.eval(x=x, w=w)
 
@@ -759,7 +764,7 @@ class PhysicalResults:
 
         ax = fig.axes
         for i in xrange(keys.size):
-            self.plot_key(keys.flat[i], x, y, ax=ax[i])
+            self.plot_key(keys.flat[i], x, y, ax=ax[i], label=label)
 
         fig.axes[0].legend(loc='upper left')
         fig.canvas.draw()

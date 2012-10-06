@@ -105,7 +105,7 @@ class Shot:
             if mapI is None:
                 S[i] = V
             else:
-                S[i] = CurrentSignal(unique_sigs[mapI], t, V, name='I%d' % i)
+                S[i] = CurrentSignal(unique_sigs[mapI], t, V=V, name='I%d' % i)
 
         return S
 
@@ -180,7 +180,7 @@ class Shot2:
             if keyI is None:
                 S[i] = V
             else:
-                S[i] = CurrentSignal(self.unique_sigs[keyI], t, V, name='I%d' % i)
+                S[i] = CurrentSignal(self.unique_sigs[keyI], t, V=V, name='I%d' % i)
 
         return S
 
