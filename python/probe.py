@@ -664,14 +664,19 @@ class PhysicalResults:
     def __init__(self, shn, R, i0, meas):
         self.shn, self.R = shn, R
 
-        self.keys = ('n_cs', 'Mach', 'nv', 'j', 'Vf', 'Te', 'cs', 'n', 'v', 'pe')
+        self.keys = ('n_cs', 'Mach', 'nv', 'j', 'Vf', 'Te', 'Vp', 'cs', 'n', 'v', 'pe')
 
         self.units = dict(n_cs='m$^{-2}$ s$^{-1}$', Mach=None, nv='m$^{-2}$ s$^{-1}$', 
-                j='kA m$^{-2}$', Vf='V', Te='eV', cs='km s$^{-1}$', 
+                j='kA m$^{-2}$', Vf='V', Te='eV', Vp='V', cs='km s$^{-1}$', 
                 n='m$^{-3}$', v='km s$^{-1}$', pe='Pa')
 
         self.fact = dict.fromkeys(self.keys, 1)
         self.fact['j'] = self.fact['cs'] = self.fact['v'] = 1e-3
+        
+        self.lim = dict.fromkeys(self.keys, (None, None))
+        self.lim['n'] = (0, 1e20)
+        self.lim['Mach'] = (-2, 2)
+        self.lim['Te'] = (0, 100)
 
         res = self.calc_res(meas)
         
@@ -693,6 +698,7 @@ class PhysicalResults:
         res.j  = qe*nv
         res.Vf = Vf = meas.Vf
         res.Te = Te = meas.Te
+        res.Vp = Vf + 2.8*Te
 
         Ti = Te
         res.cs = cs = np.sqrt(qe/mi*(Te+Ti))
@@ -701,7 +707,18 @@ class PhysicalResults:
         res.pe = n*qe*Te
         return res
 
-    def plot_key(self, key, x, y, xlab, ax=None):
+    def clip(self, y, lim):
+        if lim == (None, None):
+            return y
+        else:
+            mask = np.zeros_like(y, dtype=bool)
+            if lim[0] is not None:
+                mask[y < lim[0]] = True
+            if lim[1] is not None:
+                mask[y > lim[1]] = True
+            return ma.masked_array(y, mask)
+
+    def plot_key(self, key, x, y, ax=None):
         ax = get_axes(ax, figure=tfigure)
 
         ylab = key
@@ -709,9 +726,9 @@ class PhysicalResults:
             ylab += ' [' + self.units[key] + ']'
         ax.set_ylabel(ylab)
 
-        ax.set_xlabel(xlab)
-        ax.grid(True)
-        ax.plot(x, self.fact[key]*y[key], label=self.shn)
+        yc = self.clip(y[key], self.lim[key])
+
+        ax.plot(x, self.fact[key]*yc, label=self.shn)
 
     def plot(self, fig=None, keys=None, x=None, plunge=None, inout=None):
         if x is None:
@@ -725,18 +742,24 @@ class PhysicalResults:
         x, y = self.PP.eval(x=x, w=w)
 
         if keys is None:
-            keys = ('n', 'Mach'), ('Te', 'j')
+            keys = ('n', 'Mach'), ('Vf', 'v'), ('Te', 'j'), ('Vp', 'pe')
         keys = np.array(keys, ndmin=2)
 
         if fig is None:
             fig = tfigure()
             gs = gridspec.GridSpec(*keys.shape)
+            m = keys.size - keys.shape[1]
             for i in xrange(keys.size):
-                fig.add_subplot(gs[i])
+                ax = fig.add_subplot(gs[i])
+                ax.grid(True)
+                if i < m:
+                    ax.set_xticklabels([])
+                else:
+                    ax.set_xlabel(xlab)
 
         ax = fig.axes
         for i in xrange(keys.size):
-            self.plot_key(keys.flat[i], x, y, xlab, ax=ax[i])
+            self.plot_key(keys.flat[i], x, y, ax=ax[i])
 
         fig.axes[0].legend(loc='upper left')
         fig.canvas.draw()
