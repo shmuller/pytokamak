@@ -8,11 +8,11 @@ from probe import Amp
 ampUnity = Amp(fact=1.)
 ampInv   = Amp(fact=-1.)
 
-fixpoints = (-1.8767, -106), (3.8011, 336)
+fixpoints = (-1.8767, -0.106), (3.8011, 0.336)
 ampR_LPS  = Amp(fixpoints=fixpoints)
 ampV_LPS  = Amp(fact=100., offs=-183.76)
 
-fixpoints = (3.6812, -72), (7.0382, 170)
+fixpoints = (3.6812, -0.072), (7.0382, 0.170)
 ampR_XPR = Amp(fixpoints=fixpoints)
 ampV_XPR = Amp(fact=100., offs=-69.2227)
 

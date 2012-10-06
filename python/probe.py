@@ -94,12 +94,12 @@ class PiecewiseLinear:
 
 class PiecewisePolynomial:
     def __init__(self, c, x, **kw):
-        self.kw = dict(fill=None, i0=np.arange(x.size), i1=None)
-        self.kw.update(kw)
-        for key, val in self.kw.iteritems():
-            setattr(self, key, val)
+        self.c, self.x, self.kw = c, x, kw
 
-        self.c, self.x = c, x
+        self.fill = kw.get('fill', None)
+        self.i0 = kw.get('i0', np.arange(x.size))
+        self.i1 = kw.get('i1', None)
+
         self.N = self.i0.size
         self.shape = self.c.shape[2:]
 
@@ -141,7 +141,7 @@ class PiecewisePolynomial:
 
     @staticmethod
     def cat(a, axis=0):
-        return a[0].__array_wrap__(np.concatenate(a, axis))
+        return a[0].__array_wrap__(ma.concatenate(a, axis))
 
     def eval(self, x=None, w=None):
         i0 = self.i0
@@ -668,15 +668,17 @@ class PhysicalResults:
 
         self.units = dict(n_cs='m$^{-2}$ s$^{-1}$', Mach=None, nv='m$^{-2}$ s$^{-1}$', 
                 j='kA m$^{-2}$', Vf='V', Te='eV', Vp='V', cs='km s$^{-1}$', 
-                n='m$^{-3}$', v='km s$^{-1}$', pe='Pa')
+                n='m$^{-3}$', v='km s$^{-1}$', pe='Pa', R='cm')
 
         self.fact = dict.fromkeys(self.keys, 1)
         self.fact['j'] = self.fact['cs'] = self.fact['v'] = 1e-3
-        
+        self.fact['R'] = 100
+
         self.lim = dict.fromkeys(self.keys, (None, None))
         self.lim['n'] = (0, 1e20)
         self.lim['Mach'] = (-2, 2)
         self.lim['Te'] = (0, 100)
+        self.lim['R'] = (0, None)
 
         res = self.calc_res(meas)
         
@@ -731,11 +733,12 @@ class PhysicalResults:
         ax.plot(x, self.fact[key]*yc, label=label)
 
     def plot(self, fig=None, keys=None, x=None, plunge=None, inout=None):
+        R = self.R
         if x is None:
-            xlab = 't [s]'
+            xlab = 't [%s]' % R.tunits
         elif x == 'R':
-            x = self.R.x
-            xlab = "R [mm]"
+            x = self.fact['R']*self.clip(R.x, self.lim['R'])
+            xlab = "%s [%s]" % (R.name, self.units['R'])
 
         w = self.R.plunges(plunge, inout)
         tM = self.R.tM(plunge)
@@ -947,8 +950,8 @@ class Probe:
         if x is None:
             xlab = self.xlab
         elif x == 'R':
-            x = self['R'].x
-            xlab = "R [mm]"
+            x = 100*self['R'].x
+            xlab = "R [cm]"
 
         w = self['R'].plunges(plunge, inout)
 
