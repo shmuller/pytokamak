@@ -6,8 +6,34 @@ import copy
 
 import scipy.optimize as opt
 
+from matplotlib import rc, ticker
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
+
+#rc('text', usetex=True)
+
+rc('text.latex', preamble=r'\usepackage{bm},'
+    + r'\usepackage{amsmath}'
+    + r'\renewcommand{\familydefault}{phv},'
+    + r'\renewcommand{\seriesdefault}{bc},'
+    + r'\renewcommand{\shapedefault}{n}')
+
+def formatter():
+    '''
+    Wrapper for tick label formatters that avoids that the tick labels are 
+    being placed between '$...$', which screws up the font selection above.
+    Need to launch for every axis ax:
+
+    ax.xaxis.set_major_formatter(formatter())
+    ax.yaxis.set_major_formatter(formatter())
+    '''
+    f = ticker.ScalarFormatter()
+    f._usetex = False
+    return f
+
+
+#rc('font', **{'family':'sans-serif', 'sans-serif':['Helvetica'], 'weight':'bold'})
+
 
 import tight_figure
 reload(tight_figure)

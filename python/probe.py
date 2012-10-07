@@ -661,14 +661,38 @@ class IVSeries2:
 
 
 class PhysicalResults:
-    def __init__(self, shn, R, i0, meas):
-        self.shn, self.R = shn, R
+    def __init__(self, shn, R, i0, meas, usetex=False):
+        self.shn, self.R, self.usetex = shn, R, usetex
 
         self.keys = ('n_cs', 'Mach', 'nv', 'j', 'Vf', 'Te', 'Vp', 'cs', 'n', 'v', 'pe')
 
-        self.units = dict(n_cs='m$^{-2}$ s$^{-1}$', Mach=None, nv='m$^{-2}$ s$^{-1}$', 
-                j='kA m$^{-2}$', Vf='V', Te='eV', Vp='V', cs='km s$^{-1}$', 
-                n='m$^{-3}$', v='km s$^{-1}$', pe='Pa', R='cm')
+        self.units = dict(
+                n_cs = r'm$^{-2}$ s$^{-1}$',
+                Mach = None,
+                nv   = r'm$^{-2}$ s$^{-1}$',
+                j    = r'kA m$^{-2}$',
+                Vf   = r'V',
+                Te   = r'eV',
+                Vp   = r'V',
+                cs   = r'km s$^{-1}$',
+                n    = r'm$^{-3}$',
+                v    = r'km s$^{-1}$',
+                pe   = r'Pa',
+                R    = r'cm')
+
+        self.texlabels = dict(
+                n_cs = r'$n c_s\ [\text{m}^{\text{-2}}\text{s}^{\text{-1}}]$',
+                Mach = r'$\text{Mach}$',
+                nv   = r'$nv\ [\text{m}^{\text{-2}}\text{s}^{\text{-1}}]$',
+                j    = r'$j\ [\text{kA\ m}^{\text{-2}}]$',
+                Vf   = r'$V_f\ [\text{V}]$',
+                Te   = r'$T_e\ [\text{eV}]$',
+                Vp   = r'$V_p\ [\text{V}]$',
+                cs   = r'$c_s\ [\text{km\ s}^{\text{-1}}]$',
+                n    = r'$n\ [\text{m}^{\text{-3}}]$',
+                v    = r'$v\ [\text{km\ s}^{\text{-1}}]$',
+                pe   = r'$p_e\ [\text{Pa}]$',
+                R    = r'$R\ [\text{cm}]')
 
         self.fact = dict.fromkeys(self.keys, 1)
         self.fact['j'] = self.fact['cs'] = self.fact['v'] = 1e-3
@@ -723,22 +747,29 @@ class PhysicalResults:
     def plot_key(self, key, x, y, ax=None, label=None):
         ax = get_axes(ax, figure=tfigure)
 
-        ylab = key
-        if self.units[key] is not None:
-            ylab += ' [' + self.units[key] + ']'
+        if self.usetex:
+            ylab = self.texlabels[key]
+        else:
+            ylab = key
+            if self.units[key] is not None:
+                ylab += ' [' + self.units[key] + ']'
         ax.set_ylabel(ylab)
 
         yc = self.clip(y[key], self.lim[key])
 
         ax.plot(x, self.fact[key]*yc, label=label)
 
-    def plot(self, fig=None, keys=None, x=None, plunge=None, inout=None):
-        R = self.R
+    def plot(self, fig=None, keys=None, x=None, plunge=None, inout=None, mirror=False):
         if x is None:
-            xlab = 't [%s]' % R.tunits
+            xlab = r't [s]'
+        elif x == 'trel':
+            x = 1e3*(self.R.t - self.R.tM(plunge))
+            if mirror:
+                x = -x
+            xlab = r'$\Delta$t [ms]'
         elif x == 'R':
-            x = self.fact['R']*self.clip(R.x, self.lim['R'])
-            xlab = "%s [%s]" % (R.name, self.units['R'])
+            x = self.fact['R']*self.clip(self.R.x, self.lim['R'])
+            xlab = r'%s [%s]' % (self.R.name, self.units['R'])
 
         w = self.R.plunges(plunge, inout)
         tM = self.R.tM(plunge)
@@ -750,6 +781,7 @@ class PhysicalResults:
         x, y = self.PP.eval(x=x, w=w)
 
         if keys is None:
+            #keys = ('n', 'Mach'), ('Vp', 'pe')
             keys = ('n', 'Mach'), ('Vf', 'v'), ('Te', 'j'), ('Vp', 'pe')
         keys = np.array(keys, ndmin=2)
 
@@ -759,6 +791,8 @@ class PhysicalResults:
             m = keys.size - keys.shape[1]
             for i in xrange(keys.size):
                 ax = fig.add_subplot(gs[i])
+                ax.xaxis.set_major_formatter(formatter())
+                ax.yaxis.set_major_formatter(formatter())
                 ax.grid(True)
                 if i < m:
                     ax.set_xticklabels([])
