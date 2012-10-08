@@ -661,7 +661,8 @@ class PhysicalResults:
     def __init__(self, shn, R, i0, meas, usetex=False):
         self.shn, self.R, self.usetex = shn, R, usetex
 
-        self.keys = ('n_cs', 'Mach', 'nv', 'j', 'Vf', 'Te', 'Vp', 'cs', 'n', 'v', 'pe')
+        self.keys = ('n_cs', 'Mach', 'nv', 'j', 'Vf', 'Te', 'Vp', 'cs', 'n', 'v', 'pe',
+                'R', 't', 'Dt')
 
         sup = lambda x: r'$^{\mathdefault{%s}}$' % x
         sub = lambda x: r'$_{\mathdefault{%s}}$' % x
@@ -678,25 +679,30 @@ class PhysicalResults:
                 n    = r'm%s' % sup('-3'),
                 v    = r'km s%s' % sup('-1'),
                 pe   = r'Pa',
-                R    = r'cm')
+                R    = r'cm',
+                t    = r's',
+                Dt   = r'ms')
 
         self.texlabels = dict(
-                n_cs = r'$n c_s\ [\text{m}^{\text{-2}}\text{s}^{\text{-1}}]$',
-                Mach = r'$\text{Mach}$',
-                nv   = r'$nv\ [\text{m}^{\text{-2}}\text{s}^{\text{-1}}]$',
-                j    = r'$j\ [\text{kA\ m}^{\text{-2}}]$',
-                Vf   = r'$V_f\ [\text{V}]$',
-                Te   = r'$T_e\ [\text{eV}]$',
-                Vp   = r'$V_p\ [\text{V}]$',
-                cs   = r'$c_s\ [\text{km\ s}^{\text{-1}}]$',
-                n    = r'$n\ [\text{m}^{\text{-3}}]$',
-                v    = r'$v\ [\text{km\ s}^{\text{-1}}]$',
-                pe   = r'$p_e\ [\text{Pa}]$',
-                R    = r'$R\ [\text{cm}]')
+                n_cs = math_sel.wrap(r'n c_s'),
+                Mach = r'Mach',
+                nv   = math_sel.wrap(r'nv'),
+                j    = math_sel.wrap(r'j'),
+                Vf   = math_sel.wrap(r'V_f'),
+                Te   = math_sel.wrap(r'T_e'),
+                Vp   = math_sel.wrap(r'V_p'),
+                cs   = math_sel.wrap(r'c_s'),
+                n    = math_sel.wrap(r'n'),
+                v    = math_sel.wrap(r'v'),
+                pe   = math_sel.wrap(r'p_e'),
+                R    = math_sel.wrap(r'R'), 
+                t    = math_sel.wrap(r't'),
+                Dt   = math_sel.wrap(r'\Delta t'))
 
         self.fact = dict.fromkeys(self.keys, 1)
         self.fact['j'] = self.fact['cs'] = self.fact['v'] = 1e-3
         self.fact['R'] = 100
+        self.fact['Dt'] = 1e3
 
         self.lim = dict.fromkeys(self.keys, (None, None))
         self.lim['n'] = (0, 1e20)
@@ -705,7 +711,7 @@ class PhysicalResults:
         self.lim['R'] = (0, None)
 
         res = self.calc_res(meas)
-        
+
         self.PP = PiecewisePolynomial(res[None], R.t, i0=i0)
 
     def calc_res(self, meas):
@@ -733,6 +739,15 @@ class PhysicalResults:
         res.pe = n*qe*Te
         return res
 
+    def make_label(self, key):
+        if self.usetex:
+            lab = self.texlabels[key]
+        else:
+            lab = key
+        if self.units[key] is not None:
+            lab += r' [' + self.units[key] + r']'
+        return lab
+
     def clip(self, y, lim):
         if lim == (None, None):
             return y
@@ -747,29 +762,24 @@ class PhysicalResults:
     def plot_key(self, key, x, y, ax=None, label=None):
         ax = get_axes(ax, figure=tfigure)
 
-        if self.usetex:
-            ylab = self.texlabels[key]
-        else:
-            ylab = key
-            if self.units[key] is not None:
-                ylab += ' [' + self.units[key] + ']'
+        ylab = self.make_label(key)
         ax.set_ylabel(ylab)
 
         yc = self.clip(y[key], self.lim[key])
 
         ax.plot(x, self.fact[key]*yc, label=label)
 
-    def plot(self, fig=None, keys=None, x=None, plunge=None, inout=None, mirror=False):
-        if x is None:
-            xlab = r't [s]'
-        elif x == 'trel':
-            x = 1e3*(self.R.t - self.R.tM(plunge))
+    def plot(self, fig=None, keys=None, xkey='t', plunge=None, inout=None, mirror=False):
+        xlab = self.make_label(xkey)
+        
+        if xkey == 't':
+            x = None
+        elif xkey == 'Dt':
+            x = self.fact['Dt']*(self.R.t - self.R.tM(plunge))
             if mirror:
                 x = -x
-            xlab = r'$\Delta$t [ms]'
-        elif x == 'R':
+        elif xkey == 'R':
             x = self.fact['R']*self.clip(self.R.x, self.lim['R'])
-            xlab = r'%s [%s]' % (self.R.name, self.units['R'])
 
         w = self.R.plunges(plunge, inout)
         tM = self.R.tM(plunge)
@@ -795,7 +805,7 @@ class PhysicalResults:
         return fig
 
     def plot_R(self, **kw):
-        return self.plot(x='R', **kw)
+        return self.plot(xkey='R', **kw)
 
 
 class LoadResultsError(Exception):

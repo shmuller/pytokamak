@@ -12,10 +12,7 @@ import matplotlib.gridspec as gridspec
 import tight_figure
 reload(tight_figure)
 
-tight_figure.useMathText()
-#tight_figure.usetex()
-
-formatter = tight_figure.formatter
+math_sel = tight_figure.MathSelector(usetex=False)
 
 tfigure = tight_figure.pickable_linked_lod_tight_figure
 figure = tight_figure.pickable_linked_lod_figure
