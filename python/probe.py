@@ -143,26 +143,25 @@ class PiecewisePolynomial:
     def cat(a, axis=0):
         return a[0].__array_wrap__(ma.concatenate(a, axis))
 
-    def eval(self, x=None, w=None):
+    def eval(self, w=None):
         i0 = self.i0
         if w is not None:
             i0 = i0[self._mask(w)]
 
-        xi = self.x[i0]
-        xl, xr = xi[:-1], xi[1:]
-        yl, yr = self(xl, 'right'), self(xr, 'left')
+        il, ir = i0[:-1], i0[1:]
+        yl, yr = self(self.x[il], 'right'), self(self.x[ir], 'left')
 
-        if x is not None:
-            xi = x[i0]
-            xl, xr = xi[:-1], xi[1:]
-
-        shape = (xl.size + xr.size,)
-        x = self.cat((xl[:,None], xr[:,None]), 1).reshape(shape)
+        shape = (il.size + ir.size,)
+        i = self.cat((il[:,None], ir[:,None]), 1).reshape(shape)
         y = self.cat((yl[:,None], yr[:,None]), 1).reshape(shape + self.shape)
-        return x, y
+        return i, y
 
     def plot(self, ax=None, x=None, w=None):
-        x, y = self.eval(x=x, w=w)
+        if x is None:
+            x = self.x
+
+        i, y = self.eval(w=w)
+        x = x[i]
                 
         ax = get_axes(ax)
         return ax.plot(x, y)
@@ -769,26 +768,41 @@ class PhysicalResults:
 
         ax.plot(x, self.fact[key]*yc, label=label)
 
-    def plot(self, fig=None, keys=None, xkey='t', plunge=None, inout=None, mirror=False):
-        xlab = self.make_label(xkey)
-        
-        if xkey == 't':
-            x = None
-        elif xkey == 'Dt':
-            x = self.fact['Dt']*(self.R.t - self.R.tM(plunge))
-            if mirror:
-                x = -x
-        elif xkey == 'R':
-            x = self.fact['R']*self.clip(self.R.x, self.lim['R'])
-
+    def eval(self, plunge=None, inout=None):
         w = self.R.plunges(plunge, inout)
         tM = self.R.tM(plunge)
+
+        i, y = self.PP.eval(w=w)
         
-        label = "%d.%d" % (self.shn, 1000*tM)
+        y['t']  = self.R.t[i]
+        y['R']  = self.R.x[i]
+        y['Dt'] = y['t'] - tM
+        return y
+
+    def export(self, plunge=None, inout=None):
+        y = self.eval(plunge, inout)
+
+        tM = self.R.tM(plunge)
+        name = "%d.%d" % (self.shn, 1e3*tM)
+        if inout == 'out':
+            name += "_out"
+
+        f = h5py.File(name + '.h5', "w")
+        f.create_dataset(name, data=y, compression="gzip")
+        f.close()
+
+    def plot(self, fig=None, keys=None, xkey='t', plunge=None, inout=None, mirror=False):
+        y = self.eval(plunge, inout)
+                
+        x = self.fact[xkey]*self.clip(y[xkey], self.lim[xkey])
+        if mirror:
+            x = -x
+        xlab = self.make_label(xkey)
+        
+        tM = self.R.tM(plunge)
+        label = "%d.%d" % (self.shn, 1e3*tM)
         if inout == 'out':
             label += " (out)"
-
-        x, y = self.PP.eval(x=x, w=w)
 
         if keys is None:
             keys = ('n', 'Mach'), ('Vf', 'v'), ('Te', 'j'), ('Vp', 'pe')
