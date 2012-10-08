@@ -580,15 +580,12 @@ class IVSeriesViewer:
         if self.MMOV is not None:
             self.MMOV.viewer_canvas.manager.destroy()
             return
-            
-        fig2 = figure(figsize=(6,5))
-        self.ax = fig2.add_subplot(1, 1, 1)
-        V_range, I_range = self.IV_series.V_range, self.IV_series.I_range
-        #corners = (V_range[0], I_range[0]), (V_range[1], I_range[1])
-        #ax.dataLim.update_from_data_xy(corners, ignore=True)
-        self.ax.set_xlim(V_range)
-        self.ax.set_ylim(I_range)
-        self.ax.grid(True)
+
+        fig2 = get_tfig(figsize=(6,5), xlab="V [V]")
+        self.ax, = fig2.axes
+        self.ax.set_ylabel("I [A]")
+        self.ax.set_xlim(self.IV_series.V_range)
+        self.ax.set_ylim(self.IV_series.I_range)
 
         fig2.canvas.mpl_connect('close_event', self.on_close)
 
@@ -666,17 +663,20 @@ class PhysicalResults:
 
         self.keys = ('n_cs', 'Mach', 'nv', 'j', 'Vf', 'Te', 'Vp', 'cs', 'n', 'v', 'pe')
 
+        sup = lambda x: r'$^{\mathdefault{%s}}$' % x
+        sub = lambda x: r'$_{\mathdefault{%s}}$' % x
+
         self.units = dict(
-                n_cs = r'm$^{-2}$ s$^{-1}$',
+                n_cs = r'm%s s%s' % (sup('-2'), sup('-1')),
                 Mach = None,
-                nv   = r'm$^{-2}$ s$^{-1}$',
-                j    = r'kA m$^{-2}$',
+                nv   = r'm%s s%s' % (sup('-2'), sup('-1')),
+                j    = r'kA m%s' % sup('-2'),
                 Vf   = r'V',
                 Te   = r'eV',
                 Vp   = r'V',
-                cs   = r'km s$^{-1}$',
-                n    = r'm$^{-3}$',
-                v    = r'km s$^{-1}$',
+                cs   = r'km s%s' % sup('-1'),
+                n    = r'm%s' % sup('-3'),
+                v    = r'km s%s' % sup('-1'),
                 pe   = r'Pa',
                 R    = r'cm')
 
@@ -781,23 +781,10 @@ class PhysicalResults:
         x, y = self.PP.eval(x=x, w=w)
 
         if keys is None:
-            #keys = ('n', 'Mach'), ('Vp', 'pe')
             keys = ('n', 'Mach'), ('Vf', 'v'), ('Te', 'j'), ('Vp', 'pe')
         keys = np.array(keys, ndmin=2)
 
-        if fig is None:
-            fig = tfigure()
-            gs = gridspec.GridSpec(*keys.shape)
-            m = keys.size - keys.shape[1]
-            for i in xrange(keys.size):
-                ax = fig.add_subplot(gs[i])
-                ax.xaxis.set_major_formatter(formatter())
-                ax.yaxis.set_major_formatter(formatter())
-                ax.grid(True)
-                if i < m:
-                    ax.set_xticklabels([])
-                else:
-                    ax.set_xlabel(xlab)
+        fig = get_tfig(fig, keys.shape, xlab=xlab)
 
         ax = fig.axes
         for i in xrange(keys.size):
@@ -854,17 +841,14 @@ class Probe:
         if self.S is None:
             self.load_raw(**kw)
 
-        types = ['Current', 'Voltage', 'Position']
-        if fig is None:
-            fig = figure()
-            for i, typ in enumerate(types):
-                ax = fig.add_subplot(3, 1, 1+i)
-                ax.grid(True)
-                ax.set_ylabel(typ)
-            ax.set_xlabel(self.xlab)
-        
-        for typ, ax in zip(types, fig.axes):
-            for S in self.get_type(typ):
+        keys = ('Current',), ('Voltage',), ('Position',)
+        keys = np.array(keys, ndmin=2)
+
+        fig = get_fig(fig, keys.shape, xlab=self.xlab)
+
+        for key, ax in zip(keys, fig.axes):
+            ax.set_ylabel(key[0])
+            for S in self.get_type(key[0]):
                 S.plot(ax)
 
         fig.canvas.draw()
@@ -993,16 +977,15 @@ class Probe:
             IV_series_viewer = IVSeriesViewer(self.IV_series)
             menu_entries_ax = (('IV viewer', IV_series_viewer.toggle),)
 
-            fig = figure(figsize=(10,10), menu_entries_ax=menu_entries_ax)
-            for i in xrange(3):
-                ax = fig.add_subplot(3, 1, 1+i)
-                ax.grid(True)
-                ax.set_ylabel(ylab[i])
-            ax.set_xlabel(xlab)
+            fig = get_fig(shape=(3,1), xlab=xlab, 
+                          figsize=(10,10), menu_entries_ax=menu_entries_ax)
+
             fig.IV_series_viewer = IV_series_viewer
 
-        for pp, ax in zip(PP.T, fig.axes):
-            pp.plot(ax, x=x, w=w)
+        ax = fig.axes
+        for i, pp in enumerate(PP.T):
+            pp.plot(ax[i], x=x, w=w)
+            ax[i].set_ylabel(ylab[i])
 
         fig.canvas.draw()
         return fig
