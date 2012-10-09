@@ -6,14 +6,17 @@ import probe_xpr
 shn = [28444, 28445, 28446]
 
 fig = None
-plt.ion()
 
 for s in shn:
     XPR = probe_xpr.ProbeXPR(shn=s)
-    XPR.load()
-    XPR.trim(plunge=0)
-    XPR.analyze()
-    fig = XPR.plot_R(fig=fig)
-    plt.show()
-    plt.draw()
+    res = XPR.results()
+    res.save()
+
+    for i in xrange(XPR.iplunges.size):
+        kw = dict(plunge=i, inout='in')
+        res.save(**kw)
+        fig = res.plot(xkey='R', fig=fig, **kw)
+
+plt.show()
+    
 

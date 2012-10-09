@@ -12,7 +12,7 @@ import matplotlib.gridspec as gridspec
 import tight_figure
 reload(tight_figure)
 
-math_sel = tight_figure.MathSelector(usetex=False)
+math_sel = tight_figure.MathSelector(usetex=True)
 
 tfigure = tight_figure.pickable_linked_lod_tight_figure
 figure = tight_figure.pickable_linked_lod_figure
@@ -445,9 +445,13 @@ class PositionSignal(Signal):
 
     t_ind = property(get_t_ind, set_t_ind)
 
-    def tM(self, plunge=slice(None)):
+    def tM(self, plunge=None):
         i0, iM, i1 = self.t_ind
-        return self.t[iM[plunge]]
+        if plunge is not None:
+            if not isinstance(plunge, Iterable):
+                plunge = [plunge]
+            iM = iM[plunge]
+        return self.t[iM]
 
     def region_boundaries(self, inout=None):
         i0, iM, i1 = self.t_ind

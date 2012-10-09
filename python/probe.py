@@ -657,8 +657,9 @@ class IVSeries2:
 
 
 class PhysicalResults:
-    def __init__(self, shn, R, i0, meas, usetex=False):
-        self.shn, self.R, self.usetex = shn, R, usetex
+    def __init__(self, shn, usetex=True):
+        self.shn, self.usetex = shn, usetex
+        self.R = self.PP = None
 
         self.keys = ('n_cs', 'Mach', 'nv', 'j', 'Vf', 'Te', 'Vp', 'cs', 'n', 'v', 'pe',
                 'R', 't', 'Dt')
@@ -709,11 +710,7 @@ class PhysicalResults:
         self.lim['Te'] = (0, 100)
         self.lim['R'] = (0, None)
 
-        res = self.calc_res(meas)
-
-        self.PP = PiecewisePolynomial(res[None], R.t, i0=i0)
-
-    def calc_res(self, meas):
+    def calc(self, R, i0, meas):
         qe = 1.6022e-19
         mi = 2*1.67e-27
 
@@ -736,7 +733,56 @@ class PhysicalResults:
         res.n  = n = n_cs/cs
         res.v  = v = Mach*cs
         res.pe = n*qe*Te
-        return res
+
+        self.R = R
+        self.PP = PiecewisePolynomial(res[None], R.t, i0=i0)
+
+    def eval(self, plunge=None, inout=None):
+        w = self.R.plunges(plunge, inout)
+        tM = self.R.tM(plunge)
+
+        i, y = self.PP.eval(w=w)
+        
+        y.t  = self.R.t[i]
+        y.R  = self.R.x[i]
+        y.Dt = y.t - tM[0]
+        return y
+
+    def make_name(self, plunge=None, inout=None):        
+        if plunge is None:
+            name = "XPRres_%d" % self.shn
+        else:
+            name = "XPRres_%d_%d" % (self.shn, plunge)
+        if inout is not None:
+            name += "_" + inout
+        return name
+
+    def save(self, plunge=None, inout=None):
+        name = self.make_name(plunge, inout)
+        y = self.eval(plunge, inout)
+
+        tM = self.R.tM()
+        if plunge is not None:
+            tM = tM[plunge]
+        
+        f = h5py.File(name + '.h5', "w")
+        for key in y.dtype.names:
+            f.create_dataset(key, data=y[key], compression="gzip")
+        f.close()
+
+    def load(self, plunge=None, inout=None):
+        name = self.make_name(plunge, inout)
+        
+        f = h5py.File(name + '.h5', "r")
+        keys = [key.encode('ascii') for key in f.keys()]
+        type = [f[key].dtype for key in keys]
+        size = [f[key].len() for key in keys]
+        
+        y = np.empty(size[0], zip(keys, type))
+        for key in keys:
+            y[key] = f[key][:]
+        f.close()
+        return y.view(np.recarray)
 
     def make_label(self, key):
         if self.usetex:
@@ -744,7 +790,7 @@ class PhysicalResults:
         else:
             lab = key
         if self.units[key] is not None:
-            lab += r' [' + self.units[key] + r']'
+            lab += r' (' + self.units[key] + r')'
         return lab
 
     def clip(self, y, lim):
@@ -768,29 +814,6 @@ class PhysicalResults:
 
         ax.plot(x, self.fact[key]*yc, label=label)
 
-    def eval(self, plunge=None, inout=None):
-        w = self.R.plunges(plunge, inout)
-        tM = self.R.tM(plunge)
-
-        i, y = self.PP.eval(w=w)
-        
-        y['t']  = self.R.t[i]
-        y['R']  = self.R.x[i]
-        y['Dt'] = y['t'] - tM
-        return y
-
-    def export(self, plunge=None, inout=None):
-        y = self.eval(plunge, inout)
-
-        tM = self.R.tM(plunge)
-        name = "%d.%d" % (self.shn, 1e3*tM)
-        if inout == 'out':
-            name += "_out"
-
-        f = h5py.File(name + '.h5', "w")
-        f.create_dataset(name, data=y, compression="gzip")
-        f.close()
-
     def plot(self, fig=None, keys=None, xkey='t', plunge=None, inout=None, mirror=False):
         y = self.eval(plunge, inout)
                 
@@ -800,7 +823,7 @@ class PhysicalResults:
         xlab = self.make_label(xkey)
         
         tM = self.R.tM(plunge)
-        label = "%d.%d" % (self.shn, 1e3*tM)
+        label = "%d.%d" % (self.shn, 1e3*tM[0])
         if inout == 'out':
             label += " (out)"
 
@@ -808,7 +831,7 @@ class PhysicalResults:
             keys = ('n', 'Mach'), ('Vf', 'v'), ('Te', 'j'), ('Vp', 'pe')
         keys = np.array(keys, ndmin=2)
 
-        fig = get_tfig(fig, keys.shape, xlab=xlab)
+        fig = get_tfig(fig, keys.shape, xlab=xlab, figsize=(10,10))
 
         ax = fig.axes
         for i in xrange(keys.size):
@@ -877,7 +900,13 @@ class Probe:
 
         fig.canvas.draw()
         return fig
-        
+    
+    @property
+    def iplunges(self):
+        S = self.get_type('Position')
+        i0, iM, i1 = S[0].t_ind
+        return iM
+
     def trim(self, plunge='all'):
         S = self.get_type('Position')
         i0, iM, i1 = S[0].t_ind
@@ -930,13 +959,14 @@ class Probe:
         dtype = zip(keys, [np.double]*len(keys))
         meas = np.empty(Isat.shape[1], dtype).view(np.recarray)
 
-        meas.jp = Isat[0]/tips[0].proj_area
-        meas.jm = Isat[1]/tips[0].proj_area
+        meas.jp = Isat[0]/tips[0].area
+        meas.jm = Isat[1]/tips[0].area
         meas.Vf = Vf[-1]
         meas.Te = Te[-1]
 
         shn = self.digitizer.shn
-        self.res = PhysicalResults(shn, self['R'], self.PP.i0, meas)
+        self.res = PhysicalResults(shn)
+        self.res.calc(self['R'], self.PP.i0, meas)
         return self.res
         
     @property
