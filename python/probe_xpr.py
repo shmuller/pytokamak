@@ -12,7 +12,7 @@ if __name__ == "__main__":
 import probe
 reload(probe)
 
-import config_xpr2 as config
+import config_xpr as config
 reload(config)
 
 IOMds = probe.IOMds
