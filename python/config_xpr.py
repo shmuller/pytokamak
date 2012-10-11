@@ -32,21 +32,24 @@ CurrentProbe1 = {
      5: Amp(fact=0.5*5/10),
     10: Amp(fact=0.5*10/10), 
     20: Amp(fact=0.5*20/10),
-    50: Amp(fact=0.5*50/10)}
+    50: Amp(fact=0.5*50/10),
+  5000: Amp(fact=0.5*5000/10)}
 
 CurrentProbe2 = {
      1: Amp(fact=0.5*1/10), # mA/mV = A/V (0.5 from missing 50 Ohm term.)
      5: Amp(fact=0.5*5/10),
     10: Amp(fact=0.5*10/10),
     20: Amp(fact=0.5*20/10),
-    50: Amp(fact=0.5*50/10)}
+    50: Amp(fact=0.5*50/10),
+  5000: Amp(fact=0.5*5000/10)}
 
 CurrentProbe3 = {
      1: Amp(fact=0.5*1/10), # mA/mV = A/V (0.5 from missing 50 Ohm term.)
      5: Amp(fact=0.5*5/10),
     10: Amp(fact=0.5*10/10),
     20: Amp(fact=0.5*20/10),
-    50: Amp(fact=0.5*50/10)}
+    50: Amp(fact=0.5*50/10),
+  5000: Amp(fact=0.5*5000/10)}
 
 
 class TipXPR(CylindricalTip):
@@ -113,6 +116,8 @@ def_XPR = dict(dig='XPR', head=head, amp_default=amp_default, lines=dict(XPR=lin
 
 def_XPR_LPS = dict(dig='XPR', head=head, amp_default=amp_default, lines=lines)
 
+allI_XPR = dict(dig='XPR', head=headI, amp_default=amp_default, lines=dict(XPR=lines_XPR))
+
 campaign = Campaign()
 
 
@@ -141,10 +146,13 @@ E.rep(27692, 27691, "All the way through, but signals saturated")
 
 E.rep(27693, 27692, "Current probes 50 mA/div",
              ampI1 = ampInv*CurrentProbe1[50]*Preamp1[5],
-             ampI2 = CurrentProbe2[50]*Preamp2[5])
+             ampI2 = CurrentProbe2[50]*Preamp2[5],
+             stars = '*****')
 
-E.rep(27694, 27693, "HWM resumed experiment")
-E.rep(27695, 27693, "Calibration after this shot")
+E.rep(27694, 27693, "HWM resumed experiment", 
+             stars='*****')
+E.rep(27695, 27693, "Calibration after this shot", 
+             stars='*****')
 
 
 ############################################
@@ -309,6 +317,62 @@ E.add(28504, "Calibration, no signals attached",
 
 E.rep(28507, 28504, "Calibration, 10 Vpp into 50 Ohm (+/-0.1 A)")
 E.rep(28508, 28504, "Signal also on bias voltage")
+
+
+############################################
+E = campaign.add_experiment(date="20121011")
+
+E.add(28633, "DAQ test", **def_XPR)
+
+E.add(28634, "Sweep attached to 2x100 V Kepco pair, all tips on sweep",
+             times = (950, 1850),
+             ampI1 = CurrentProbe1[5000],
+             ampI2 = CurrentProbe2[5000],
+             ampI3 = CurrentProbe3[5000], descr = """
+             Fuse blown on whole Kepco rack. No data""", **allI_XPR)
+
+E.rep(28636, 28634, "Switch Kepco's off", descr = """
+             No motion. No signals?""")
+
+E.rep(28637, 28636, "Acquire trigger signals", descr = """
+             No motion. No signals?""")
+
+E.rep(28641, 28637, "TTL via LWL 1061 on channel 5",
+             descr = "Nothing came through")
+
+E.rep(28643, 28641, "Sine via fcn gen on channel 5",
+             descr = "")
+
+E.rep(28645, 28643, "Kepcos on separate trafo, sweep on",
+             descr = "")
+
+E.add(28646, "Change sensitity",
+             times = (0.950, 1.850),
+             ampI1 = CurrentProbe1[20],
+             ampI2 = CurrentProbe2[20],
+             ampI3 = CurrentProbe3[20], descr = """
+             """, **allI_XPR)
+
+E.rep(28647, 28646, "Repeat")
+
+E.rep(28648, 28647, "Reset local timer for PPG TS06", 
+        descr = """
+        Worked, but tip3 apparently short circuits
+        """)
+
+E.rep(28649, 28648, "Go to three plunges behind the wall", 
+        times = (1.0, 2.0, 3.0),
+        descr = """Short circuit on tip3 on plunge 0, then
+        UCSD Kepco trips, then current 3 follows voltage.
+        """)
+
+E.rep(28650, 28649, "Take tip 3 off bias voltage, 3rd plunge slower")
+
+
+amp_mapping_XPR['ampR'] = 'S8'
+
+E.rep(28651, 28650, "Position signal on S8")
+
 
 
 

@@ -13,7 +13,6 @@ import probe
 reload(probe)
 
 import config_xpr as config
-reload(config)
 
 IOMds = probe.IOMds
 IOFile = probe.IOFile
@@ -102,6 +101,7 @@ class DigitizerLPS(Digitizer):
 
 class ProbeXPR(Probe):
     def __init__(self, shn, sock=None, dig=None):
+        reload(config)
         self.config = config.campaign.find_shot(shn)
         if dig is None:
             dig = self.config.dig
@@ -143,6 +143,14 @@ class ProbeXPR(Probe):
         self.load(trim=False, calib=False)
         return self['V'].x.mean()
    
+
+def get_dwell_params():
+    shots = config.campaign.shots
+    for shot in shots:
+        XPR = ProbeXPR(shn=shot)
+        tM, RM = XPR.get_dwell_params()
+        print "%d: tM = %.03f s, RM = %.03f m" % (shot, tM, RM)
+
 
 if __name__ == "__main__":
     shn = 28469

@@ -657,7 +657,7 @@ class IVSeries2:
 
 
 class PhysicalResults:
-    def __init__(self, shn, usetex=True):
+    def __init__(self, shn, usetex=False):
         self.shn, self.usetex = shn, usetex
         self.R = self.PP = None
 
@@ -881,6 +881,8 @@ class Probe:
             self.trim(plunge)
         
     def get_type(self, type):
+        if self.S is None:
+            self.load_raw()
         istype = lambda x: x.type == type
         return filter(istype, self.S.itervalues())
 
@@ -901,15 +903,16 @@ class Probe:
         fig.canvas.draw()
         return fig
     
-    @property
-    def iplunges(self):
-        S = self.get_type('Position')
-        i0, iM, i1 = S[0].t_ind
-        return iM
+    def get_dwell_params(self):
+        R = self.get_type('Position')[0]
+        iM = R.t_ind[1]
+        tM = R.t[iM]
+        RM = R.x[iM]
+        return tM, RM
 
     def trim(self, plunge='all'):
-        S = self.get_type('Position')
-        i0, iM, i1 = S[0].t_ind
+        R = self.get_type('Position')[0]
+        i0, iM, i1 = R.t_ind
 
         if plunge == 'all':
             s = np.concatenate(map(np.arange, i0, i1))

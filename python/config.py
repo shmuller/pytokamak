@@ -31,7 +31,10 @@ class Shot:
     def __init__(self, comment="", **kw):
         self.comment = comment
 
-        self.attrs = ('expt', 'shn', 'dig', 'head', 'amp_default', 'lines')
+        self.descr = kw.pop('descr', '')
+        self.stars = kw.pop('stars', '')
+
+        self.attrs = ('expt', 'shn', 'dig', 'head', 'amp_default', 'lines', 'times')
         for attr in self.attrs:
             setattr(self, attr, kw.pop(attr, None))
 
@@ -95,14 +98,31 @@ class Shot:
             amp.apply(self.unique_sigs[k])
 
 
-class Experiment:
-    def __init__(self, date=None, campaign=None, ShotClass=Shot):
-        self.date, self.campaign, self.ShotClass = date, campaign, ShotClass
+class ShotContainer:
+    def __init__(self):
         self.x = OrderedDict()
 
     def __getitem__(self, indx):
         return self.x[indx]
 
+    @property
+    def times(self):
+        return {k: v.times for k, v in self.x.iteritems()}
+
+    @property
+    def descr(self):
+        return {k: v.descr for k, v in self.x.iteritems()}
+
+    @property
+    def stars(self):
+        return {k: v.stars for k, v in self.x.iteritems()}
+
+
+class Experiment(ShotContainer):
+    def __init__(self, date=None, campaign=None, ShotClass=Shot):
+        self.date, self.campaign, self.ShotClass = date, campaign, ShotClass
+        ShotContainer.__init__(self)
+    
     def add(self, shn, *args, **kw):
         self.x[shn] = self.ShotClass(*args, expt=self, shn=shn, **kw)
         
@@ -118,14 +138,11 @@ class Experiment:
         return self.date + ":\n" + np.array(s).tostring()
 
 
-class Campaign:
+class Campaign(ShotContainer):
     def __init__(self, ExperimentClass=Experiment):
         self.ExperimentClass = ExperimentClass
-        self.x = OrderedDict()
-        
-    def __getitem__(self, indx):
-        return self.x[indx]
-
+        ShotContainer.__init__(self)
+    
     def add_experiment(self, *args, **kw):
         E = self.ExperimentClass(*args, campaign=self, **kw)
         self.x[kw['date']] = E
