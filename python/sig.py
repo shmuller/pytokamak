@@ -4,6 +4,8 @@ import os
 import h5py
 import copy
 
+from pdb import set_trace
+
 import scipy.optimize as opt
 
 import matplotlib.pyplot as plt
@@ -313,19 +315,24 @@ class Signal:
         return Signal(dx_dt, self.t, name=name, 
                       type="Derivative of " + self.type)
 
-    def crossings(self, lvl, threshold):
-        def cross(lvl, x0, x1):
-            return (x0 < lvl) & (lvl < x1)
+    @staticmethod
+    def cross(lvl, x0, x1):
+        return (x0 < lvl) & (lvl < x1)
         
-        def group(ind):
+    @staticmethod
+    def group(ind, threshold):
+        if len(ind) == 0:
+            ind0 = ind1 = ind
+        else:
             di = np.diff(np.r_[0,ind])
             j = np.flatnonzero(di > threshold*np.median(di))
             ind0, ind1 = ind[j], ind[np.r_[j[1:]-1, -1]] + 1
-            return ind0, ind1
+        return ind0, ind1
 
+    def crossings(self, lvl, threshold):
         x0, x1 = self.x[:-1], self.x[1:]
-        cnd = cross(lvl, x0, x1) | cross(lvl, x1, x0)
-        ind0, ind1 = group(np.flatnonzero(cnd))
+        cnd = self.cross(lvl, x0, x1) | self.cross(lvl, x1, x0)
+        ind0, ind1 = self.group(np.flatnonzero(cnd), threshold)
 
         is_rising = self.x[ind0] < self.x[ind1]
         return ind0, ind1, is_rising
@@ -336,7 +343,10 @@ class Signal:
         return np.array(res)
     
     def apply_argfun(self, argfun, ind0=0, ind1=None):
-        return ind0 + self.apply_fun(argfun, ind0, ind1)
+        if len(ind0) == 0:
+            return ind0
+        else:
+            return ind0 + self.apply_fun(argfun, ind0, ind1)
     
     def local_argmin(self, *args):
         return self.apply_argfun(np.argmin, *args)

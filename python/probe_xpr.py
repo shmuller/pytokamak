@@ -149,7 +149,7 @@ def get_dwell_params():
     for shot in shots:
         XPR = ProbeXPR(shn=shot)
         tM, RM = XPR.get_dwell_params()
-        print "%d: tM = %.03f s, RM = %.03f m" % (shot, tM, RM)
+        print "%d: tM = %s s, RM = %s m" % (shot, tM, RM)
 
 
 if __name__ == "__main__":

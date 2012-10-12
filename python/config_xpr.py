@@ -192,7 +192,7 @@ E.add(28245, "204 mm, 1.0 s, 20 mA/div, preamps 2x (was 5x)",
 
 E.rep(28246, 28245, "254 mm, 0.85 s, 20 mA/div, preamps 2x -> L-H transition!")
 
-# Henrik Mayer
+# Hendrik Meyer
 E.rep(28250, 28245, "304 mm, 4.0 s, 20 mA/div, preamps 2x")
 E.rep(28251, 28245, "304 mm, 1.8 s, 20 mA/div, preamps 2x, (bias voltage less positive)")
 E.rep(28252, 28245, "354 mm, 1.75 s, 20 mA/div, preamps 2x -> 1.8 s acc.")
