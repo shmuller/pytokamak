@@ -27,6 +27,14 @@ class Head:
         self.keys = dict(R=R_keys)
 
 
+def recursive_dictcopy(d):
+    if isinstance(d, dict):
+        d = d.copy()
+        for k, v in d.iteritems():
+            d[k] = recursive_dictcopy(v)
+    return d
+
+
 class Shot:
     def __init__(self, comment="", **kw):
         self.comment = comment
@@ -41,6 +49,11 @@ class Shot:
         self.amp_default = self.amp_default.copy()
         for k in set(self.amp_default.keys()) & set(kw.keys()):
             self.amp_default[k] = kw.pop(k)
+
+        self.lines = recursive_dictcopy(self.lines)
+        for k, v in kw.iteritems():
+            line, what, key = k.split('_')
+            self.lines[line][what][key] = v
                 
     def copy(self, comment="", **kw):
         for attr in self.attrs:

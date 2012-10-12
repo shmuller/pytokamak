@@ -90,7 +90,7 @@ amp_LPS = dict(
             ampR = ampR_LPS, 
             ampV = ampV_LPS)
 
-amp_mapping_XPR = dict(
+mapping_XPR = dict(
             ampR  = 'S5', 
             ampV  = 'S1', 
             ampI1 = 'S4',
@@ -98,7 +98,7 @@ amp_mapping_XPR = dict(
             ampI3 = 'S6',
             ampVF = 'S6')
 
-amp_mapping_LPS = dict(
+mapping_LPS = dict(
             ampR  = 'VOL3', 
             ampV  = 'VOL1',
             ampI1 = 'CUR1',
@@ -106,8 +106,8 @@ amp_mapping_LPS = dict(
             ampI3 = 'VOL2',
             ampVF = 'VOL2')
 
-lines_XPR = dict(amp=amp_XPR, mapping=amp_mapping_XPR)
-lines_LPS = dict(amp=amp_LPS, mapping=amp_mapping_LPS)
+lines_XPR = dict(amp=amp_XPR, mapping=mapping_XPR)
+lines_LPS = dict(amp=amp_LPS, mapping=mapping_LPS)
 
 lines = dict(XPR=lines_XPR, LPS=lines_LPS)
 
@@ -310,8 +310,8 @@ E = campaign.add_experiment(date="20120726")
 
 E.add(28504, "Calibration, no signals attached", 
              dig='XPR', head=head, amp_default=amp_default_unity, 
-             lines=dict(XPR=dict(amp={}, mapping=amp_mapping_XPR), 
-                        LPS=dict(amp={}, mapping=amp_mapping_LPS)),
+             lines=dict(XPR=dict(amp={}, mapping=mapping_XPR), 
+                        LPS=dict(amp={}, mapping=mapping_LPS)),
              ampI1 = CurrentProbe1[20],
              ampI2 = CurrentProbe2[20])
 
@@ -368,11 +368,8 @@ E.rep(28649, 28648, "Go to three plunges behind the wall",
 
 E.rep(28650, 28649, "Take tip 3 off bias voltage, 3rd plunge slower")
 
-
-amp_mapping_XPR['ampR'] = 'S8'
-
-E.rep(28651, 28650, "Position signal on S8")
-
+E.rep(28651, 28650, "Position signal on S8", 
+        XPR_mapping_ampR='S8')
 
 
 
