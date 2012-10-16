@@ -657,7 +657,7 @@ class IVSeries2:
 
 
 class PhysicalResults:
-    def __init__(self, shn, usetex=False):
+    def __init__(self, shn, usetex=usetex):
         self.shn, self.usetex = shn, usetex
         self.R = self.PP = None
 
@@ -705,7 +705,7 @@ class PhysicalResults:
         self.fact['Dt'] = 1e3
 
         self.lim = dict.fromkeys(self.keys, (None, None))
-        self.lim['n'] = (0, 1e20)
+        self.lim['n'] = (0, 3e19)
         self.lim['Mach'] = (-2, 2)
         self.lim['Te'] = (0, 100)
         self.lim['R'] = (0, None)
@@ -963,7 +963,7 @@ class Probe:
         meas = np.empty(Isat.shape[1], dtype).view(np.recarray)
 
         meas.jp = Isat[0]/tips[0].area
-        meas.jm = Isat[1]/tips[0].area
+        meas.jm = Isat[1]/tips[1].area
         meas.Vf = Vf[-1]
         meas.Te = Te[-1]
 

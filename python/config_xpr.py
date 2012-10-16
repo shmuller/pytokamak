@@ -372,4 +372,15 @@ E.rep(28651, 28650, "Position signal on S8",
         XPR_mapping_ampR='S8')
 
 
+############################################
+E = campaign.add_experiment(date="20121016")
+
+E.add(28657, "No plunges",
+             ampI1 = CurrentProbe1[20],
+             ampI2 = CurrentProbe2[20],
+             ampI3 = CurrentProbe3[20], descr = """
+             """, **allI_XPR)
+
+
+
 

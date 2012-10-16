@@ -130,8 +130,8 @@ class ProbeXPR(Probe):
         for S in self.get_type('Voltage'):
             S.norm_to_region(s)
 
-        self.S['V'] = self.S[1].V
-        self.S['It'] = self.S[1] + self.S[2]
+        self.S['V'] = self.S['I1'].V
+        self.S['It'] = self.S['I1'] + self.S['I2']
 
     def position_calib(self):
         R = self['R']

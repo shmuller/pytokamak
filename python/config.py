@@ -99,9 +99,9 @@ class Shot:
             else:
                 V = VoltageSignal(self.unique_sigs[keyV], t, name='V%d' % i)
             if keyI is None:
-                S[i] = V
+                S['V%d' % i] = V
             else:
-                S[i] = CurrentSignal(self.unique_sigs[keyI], t, V=V, name='I%d' % i)
+                S['I%d' % i] = CurrentSignal(self.unique_sigs[keyI], t, V=V, name='I%d' % i)
 
         return S
 
