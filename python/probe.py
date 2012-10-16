@@ -944,6 +944,9 @@ class Probe:
         self.IV_series = self.calc_IV_series(engine='fmin')
         self.PP = self.IV_series.fit()
 
+    def get_meas(self):
+        pass
+
     def results(self, **kw):
         if self.PP is None:
             try:
@@ -951,8 +954,6 @@ class Probe:
             except LoadResultsError:
                 self.analyze()
                 self.save_res()
-
-        tips = self.config.head.tips
 
         Isat = self.PP.c[0,:,:,0].T
         Vf   = self.PP.c[0,:,:,1].T
@@ -962,11 +963,8 @@ class Probe:
         dtype = zip(keys, [np.double]*len(keys))
         meas = np.empty(Isat.shape[1], dtype).view(np.recarray)
 
-        meas.jp = Isat[0]/tips[0].area
-        meas.jm = Isat[1]/tips[1].area
-        meas.Vf = Vf[-1]
-        meas.Te = Te[-1]
-
+        self.get_meas(Isat, Vf, Te, meas)
+       
         shn = self.digitizer.shn
         self.res = PhysicalResults(shn)
         self.res.calc(self['R'], self.PP.i0, meas)

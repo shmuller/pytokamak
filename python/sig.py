@@ -261,6 +261,7 @@ class Signal:
     def __init__(self, x, t, **kw):
         self.x, self.t, self.kw = x, t, kw
         
+        self.number = kw.get('number', -1)
         self.name = kw.get('name', "")
         self.type = kw.get('type', None)
         self.units = kw.get('units', "")

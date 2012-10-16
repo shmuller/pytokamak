@@ -26,6 +26,11 @@ class Head:
         self.tips = tips
         self.keys = dict(R=R_keys)
 
+    def get_tip_number_by_position(self, pos):
+        for tip in self.tips:
+            if tip.pos == pos:
+                return tip.number
+
 
 def recursive_dictcopy(d):
     if isinstance(d, dict):
@@ -97,11 +102,12 @@ class Shot:
             if keyV is None:
                 V = None
             else:
-                V = VoltageSignal(self.unique_sigs[keyV], t, name='V%d' % i)
+                V = VoltageSignal(self.unique_sigs[keyV], t, number=i, name='V%d' % i)
             if keyI is None:
-                S['V%d' % i] = V
+                S[V.name] = V
             else:
-                S['I%d' % i] = CurrentSignal(self.unique_sigs[keyI], t, V=V, name='I%d' % i)
+                I = CurrentSignal(self.unique_sigs[keyI], t, V=V, number=i, name='I%d' % i) 
+                S[I.name] = I
 
         return S
 

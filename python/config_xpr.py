@@ -381,6 +381,38 @@ E.add(28657, "No plunges",
              ampI3 = CurrentProbe3[20], descr = """
              """, **allI_XPR)
 
+E.rep(28668, 28657, "No plunges")
+
+E.rep(28669, 28668, "First plasma plunge of the season", 
+        times = (3.4,), descr="Too late, missed plasma")
+
+E.rep(28670, 28669, "Plunge at beginning of second heating phase", 
+        times = (2.35,), descr="Caught L-H transition")
+
+# Matthias Willensdorfer
+E.rep(28671, 28670, "3 plunges", 
+        times = (1.3, 2.0, 3.15), descr="OK, current goes up on 3rd plunge")
+
+E.rep(28672, 28671, "repeat", 
+        times = (1.3, 2.0, 3.15), descr="More arcs than on last shot")
+
+E.rep(28673, 28672, "Only one plunge", 
+        times = (3.5,), descr="Went better")
+
+E.rep(28674, 28673, "Two plunges", 
+        times = (1.9, 3.5), descr="2nd Kepco failed between shots")
+
+E.rep(28674, 28673, "Two plunges", 
+        times = (1.9, 3.5), descr="2nd Kepco failed between shots")
+
+E.rep(28675, 28674, "Three plunges", 
+        times = (0.9, 1.7, 3.1), descr="2nd Kepco failed again between shots")
+
+
+
+
+
+
 
 
 

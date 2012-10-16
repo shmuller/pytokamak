@@ -133,6 +133,28 @@ class ProbeXPR(Probe):
         self.S['V'] = self.S['I1'].V
         self.S['It'] = self.S['I1'] + self.S['I2']
 
+    def get_meas(self, Isat, Vf, Te, meas):
+        head = self.config.head
+
+        #i_up = head.get_tip_number_by_position('lower left')
+        #i_dn = head.get_tip_number_by_position('lower right')
+
+        tips = self.config.head.tips
+
+        II = self.get_type('Current')
+        for i in xrange(len(II)):
+            num = II[i].number
+            if num > 0:
+                tip = tips[num - 1]
+                j = Isat[tip.number - 1] / tip.area
+                if tip.pos == 'lower left':
+                    meas.jp = j
+                elif tip.pos == 'lower right':
+                    meas.jm = j
+            else:
+                meas.Vf = Vf[i]
+                meas.Te = Te[i]
+
     def position_calib(self):
         R = self['R']
         sp = interp.UnivariateSpline(R.t, R.x, s=10)
