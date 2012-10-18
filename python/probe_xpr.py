@@ -167,7 +167,7 @@ class ProbeXPR(Probe):
    
 
 def get_dwell_params():
-    shots = config.campaign.shots
+    shots = config.campaign.shots_with_min_stars('*')
     for shot in shots:
         XPR = ProbeXPR(shn=shot)
         tM, RM = XPR.get_dwell_params()

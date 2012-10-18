@@ -144,9 +144,10 @@ class PiecewisePolynomial:
         return a[0].__array_wrap__(ma.concatenate(a, axis))
 
     def eval(self, w=None):
-        i0 = self.i0
-        if w is not None:
-            i0 = i0[self._mask(w)]
+        try:
+            i0 = self.i0[self._mask(w)]
+        except:
+            i0 = self.i0   
 
         il, ir = i0[:-1], i0[1:]
         yl, yr = self(self.x[il], 'right'), self(self.x[ir], 'left')
@@ -720,7 +721,7 @@ class PhysicalResults:
         dtype = zip(self.keys, [np.double]*len(self.keys))
         res = np.empty(Gp.size, dtype).view(np.recarray)
 
-        res.Mach = Mach = 0.5*np.log(Gp/Gm)
+        res.Mach = Mach = 0.5*np.log(Gm/Gp)
         res.n_cs = n_cs = np.e*np.sqrt(Gp*Gm)
         res.nv = nv = n_cs*Mach
         res.j  = qe*nv
@@ -739,13 +740,17 @@ class PhysicalResults:
 
     def eval(self, plunge=None, inout=None):
         w = self.R.plunges(plunge, inout)
-        tM = self.R.tM(plunge)
-
+        
         i, y = self.PP.eval(w=w)
         
         y.t  = self.R.t[i]
         y.R  = self.R.x[i]
-        y.Dt = y.t - tM[0]
+        y.Dt = y.t
+
+        tM = self.R.tM(plunge)
+        if len(tM) == 1:
+            y.Dt -= tM[0]
+
         return y
 
     def make_name(self, plunge=None, inout=None):        
@@ -821,9 +826,11 @@ class PhysicalResults:
         if mirror:
             x = -x
         xlab = self.make_label(xkey)
-        
+
+        label = "%d" % self.shn
         tM = self.R.tM(plunge)
-        label = "%d.%d" % (self.shn, 1e3*tM[0])
+        if len(tM) == 1:
+            label += "%d" % 1e3*tM[0]
         if inout == 'out':
             label += " (out)"
 

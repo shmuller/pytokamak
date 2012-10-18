@@ -432,7 +432,7 @@ class PositionSignal(Signal):
         Signal.__init__(self, x, t, **kw)
     
         self.baseline_slice = kw.get('baseline_slice', slice(None, 1000))
-        self.lvl_fact = kw.get('lvl_fact', 20)
+        self.lvl_fact = kw.get('lvl_fact', 30)
         self.dist_threshold = kw.get('dist_threshold', 1000)
         self._t_ind = None
 

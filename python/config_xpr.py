@@ -66,6 +66,15 @@ head = Head(tips=(tip1, tip2, tip3), R_keys='ampR')
 tip3I = TipXPR(number=3, pos='upper', V_keys='ampV', I_keys='ampI3')
 headI = Head(tips=(tip1, tip2, tip3I), R_keys='ampR')
 
+
+tip1_2012_autumn = TipXPR(number=1, pos='lower right', V_keys='ampV', I_keys='ampI1')
+tip2_2012_autumn = TipXPR(number=2, pos='upper', V_keys='ampV', I_keys='ampI2')
+tip3_2012_autumn = TipXPR(number=3, pos='lower left', V_keys='ampV', I_keys='ampI3')
+
+head_2012_autumn = Head(tips=(tip1_2012_autumn, tip2_2012_autumn, tip3_2012_autumn), 
+        R_keys='ampR')
+
+
 amp_default_unity = dict(
             ampR  = ampUnity, 
             ampV  = ampUnity, 
@@ -176,9 +185,9 @@ E.add(28239, "304 mm, 3.8 s, 20 mA/div",
         ampI1 = ampInv*CurrentProbe1[20]*Preamp1[5],
         ampI2 = CurrentProbe2[20]*Preamp2[5], **def_LPS)
 
-E.add(28240, "440 mm, 3.8 s, 50 mA/div",
+E.rep(28240, 28239, "440 mm, 3.8 s, 50 mA/div",
         ampI1 = ampInv*CurrentProbe1[50]*Preamp1[5],
-        ampI2 = CurrentProbe2[50]*Preamp2[5], **def_LPS)
+        ampI2 = CurrentProbe2[50]*Preamp2[5])
 
 E.rep(28241, 28239, "440 mm, 3.8 s, 20 mA/div")
 E.rep(28242, 28239, "440 mm, 3.2 s, 20 mA/div")
@@ -187,9 +196,9 @@ E.rep(28243, 28239, "440 mm, 3.2 s, 20 mA/div -> saturated I2")
 # Tim Happel
 E.rep(28244, 28243, "204 mm, 1.5 s, 20 mA/div -> 440 mm acc.")
 
-E.add(28245, "204 mm, 1.0 s, 20 mA/div, preamps 2x (was 5x)",
+E.rep(28245, 28244, "204 mm, 1.0 s, 20 mA/div, preamps 2x (was 5x)",
         ampI1 = ampInv*CurrentProbe1[20]*Preamp1[2],
-        ampI2 = CurrentProbe2[20]*Preamp2[2], **def_LPS)
+        ampI2 = CurrentProbe2[20]*Preamp2[2])
 
 E.rep(28246, 28245, "254 mm, 0.85 s, 20 mA/div, preamps 2x -> L-H transition!",
         descr = "L-mode on way in, ELMing H-mode on way out",
@@ -213,7 +222,8 @@ E.add(28379, "Fixed probe @2564.05 mm",
 E.rep(28380, 28379, "Fixed probe @2569.05 mm -> no data")
 E.rep(28381, 28379, "-200 V bias -> Kepco breaks in at 0.5 s")
 E.rep(28382, 28379, "@2569.10 mm, sweep -> data all the way to 6 s")
-E.rep(28383, 28379, "@2589.08 mm, DC offset with small sweep -> worked")
+E.rep(28383, 28379, "@2589.08 mm, DC offset with small sweep -> worked",
+        descr = "Early time base error")
 
 
 ############################################
@@ -221,21 +231,24 @@ E = campaign.add_experiment(date="20120713")
 
 E.add(28389, "Fixed probe @2569.05 mm, -180 V with sweep", 
         ampI1 = ampInv*CurrentProbe1[20]*Preamp1[2],
-        ampI2 = CurrentProbe2[20]*Preamp2[2], **def_XPR_LPS)
+        ampI2 = CurrentProbe2[20]*Preamp2[2], 
+        stars = '', **def_XPR_LPS)
 
-E.rep(28390, 28389, "-80 V / 150 V sweep at 100 Hz")
-E.rep(28394, 28389)
+E.rep(28390, 28389, "-80 V / 150 V sweep at 100 Hz",
+        stars = '')
 
+E.rep(28394, 28389, "",
+        stars = '')
 
 E.add(28395, "Turn 2nd current probe", 
         ampI1 = CurrentProbe1[20]*Preamp1[2],
         ampI2 = CurrentProbe2[20]*Preamp2[2], **def_XPR_LPS)
 
-E.rep(28403, 28395)
-E.rep(28404, 28395)
-E.rep(28405, 28395)
-E.rep(28406, 28395)
-E.rep(28407, 28395)
+E.rep(28403, 28395, "5 plunges, DC biasing with small rect sweeps")
+E.rep(28404, 28395, "repeat")
+E.rep(28405, 28395, "4 plunges with decreasing depth")
+E.rep(28406, 28395, "4 plunges to 10 cm")
+E.rep(28407, 28395, "5 plunges to 10 cm")
 
 
 ############################################
@@ -246,31 +259,35 @@ E.add(28419, "Fcn gen. 20 Vpp, +8 VDC, 0.5 kHz (saturates in Isat regime)",
         ampI2 = CurrentProbe2[5], **def_XPR_LPS)
 
 E.rep(28420, 28419, "Fcn gen. 12 Vpp, 4 VDC")
-E.rep(28421, 28419)
-E.rep(28422, 28419)
-E.rep(28423, 28419)
-E.rep(28424, 28419, "Asym. waveform, 7 Vpp, 1 VDC, 200 Hz")
+E.rep(28421, 28420)
+E.rep(28422, 28421)
+E.rep(28423, 28422)
+E.rep(28424, 28423, "Asym. waveform, 7 Vpp, 1 VDC, 200 Hz")
 
-E.add(28425, "6.9 Vpp, 1 VDC, 100 Hz, 1 mA/div", 
+E.rep(28425, 28424, "6.9 Vpp, 1 VDC, 100 Hz, 1 mA/div", 
         ampI1 = CurrentProbe1[1],
-        ampI2 = CurrentProbe2[1], **def_XPR_LPS)
+        ampI2 = CurrentProbe2[1])
 
 E.rep(28426, 28425, "First data! Kepco breaks in in Isat")
-E.rep(28427, 28425, "Change sweep pars -> Kepco still breaks")
-E.rep(28428, 28425, "Back to other fcn gen. -> saturated at 1 mA/div")
+E.rep(28427, 28426, "Change sweep pars -> Kepco still breaks")
+E.rep(28428, 28427, "Back to other fcn gen. -> saturated at 1 mA/div")
 
-E.add(28429, "Back to 5 mA/div -> no data", 
+E.rep(28429, 28428, "Back to 5 mA/div -> no data", 
         ampI1 = CurrentProbe1[5],
-        ampI2 = CurrentProbe2[5], **def_XPR_LPS)
+        ampI2 = CurrentProbe2[5])
 
 E.rep(28434, 28429, "20 mA/div, 0.1 kHz, all 3 tips on bias voltage", 
         head = headI,
         ampI1 = CurrentProbe1[20],
         ampI2 = CurrentProbe2[20], 
-        ampI3 = CurrentProbe3[20])
+        ampI3 = CurrentProbe3[20], 
+        descr = "Plasma died before first plunge")
 
-E.rep(28435, 28434, "0.5 kHz, plunge at 1 s")
-E.rep(28436, 28434)
+E.rep(28435, 28434, "0.5 kHz, plunge at 1 s",
+        descr = "Strong arc")
+
+E.rep(28436, 28435, "1 plunge at 4 s",
+        descr = "Plasma died before plunge")
 
 
 ############################################
@@ -316,61 +333,82 @@ E.add(28504, "Calibration, no signals attached",
         lines=dict(XPR=dict(amp={}, mapping=mapping_XPR), 
                    LPS=dict(amp={}, mapping=mapping_LPS)),
         ampI1 = CurrentProbe1[20],
-        ampI2 = CurrentProbe2[20])
+        ampI2 = CurrentProbe2[20],
+        stars = '')
 
-E.rep(28507, 28504, "Calibration, 10 Vpp into 50 Ohm (+/-0.1 A)")
-E.rep(28508, 28504, "Signal also on bias voltage")
+E.rep(28507, 28504, "Calibration, 10 Vpp into 50 Ohm (+/-0.1 A)",
+        stars = '')
 
+E.rep(28508, 28504, "Signal also on bias voltage",
+        stars = '')
+
+
+
+#############
+# AUTUMN 2012
+#############
 
 ############################################
 E = campaign.add_experiment(date="20121011")
 
-E.add(28633, "DAQ test", **def_XPR)
+E.add(28633, "DAQ test",
+        stars = '', **def_XPR)
 
 E.add(28634, "Sweep attached to 2x100 V Kepco pair, all tips on sweep",
-        times = (950, 1850),
+        times = (0.950, 1.850),
         ampI1 = CurrentProbe1[5000],
         ampI2 = CurrentProbe2[5000],
         ampI3 = CurrentProbe3[5000], 
-        descr = "Fuse blown on whole Kepco rack. No data", **allI_XPR)
+        descr = "Fuse blown on whole Kepco rack. No data", 
+        stars = '', **allI_XPR)
 
 E.rep(28636, 28634, "Switch Kepcos off", 
-        descr = "No motion. No signals?")
+        descr = "No motion. No signals?", 
+        stars = '')
 
 E.rep(28637, 28636, "Acquire trigger signals", 
-        descr = "No motion. No signals?")
+        descr = "No motion. No signals?",
+        stars = '')
 
 E.rep(28641, 28637, "TTL via LWL 1061 on channel 5",
-        descr = "Nothing came through")
+        descr = "Nothing came through",
+        stars = '')
 
 E.rep(28643, 28641, "Sine via fcn gen on channel 5",
-        descr = "")
+        descr = "",
+        stars = '')
 
 E.rep(28645, 28643, "Kepcos on separate trafo, sweep on",
-        descr = "")
+        descr = "",
+        stars = '')
 
-E.add(28646, "Change sensitity",
-        times = (0.950, 1.850),
+E.rep(28646, 28645, "Change sensitity",
         ampI1 = CurrentProbe1[20],
         ampI2 = CurrentProbe2[20],
         ampI3 = CurrentProbe3[20], 
-        descr = "", **allI_XPR)
+        descr = "", 
+        stars = '')
 
-E.rep(28647, 28646, "Repeat")
+E.rep(28647, 28646, "Repeat",
+        stars = '')
 
 E.rep(28648, 28647, "Reset local timer for PPG TS06", 
-        descr = "Worked, but tip3 apparently short circuits")
+        descr = "Worked, but tip3 apparently short circuits",
+        stars = '')
 
 E.rep(28649, 28648, "Go to three plunges behind the wall", 
         times = (1.0, 2.0, 3.0),
         descr = """Short circuit on tip3 on plunge 0, then
         UCSD Kepco trips, then current 3 follows voltage.
-        """)
+        """,
+        stars = '')
 
-E.rep(28650, 28649, "Take tip 3 off bias voltage, 3rd plunge slower")
+E.rep(28650, 28649, "Take tip 3 off bias voltage, 3rd plunge slower",
+        stars = '')
 
 E.rep(28651, 28650, "Position signal on S8", 
-        XPR_mapping_ampR='S8')
+        XPR_mapping_ampR = 'S8',
+        stars = '')
 
 
 ############################################
@@ -380,48 +418,46 @@ E.add(28657, "No plunges",
         ampI1 = CurrentProbe1[20],
         ampI2 = CurrentProbe2[20],
         ampI3 = CurrentProbe3[20], 
-        descr = "", **allI_XPR)
+        descr = "", 
+        stars = '', **allI_XPR)
 
-E.rep(28668, 28657, "No plunges")
+E.rep(28668, 28657, "No plunges",
+        stars = '')
 
 E.rep(28669, 28668, "First plasma plunge of the season", 
         times = (3.4,), 
-        descr = "Too late, missed plasma")
+        descr = "Too late, missed plasma",
+        stars = '')
 
 E.rep(28670, 28669, "Plunge at beginning of second heating phase", 
         times = (2.35,), 
-        descr = "Caught L-H transition")
+        descr = "Caught L-H transition",
+        stars = '')
 
 # Matthias Willensdorfer
 E.rep(28671, 28670, "3 plunges", 
         times = (1.3, 2.0, 3.15), 
-        descr = "OK, current goes up on 3rd plunge")
+        descr = "OK, current goes up on 3rd plunge",
+        stars = '')
 
 E.rep(28672, 28671, "repeat", 
         times = (1.3, 2.0, 3.15), 
-        descr = "More arcs than on last shot")
+        descr = "More arcs than on last shot",
+        stars = '')
 
 E.rep(28673, 28672, "Only one plunge", 
         times = (3.5,), 
-        descr = "Went better")
+        descr = "Went better",
+        stars = '')
 
 E.rep(28674, 28673, "Two plunges", 
         times = (1.9, 3.5), 
-        descr = "2nd Kepco failed between shots")
-
-E.rep(28674, 28673, "Two plunges", 
-        times = (1.9, 3.5), 
-        descr = "2nd Kepco failed between shots")
+        descr = "2nd Kepco failed between shots",
+        stars = '')
 
 E.rep(28675, 28674, "Three plunges", 
         times = (0.9, 1.7, 3.1), 
-        descr = "2nd Kepco failed again between shots")
-
-
-
-
-
-
-
+        descr = "2nd Kepco failed again between shots",
+        stars = '')
 
 

@@ -45,7 +45,7 @@ class Shot:
         self.comment = comment
 
         self.descr = kw.pop('descr', '')
-        self.stars = kw.pop('stars', '')
+        self.stars = kw.pop('stars', '*')
 
         self.attrs = ('expt', 'shn', 'dig', 'head', 'amp_default', 'lines', 'times')
         for attr in self.attrs:
@@ -65,6 +65,9 @@ class Shot:
             kw.setdefault(attr, getattr(self, attr))
 
         return self.__class__(comment, **kw)
+
+    def has_min_stars(self, min_stars='***'):
+        return self.stars >= min_stars
 
     def get(self, line, what, key):
         if key is None:
@@ -87,7 +90,7 @@ class Shot:
         return list(unique_keys)
 
     def __repr__(self):
-        return "%d: %s" % (self.shn, self.comment)
+        return "%d %-5s: %s" % (self.shn, self.stars, self.comment)
 
     def mapsig(self, x, line):
         self.unique_sigs = {k: x[self.get(line, 'mapping', k)].astype('d') 
@@ -124,17 +127,40 @@ class ShotContainer:
     def __getitem__(self, indx):
         return self.x[indx]
 
+    @staticmethod
+    def _item(v, attr, cnd):
+        x = np.array([getattr(v, attr)])
+        if cnd(v):
+            return x
+        else:
+            return np.empty((0,), x.dtype)
+
+    def collect_as_list(self, attr, cnd=lambda v: True): 
+        return np.concatenate([v.collect_as_list(attr, cnd) if isinstance(v, ShotContainer)
+            else self._item(v, attr, cnd) for v in self.x.itervalues()])
+
+    def collect_as_dict(self, attr):
+        return {k: getattr(v, attr) for k, v in self.x.iteritems()}
+
+    @property
+    def shots(self):
+        return self.collect_as_list('shn')
+
     @property
     def times(self):
-        return {k: v.times for k, v in self.x.iteritems()}
+        return self.collect_as_dict('times')
 
     @property
     def descr(self):
-        return {k: v.descr for k, v in self.x.iteritems()}
+        return self.collect_as_dict('descr')
 
     @property
     def stars(self):
-        return {k: v.stars for k, v in self.x.iteritems()}
+        return self.collect_as_dict('stars')
+
+    def shots_with_min_stars(self, min_stars='***'):
+        cnd = lambda v: v.stars >= min_stars
+        return self.collect_as_list('shn', cnd)
 
 
 class Experiment(ShotContainer):
@@ -147,10 +173,6 @@ class Experiment(ShotContainer):
         
     def rep(self, shn, shn0, comment="", **kw):
         self.x[shn] = self.x[shn0].copy(comment, shn=shn, **kw)
-
-    @property
-    def shots(self):
-        return np.array(self.x.keys())
 
     def __repr__(self):
         s = ["  " + str(v) + "\n" for v in self.x.itervalues()]
@@ -166,10 +188,6 @@ class Campaign(ShotContainer):
         E = self.ExperimentClass(*args, campaign=self, **kw)
         self.x[kw['date']] = E
         return E
-
-    @property
-    def shots(self):
-        return np.concatenate([E.shots for E in self.x.itervalues()])
 
     def find_shot(self, shn):
         for E in self.x.itervalues():
