@@ -101,7 +101,9 @@ class DigitizerLPS(Digitizer):
 
 class ProbeXPR(Probe):
     def __init__(self, shn, sock=None, dig=None):
+        
         reload(config)
+        
         self.config = config.campaign.find_shot(shn)
         if dig is None:
             dig = self.config.dig

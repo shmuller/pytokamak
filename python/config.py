@@ -98,7 +98,7 @@ class Shot:
 
         t = x['t']
         R = self.unique_sigs[self.head.keys['R']]
-        S = dict(R=PositionSignal(R, t, name='R'))
+        S = OrderedDict(R=PositionSignal(R, t, name='R'))
 
         for tip in self.head.tips:
             i, keyV, keyI = tip.number, tip.keys['V'], tip.keys['I']
