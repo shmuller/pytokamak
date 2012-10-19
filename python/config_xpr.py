@@ -67,9 +67,9 @@ tip3I = TipXPR(number=3, pos='upper', V_keys='ampV', I_keys='ampI3')
 headI = Head(tips=(tip1, tip2, tip3I), R_keys='ampR')
 
 
-tip1_2012_autumn = TipXPR(number=1, pos='lower right', V_keys='ampV', I_keys='ampI1')
-tip2_2012_autumn = TipXPR(number=2, pos='upper', V_keys='ampV', I_keys='ampI2')
-tip3_2012_autumn = TipXPR(number=3, pos='lower left', V_keys='ampV', I_keys='ampI3')
+tip1_2012_autumn = TipXPR(number=1, pos='lower left', V_keys='ampV', I_keys='ampI3')
+tip2_2012_autumn = TipXPR(number=2, pos='lower right', V_keys='ampV', I_keys='ampI1')
+tip3_2012_autumn = TipXPR(number=3, pos='upper', V_keys='ampV', I_keys='ampI2')
 
 head_2012_autumn = Head(tips=(tip1_2012_autumn, tip2_2012_autumn, tip3_2012_autumn), 
         R_keys='ampR')
@@ -120,12 +120,10 @@ lines_LPS = dict(amp=amp_LPS, mapping=mapping_LPS)
 
 lines = dict(XPR=lines_XPR, LPS=lines_LPS)
 
-def_LPS = dict(dig='LPS', head=head, amp_default=amp_default, lines=dict(LPS=lines_LPS))
-def_XPR = dict(dig='XPR', head=head, amp_default=amp_default, lines=dict(XPR=lines_XPR))
+def_LPS = dict(dig='LPS', amp_default=amp_default, lines=dict(LPS=lines_LPS))
+def_XPR = dict(dig='XPR', amp_default=amp_default, lines=dict(XPR=lines_XPR))
 
-def_XPR_LPS = dict(dig='XPR', head=head, amp_default=amp_default, lines=lines)
-
-allI_XPR = dict(dig='XPR', head=headI, amp_default=amp_default, lines=dict(XPR=lines_XPR))
+def_XPR_LPS = dict(dig='XPR', amp_default=amp_default, lines=lines)
 
 campaign = Campaign()
 
@@ -134,6 +132,7 @@ campaign = Campaign()
 E = campaign.add_experiment(date="20120405")
 
 E.add(27684, "", 
+        head = head,
         ampI1 = ampInv*CurrentProbe1[10]*Preamp1[5],
         ampI2 = ampInv*CurrentProbe2[10]*Preamp2[5], **def_LPS)
 
@@ -170,6 +169,7 @@ E = campaign.add_experiment(date="20120621")
 
 # Henrik Mayer
 E.add(28232, "304 mm, 1.5 s",
+        head = head,
         ampI1 = ampInv*CurrentProbe1[20]*Preamp1[5],
         ampI2 = CurrentProbe2[20]*Preamp2[5], **def_LPS)
 
@@ -182,6 +182,7 @@ E = campaign.add_experiment(date="20120622")
 
 # Rachael McDermott
 E.add(28239, "304 mm, 3.8 s, 20 mA/div", 
+        head = head,
         ampI1 = ampInv*CurrentProbe1[20]*Preamp1[5],
         ampI2 = CurrentProbe2[20]*Preamp2[5], **def_LPS)
 
@@ -216,6 +217,7 @@ E.rep(28254, 28245, "304 mm, 1.75 s, 20 mA/div, preamps 2x (repeat 28251)")
 E = campaign.add_experiment(date="20120712")
 
 E.add(28379, "Fixed probe @2564.05 mm", 
+        head = head,
         ampI1 = ampInv*CurrentProbe1[20]*Preamp1[2],
         ampI2 = CurrentProbe2[20]*Preamp2[2], **def_XPR_LPS)
 
@@ -230,6 +232,7 @@ E.rep(28383, 28379, "@2589.08 mm, DC offset with small sweep -> worked",
 E = campaign.add_experiment(date="20120713")
 
 E.add(28389, "Fixed probe @2569.05 mm, -180 V with sweep", 
+        head = head,
         ampI1 = ampInv*CurrentProbe1[20]*Preamp1[2],
         ampI2 = CurrentProbe2[20]*Preamp2[2], 
         stars = '', **def_XPR_LPS)
@@ -240,9 +243,9 @@ E.rep(28390, 28389, "-80 V / 150 V sweep at 100 Hz",
 E.rep(28394, 28389, "",
         stars = '')
 
-E.add(28395, "Turn 2nd current probe", 
+E.rep(28395, 28394, "Turn 2nd current probe", 
         ampI1 = CurrentProbe1[20]*Preamp1[2],
-        ampI2 = CurrentProbe2[20]*Preamp2[2], **def_XPR_LPS)
+        ampI2 = CurrentProbe2[20]*Preamp2[2])
 
 E.rep(28403, 28395, "5 plunges, DC biasing with small rect sweeps")
 E.rep(28404, 28395, "repeat")
@@ -255,6 +258,7 @@ E.rep(28407, 28395, "5 plunges to 10 cm")
 E = campaign.add_experiment(date="20120717")
 
 E.add(28419, "Fcn gen. 20 Vpp, +8 VDC, 0.5 kHz (saturates in Isat regime)", 
+        head = head,
         ampI1 = CurrentProbe1[5],
         ampI2 = CurrentProbe2[5], **def_XPR_LPS)
 
@@ -294,6 +298,7 @@ E.rep(28436, 28435, "1 plunge at 4 s",
 E = campaign.add_experiment(date="20120719")
 
 E.add(28442, "0.5 kHz, 3rd pin VF", 
+        head = head,
         ampI1 = CurrentProbe1[20],
         ampI2 = CurrentProbe2[20], **def_XPR_LPS)
 
@@ -313,6 +318,7 @@ E.rep(28452, 28442, "Max penetration -> arcs")
 E = campaign.add_experiment(date="20120720")
 
 E.add(28455, "Acquisition with turned-off Kepco", 
+        head = head,
         ampI1 = CurrentProbe1[20],
         ampI2 = CurrentProbe2[20], **def_XPR_LPS)
 
@@ -321,7 +327,9 @@ E.rep(28467, 28455)
 E.rep(28468, 28455)
 
 E.rep(28469, 28455, "H: 14 Vpp, max offset on Kepco")
-E.rep(28472, 28455, "He: 3 plunges, max penetration")
+E.rep(28472, 28455, "He: 3 plunges, max penetration", 
+        descr = "Data on first plunge, arcs, good comparison between DAQs")
+
 E.rep(28473, 28455, "He again: 1 plunges at 150 mm")
 
 
@@ -352,15 +360,17 @@ E.rep(28508, 28504, "Signal also on bias voltage",
 E = campaign.add_experiment(date="20121011")
 
 E.add(28633, "DAQ test",
+        head = head_2012_autumn,
         stars = '', **def_XPR)
 
 E.add(28634, "Sweep attached to 2x100 V Kepco pair, all tips on sweep",
+        head = headI,
         times = (0.950, 1.850),
         ampI1 = CurrentProbe1[5000],
         ampI2 = CurrentProbe2[5000],
         ampI3 = CurrentProbe3[5000], 
         descr = "Fuse blown on whole Kepco rack. No data", 
-        stars = '', **allI_XPR)
+        stars = '', **def_XPR)
 
 E.rep(28636, 28634, "Switch Kepcos off", 
         descr = "No motion. No signals?", 
@@ -415,11 +425,12 @@ E.rep(28651, 28650, "Position signal on S8",
 E = campaign.add_experiment(date="20121016")
 
 E.add(28657, "No plunges",
+        head = head_2012_autumn,
         ampI1 = CurrentProbe1[20],
         ampI2 = CurrentProbe2[20],
         ampI3 = CurrentProbe3[20], 
         descr = "", 
-        stars = '', **allI_XPR)
+        stars = '', **def_XPR)
 
 E.rep(28668, 28657, "No plunges",
         stars = '')

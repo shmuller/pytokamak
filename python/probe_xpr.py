@@ -123,7 +123,7 @@ class ProbeXPR(Probe):
     def calib(self):        
         self.config.calib(self.S, self.digitizer.name)
 
-        s = slice(-5000, None)
+        s = slice(5000)
         for S in self.get_type('Current'):
             S.norm_to_region(s)
 
@@ -146,7 +146,7 @@ class ProbeXPR(Probe):
             num = II[i].number
             if num > 0:
                 tip = tips[num - 1]
-                j = Isat[tip.number - 1] / tip.area
+                j = Isat[i] / tip.area
                 if tip.pos == 'lower left':
                     meas.jp = j
                 elif tip.pos == 'lower right':

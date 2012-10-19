@@ -830,7 +830,7 @@ class PhysicalResults:
         label = "%d" % self.shn
         tM = self.R.tM(plunge)
         if len(tM) == 1:
-            label += "%d" % 1e3*tM[0]
+            label += ".%d" % (1e3*tM[0])
         if inout == 'out':
             label += " (out)"
 

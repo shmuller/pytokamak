@@ -39,6 +39,7 @@ def get_axes(*args, **kw):
 
 from mdsclient import *
 from mediansmooth import *
+from cookb_signalsmooth import smooth
 
 from collections import MutableMapping, Iterable
 
@@ -309,6 +310,10 @@ class Signal:
         return self
 
     def smooth(self, w=100):
+        self.x[:] = smooth(self.x, window_len=w)
+        return self
+
+    def mediansmooth(self, w=100):
         mediansmooth(self.x, w)
         return self
 
@@ -336,6 +341,10 @@ class Signal:
         x0, x1 = self.x[:-1], self.x[1:]
         cnd = self.cross(lvl, x0, x1) | self.cross(lvl, x1, x0)
         ind0, ind1 = self.group(np.flatnonzero(cnd), threshold)
+
+        x0, x1 = self.x[ind0], self.x[ind1]
+        cnd = self.cross(lvl, x0, x1) | self.cross(lvl, x1, x0)
+        ind0, ind1 = ind0[cnd], ind1[cnd]
 
         is_rising = self.x[ind0] < self.x[ind1]
         return ind0, ind1, is_rising
