@@ -49,9 +49,12 @@ class Shot:
         self.descr = textwrap.dedent(kw.pop('descr', ''))
         self.stars = kw.pop('stars', '*')
 
-        self.attrs = ('expt', 'shn', 'dig', 'head', 'amp_default', 'lines', 'times')
+        self.attrs = ('expt', 'shn', 'dig', 'head', 'amp_default', 
+                'lines', 'times', 'posit')
         for attr in self.attrs:
             setattr(self, attr, kw.pop(attr, None))
+
+        self._ensure_tuple(('times', 'posit'))
 
         self.amp_default = self.amp_default.copy()
         for k in set(self.amp_default.keys()) & set(kw.keys()):
@@ -75,6 +78,12 @@ class Shot:
             return self.lines[line]['amp'].get(key, self.amp_default[key])
         else:
             return self.lines[line][what][key]
+
+    def _ensure_tuple(self, attrs):
+        for attr in attrs:
+            v = getattr(self, attr)
+            if not isinstance(v, (tuple, list)):
+                setattr(self, attr, (v,))
 
     def all_keys(self):
         keys = [self.head.keys['R']]

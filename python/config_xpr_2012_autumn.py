@@ -92,7 +92,7 @@ E.rep(28668, 28657, "No plunges",
         stars = '')
 
 E.rep(28669, 28668, "First plasma plunge of the season", 
-        times = (3.4,), 
+        times = 3.4, 
         descr = """\
             Too late, missed plasma. 
             Tip 3 current follows bias voltage with resistance of ~1 kOhm.""",

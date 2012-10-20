@@ -43,6 +43,21 @@ from cookb_signalsmooth import smooth
 
 from collections import MutableMapping, Iterable
 
+
+class memoized_property(object):
+    """A read-only @property that is only evaluated once."""
+    def __init__(self, fget, doc=None):
+        self.fget = fget
+        self.__doc__ = doc or fget.__doc__
+        self.__name__ = fget.__name__
+
+    def __get__(self, obj, cls):
+        if obj is None:
+            return self
+        obj.__dict__[self.__name__] = result = self.fget(obj)
+        return result
+
+
 class DictView(MutableMapping):
     def __init__(self, source, valid_keys):
         self.source, self.valid_keys = source, valid_keys
@@ -443,7 +458,6 @@ class PositionSignal(Signal):
         self.baseline_slice = kw.get('baseline_slice', slice(None, 1000))
         self.lvl_fact = kw.get('lvl_fact', 30)
         self.dist_threshold = kw.get('dist_threshold', 1000)
-        self._t_ind = None
 
     def get_baseline(self):
         return self.x[self.baseline_slice]
@@ -454,18 +468,12 @@ class PositionSignal(Signal):
         lvl = xm + self.lvl_fact*xs
         return self.crossings(lvl, self.dist_threshold)
 
-    def get_t_ind(self):
-        if self._t_ind is None:
-            self.set_t_ind()
-        return self._t_ind
-
-    def set_t_ind(self):
+    @memoized_property
+    def t_ind(self):
         ind0, ind1, is_rising = self.get_crossings()
         i0, i1 = ind0[is_rising], ind1[~is_rising]
         iM = self.local_argmax(i0, i1)
-        self._t_ind = i0, iM, i1
-
-    t_ind = property(get_t_ind, set_t_ind)
+        return i0, iM, i1
 
     def tM(self, plunge=None):
         i0, iM, i1 = self.t_ind
@@ -509,6 +517,7 @@ class PositionSignal(Signal):
         ax.plot(self.t[i0], self.x[i0], 'r*')
         ax.plot(self.t[i1], self.x[i1], 'g*')
         ax.plot(self.t[iM], self.x[iM], 'm*')
+        return ax
 
 
 class VoltageSignal(Signal):
@@ -518,21 +527,19 @@ class VoltageSignal(Signal):
 
         Signal.__init__(self, x, t, **kw)
 
-        self.iE = None
-
-    def chop_sweeps(self):
+    @memoized_property
+    def iE(self):
         PPF = PeriodPhaseFinder(self.x)
         PPF.chop_sweeps()
-        self.iE = PPF.get_iE()
+        return PPF.get_iE()
 
     def is_Isat(self, Vmax=-100):
         return self.x <= Vmax
 
-    def plot(self, ax=None):
+    def plot_sweeps(self, ax=None):
         ax = get_axes(ax)
         Signal.plot(self, ax)
-        if self.iE is not None:
-            ax.plot(self.t[self.iE], self.x[self.iE], 'r+')
+        ax.plot(self.t[self.iE], self.x[self.iE], 'r+')
         return ax
 
 
@@ -629,16 +636,17 @@ class Digitizer:
         offs = [np.median(self.x[node]) for node in self.nodes]
         return offs
 
-    def plot(self):
-        fig = figure()
+    def plot(self, fig=None):
         nodes = list(self.nodes)
         nodes.remove('t')
         n = len(nodes)
+
+        fig = get_fig(fig, (n, 1), xlab='t (s)')
+        
         t = self.x['t']
-        for i, node in enumerate(nodes):
-            ax = fig.add_subplot(n, 1, 1+i)
-            ax.grid(True)
+        for node, ax in zip(nodes, fig.axes):
             ax.plot(t, self.x[node])
+            ax.set_ylabel(node)
 
 
 

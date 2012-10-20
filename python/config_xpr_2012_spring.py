@@ -15,18 +15,33 @@ headI = Head(tips=(tip1, tip2, tip3I), R_keys='ampR')
 ############################################
 E = campaign.add_experiment(date="20120405")
 
-E.add(27684, "", 
+E.add(27684, "Plunge to 10 cm", 
+        times = 1.2, 
+        posit = 0.1,
         head = head,
         ampI1 = ampInv*CurrentProbe1[10]*Preamp1[5],
-        ampI2 = ampInv*CurrentProbe2[10]*Preamp2[5], **def_LPS)
+        ampI2 = ampInv*CurrentProbe2[10]*Preamp2[5], 
+        descr = "Nice L-mode data", 
+        stars = '**', **def_LPS)
 
-E.rep(27685, 27684)
-E.rep(27686, 27684, "Both current probes on tip 1")
+E.rep(27685, 27684, "Repeat",
+        descr = "Very similar to last shot",
+        stars = '**')
+
+E.rep(27686, 27685, "Technical shot: Both current probes on tip 1",
+        descr = "Plunge in L-mode to 12 cm. Current measurements agree well.",
+        stars = '')
 
 E.rep(27687, 27686, "Changed direction of 2nd current probe",
-        ampI2 = CurrentProbe2[10]*Preamp2[5])
+        ampI2 = CurrentProbe2[10]*Preamp2[5],
+        descr = "Plunge in L-mode to 15 cm. Arcs on way out.",
+        stars = '***')
 
-E.rep(27688, 27687)
+E.rep(27688, 27687, "2.5 cm at 3.9 s",
+        times = 3.9,
+        descr = "Plunge only to 2.5 cm.")
+
+
 E.rep(27689, 27687, "First shot of Leena's experiment")
 E.rep(27690, 27687)
 

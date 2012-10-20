@@ -483,11 +483,13 @@ class IVGroup:
 class IVSeries:
     def __init__(self, V, II, iE, **kw):       
         self.V, self.II, self.iE = V, II, iE
-        N = iE.shape[0]
-        self.siz = (N, len(II))
+        self.ti = V.t[iE]
 
         self.V_range = V.plot_range()
         self.I_range = self._plot_range(II)
+
+        N = iE.shape[0]
+        self.siz = (N, len(II))
 
         self.IV_group = np.empty(N, object)
         for j in xrange(N):
@@ -504,13 +506,21 @@ class IVSeries:
     def _slice(self, j):
         return slice(self.iE[j,0], self.iE[j,1]+1)
 
-    def fit(self):
+    @memoized_property
+    def PP(self):
+        print "Calculating PP..."
         out = np.empty(self.siz + (3,))
         for p, IV_group in zip(out, self.IV_group):
             IV_group.fit(p)
 
         i0 = np.r_[self.iE[:,0], self.iE[-1,1]]
-        self.PP = PiecewisePolynomial(out[None], self.V.t, i0=i0)
+        return PiecewisePolynomial(out[None], self.V.t, i0=i0)
+    
+    def set_PP(self, PP):
+        self.PP = PP
+
+    def fit(self):
+        del self.PP
         return self.PP
 
     def mask(self):
@@ -868,7 +878,7 @@ class LoadResultsError(Exception):
 class Probe:
     def __init__(self, digitizer=None):
         self.digitizer = digitizer
-        self.PP = self.IV_series = self.S = None
+        self.PP = None
 
         self.xlab = "t [s]"
         self.ylab = ("Isat [A]", "Vf [V]", "Te [eV]")
@@ -884,7 +894,17 @@ class Probe:
 
     def calib(self):
         pass
-        
+    
+    @memoized_property
+    def x(self):
+        return self.digitizer.load()
+
+    @memoized_property
+    def S(self):
+        self.mapsig()
+        self.calib()
+        return self.S
+
     def load_raw(self, loadfun='load', plunge=None, calib=True, corr_capa=False):
         self.x = getattr(self.digitizer, loadfun)()
 
@@ -895,17 +915,12 @@ class Probe:
             self.corr_capa()
         if plunge is not None:
             self.trim(plunge)
-        
+    
     def get_type(self, type):
-        if self.S is None:
-            self.load_raw()
         istype = lambda x: x.type == type
         return filter(istype, self.S.itervalues())
 
-    def plot_raw(self, fig=None, **kw):
-        if self.S is None:
-            self.load_raw(**kw)
-
+    def plot_raw(self, fig=None):
         keys = ('Current',), ('Voltage',), ('Position',)
         keys = np.array(keys, ndmin=2)
 
@@ -949,16 +964,18 @@ class Probe:
     def calc_IV_series(self, n=1, **kw):
         II = self.get_type('Current')
         V = II[0].V
-        if V.iE is None:
-            V.chop_sweeps()
         iE = np.c_[V.iE[:-n], V.iE[n:]]
         return IVSeries(V, II, iE, **kw)
 
-    def analyze(self, **kw):
-        if self.S is None:
-            self.load_raw(**kw)
-        self.IV_series = self.calc_IV_series(engine='fmin')
-        self.PP = self.IV_series.fit()
+    @memoized_property
+    def IV_series(self):
+        IV_series = self.calc_IV_series()
+        if self.PP is not None:
+            IV_series.set_PP(self.PP)
+        return IV_series
+
+    def analyze(self):
+        self.PP = self.IV_series.PP
 
     def get_meas(self):
         pass
@@ -1007,16 +1024,10 @@ class Probe:
         self.load_raw(**kw)
         self.load_res()
 
-        self.IV_series = self.calc_IV_series(engine='fmin')
-        self.IV_series.PP = self.PP
-
-    def analyze2(self, n=2, **kw):
-        if self.IV_series is None:
-            self.analyze(**kw)
-
+    def analyze2(self, n=2):
         V = self.S['V']
         II = self.get_type('Current')
-        self.IV_series2 = self.calc_IV_series(n=2, engine='fmin')
+        self.IV_series2 = self.calc_IV_series(n=2)
         self.PP2 = self.IV_series2.fit()
 
         """
@@ -1032,12 +1043,9 @@ class Probe:
     def plot(self, fig=None, PP='PP', x=None, plunge=None, inout=None):
         if self.PP is None:
             self.analyze()
-
-        if PP == 'PP':
-            ylab = self.ylab
-        else:
-            ylab = ("n [au], M",) + self.ylab[1:]
         PP = getattr(self, PP)
+
+        ylab = self.ylab
 
         if x is None:
             xlab = self.xlab
