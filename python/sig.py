@@ -525,6 +525,9 @@ class VoltageSignal(Signal):
         PPF.chop_sweeps()
         self.iE = PPF.get_iE()
 
+    def is_Isat(self, Vmax=-100):
+        return self.x <= Vmax
+
     def plot(self, ax=None):
         ax = get_axes(ax)
         Signal.plot(self, ax)

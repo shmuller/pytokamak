@@ -61,9 +61,9 @@ E.rep(28648, 28647, "Reset local timer for PPG TS06",
 
 E.rep(28649, 28648, "Go to three plunges behind the wall", 
         times = (1.0, 2.0, 3.0),
-        descr = """Short circuit on tip 3 on plunge 0, then
-        UCSD Kepco trips, then current 3 follows voltage.
-        """,
+        descr = """\
+            Short circuit on tip 3 on plunge 0, then
+            UCSD Kepco trips, then current 3 follows voltage.""",
         stars = '')
 
 E.rep(28650, 28649, "Take tip 3 off bias voltage, 3rd plunge slower",
@@ -93,20 +93,24 @@ E.rep(28668, 28657, "No plunges",
 
 E.rep(28669, 28668, "First plasma plunge of the season", 
         times = (3.4,), 
-        descr = """Too late, missed plasma. 
+        descr = """\
+            Too late, missed plasma. 
             Tip 3 current follows bias voltage with resistance of ~1 kOhm.""",
         stars = '')
 
 E.rep(28670, 28669, "Plunge at beginning of second heating phase", 
         times = (2.35,), 
-        descr = """Probe in plasma for first time, many small arcs on way in.
+        descr = """\
+            Probe in plasma for first time, many small arcs on way in.
             Caught L-H transition. Wiggle in VF, at transition?""",
         stars = '***')
 
 # Matthias Willensdorfer
 E.rep(28671, 28670, "3 plunges", 
         times = (1.3, 2.0, 3.15), 
-        descr = "OK, current goes up on 3rd plunge",
+        descr = """\
+            OK, current goes up on 3rd plunge.
+            Current on upper tip roughly equal to sum of Mach tips.""",
         stars = '***')
 
 E.rep(28672, 28671, "repeat", 

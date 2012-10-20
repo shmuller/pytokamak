@@ -1,5 +1,7 @@
 import numpy as np
 
+import textwrap
+
 from collections import OrderedDict
 
 from probe import PositionSignal, VoltageSignal, CurrentSignal
@@ -44,7 +46,7 @@ class Shot:
     def __init__(self, comment="", **kw):
         self.comment = comment
 
-        self.descr = kw.pop('descr', '')
+        self.descr = textwrap.dedent(kw.pop('descr', ''))
         self.stars = kw.pop('stars', '*')
 
         self.attrs = ('expt', 'shn', 'dig', 'head', 'amp_default', 'lines', 'times')
@@ -65,9 +67,6 @@ class Shot:
             kw.setdefault(attr, getattr(self, attr))
 
         return self.__class__(comment, **kw)
-
-    def has_min_stars(self, min_stars='***'):
-        return self.stars >= min_stars
 
     def get(self, line, what, key):
         if key is None:
@@ -91,6 +90,9 @@ class Shot:
 
     def __repr__(self):
         return "%d %-5s: %s" % (self.shn, self.stars, self.comment)
+
+    def print_descr(self):
+        print self.descr
 
     def mapsig(self, x, line):
         self.unique_sigs = {k: x[self.get(line, 'mapping', k)].astype('d') 
