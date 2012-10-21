@@ -473,17 +473,60 @@ E = campaign.add_experiment(date="20120720")
 E.add(28455, "Acquisition with turned-off Kepco", 
         head = head,
         ampI1 = CurrentProbe1[20],
-        ampI2 = CurrentProbe2[20], **def_XPR)
+        ampI2 = CurrentProbe2[20], 
+        descr = "Acquisition works.",
+        stars = '', **def_XPR_LPS)
 
-E.rep(28466, 28455, "0.5 kHz, 16 Vpp, Kepco offset just avoids saturation")
-E.rep(28467, 28455)
-E.rep(28468, 28455)
+# Rachael McDermott
+E.rep(28466, 28455, "0.5 kHz, 16 Vpp, Kepco offset just avoids saturation",
+        times = (1.62, 2.62),
+        posit = (0.12, 0.12),
+        descr = "First in L-mode, second in dying plasma.",
+        stars = '**')
 
-E.rep(28469, 28455, "H: 14 Vpp, max offset on Kepco")
-E.rep(28472, 28455, "He: 3 plunges, max penetration", 
-        descr = "Data on first plunge, arcs, good comparison between DAQs")
+# Thomas Puetterich
+E.rep(28467, 28466, "Same settings",
+        descr = """\
+            L-H transitions at 1.565 and 2.670 s. 
+            Way too much power, so signals are pretty bad.""",
+        stars = '*')
 
-E.rep(28473, 28455, "He again: 1 plunges at 150 mm")
+E.rep(28468, 28467, "Plunges to 1.4 and 2.5 s, and only 5 cm",
+        times = (1.50, 2.59),
+        posit = (0.05, 0.05),
+        descr = "Both plunges in high power L-mode before transition.",
+        stars = '*')
+
+##########
+# HYDROGEN
+##########
+
+# Volker Rohde
+E.rep(28469, 28468, "H: 14 Vpp, max offset on Kepco",
+        descr = "Hydrogen: Both plunges OK and very similar.",
+        stars = '**')
+
+########
+# HELIUM
+########
+
+# Marco Wischmeier
+E.rep(28472, 28469, "He: 3 plunges, max penetration", 
+        times = (1.09, 1.99, 2.89),
+        posit = (0.17, 0.17, 0.17),
+        descr = """\
+            Good helium data on way in on first plunge, arcs on way out.
+            Good flow measurements. Tip 3 goes into emission again.
+            Good comparison between DAQs.""",
+        stars = '****')
+
+E.rep(28473, 28472, "He again: 1 plunges at 150 mm",
+        times = 1.09,
+        posit = 0.15,
+        descr = """\
+            OK data on way in. Not quite enough positive voltage for
+            reliable fits, but data very similar to previous shot.""",
+        stars = '***')
 
 
 ############################################
@@ -500,7 +543,7 @@ E.add(28504, "Calibration, no signals attached",
 E.rep(28507, 28504, "Calibration, 10 Vpp into 50 Ohm (+/-0.1 A)",
         stars = '')
 
-E.rep(28508, 28504, "Signal also on bias voltage",
+E.rep(28508, 28507, "Signal also on bias voltage",
         stars = '')
 
 
