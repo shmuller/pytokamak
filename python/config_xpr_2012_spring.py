@@ -279,6 +279,7 @@ E.rep(28395, 28394, "Turn 2nd current probe",
             Position calibration seems OK.""",
         stars = '')
 
+# Peter Lang, Francois Ryter
 E.rep(28403, 28395, "5 plunges, DC biasing with small rect sweeps",
         times = (0.7, 1.7, 2.7, 3.7, 4.7),
         posit = (0.01, 0.01, 0.01, 0.01, 0.01),
@@ -295,6 +296,7 @@ E.rep(28405, 28404, "4 plunges with decreasing depth",
         descr = "Second plunge caught some sort of transition.",
         stars = '**')
 
+# Rachael McDermott
 E.rep(28406, 28405, "4 plunges to 10 cm",
         times = (0.79, 2.77, 3.78, 4.80),
         posit = (0.10, 0.10, 0.10, 0.10),
@@ -308,64 +310,161 @@ E.rep(28407, 28406, "5 plunges to 10 cm",
         stars = '****')
 
 
+###############
+# REVERSED IpBt
+###############
+
 ############################################
 E = campaign.add_experiment(date="20120717")
 
-E.add(28419, "Fcn gen. 20 Vpp, +8 VDC, 0.5 kHz (saturates in Isat regime)", 
+E.add(28419, "Fcn gen. 20 Vpp, +8 VDC, 0.5 kHz (let saturate), plunge at 2.7 s", 
         head = head,
         ampI1 = CurrentProbe1[5],
-        ampI2 = CurrentProbe2[5], **def_XPR_LPS)
+        ampI2 = CurrentProbe2[5], 
+        descr = """\
+            Died before plunge. Timebase error at 3 s.
+            Fcn gen. saturation leads to overshoots and strong
+            capacitive pickup.""",
+        stars = '', **def_XPR_LPS)
 
-E.rep(28420, 28419, "Fcn gen. 12 Vpp, 4 VDC")
-E.rep(28421, 28420)
-E.rep(28422, 28421)
-E.rep(28423, 28422)
-E.rep(28424, 28423, "Asym. waveform, 7 Vpp, 1 VDC, 200 Hz")
+E.rep(28420, 28419, "DAQ test, Fcn gen. 12 Vpp, 4 VDC", 
+        descr = "Timebase error at 4 s. No plunges on record",
+        stars = '')
 
-E.rep(28425, 28424, "6.9 Vpp, 1 VDC, 100 Hz, 1 mA/div", 
+E.rep(28421, 28420, "DAQ test",
+        descr = "Timebase error at 2.5 s. No plunge on record",
+        stars = '')
+
+E.rep(28422, 28421, "DAQ test",
+        descr = "Timebase error at 0.8 s. No plunge on record",
+        stars = '')
+
+E.rep(28423, 28422, "DAQ test: Plunge at 7 s",
+        descr = "No timebase error.",
+        stars = '')
+
+E.rep(28424, 28423, "Asym. waveform, 7 Vpp, 1 VDC, 200 Hz, plunge at 7 s",
+        descr = "No timebase error.",
+        stars = '')
+
+E.rep(28425, 28424, "6.9 Vpp, 1 VDC, 100 Hz, 1 mA/div, plunges at 1.8 and 4.0 s", 
         ampI1 = CurrentProbe1[1],
-        ampI2 = CurrentProbe2[1])
+        ampI2 = CurrentProbe2[1],
+        descr = "Plasma died before first plunge.",
+        stars = '')
 
-E.rep(28426, 28425, "First data! Kepco breaks in in Isat")
-E.rep(28427, 28426, "Change sweep pars -> Kepco still breaks")
-E.rep(28428, 28427, "Back to other fcn gen. -> saturated at 1 mA/div")
+E.rep(28426, 28425, "First data! Kepco breaks in in Isat",
+        times = (1.0, 4.0),
+        posit = (0.05, 0.05),
+        descr = "Not enough voltage swing for fit to work.",
+        stars = '*')
 
-E.rep(28429, 28428, "Back to 5 mA/div -> no data", 
+E.rep(28427, 28426, "Change sweep pars -> Kepco still breaks",
+        posit = (0.10, 0.05),
+        descr = "Same as on last shot.",
+        stars = '*')
+
+E.rep(28428, 28427, "Back to other fcn gen (DC). -> saturated at 1 mA/div",
+        times = 1.0,
+        posit = 0.10,
+        descr = "DC biasing worked, but saturation on I1.",
+        stars = '*')
+
+E.rep(28429, 28428, "Back to 5 mA/div -> no plunge", 
         ampI1 = CurrentProbe1[5],
-        ampI2 = CurrentProbe2[5])
+        ampI2 = CurrentProbe2[5],
+        stars = '')
 
 E.rep(28434, 28429, "20 mA/div, 0.1 kHz, all 3 tips on bias voltage", 
         head = headI,
         ampI1 = CurrentProbe1[20],
         ampI2 = CurrentProbe2[20], 
         ampI3 = CurrentProbe3[20], 
-        descr = "Plasma died before first plunge")
+        descr = "Plasma died before first plunge",
+        stars = '')
 
 E.rep(28435, 28434, "0.5 kHz, plunge at 1 s",
-        descr = "Strong arc")
+        times = (1.08, 1.89, 4.09),
+        posit = (0.17, 0.17, 0.17),
+        descr = "Strong arc at first plunge. Plasma died before 2nd plunge",
+        stars = '**')
 
 E.rep(28436, 28435, "1 plunge at 4 s",
-        descr = "Plasma died before plunge")
+        times = 4.09,
+        posit = 0.17,
+        descr = "Plasma died before plunge",
+        stars = '')
 
 
 ############################################
 E = campaign.add_experiment(date="20120719")
 
+# Leena's experiment in reversed IpBt
 E.add(28442, "0.5 kHz, 3rd pin VF", 
+        times = (1.86, 4.06),
+        posit = (0.10, 0.10),
         head = head,
         ampI1 = CurrentProbe1[20],
-        ampI2 = CurrentProbe2[20], **def_XPR_LPS)
+        ampI2 = CurrentProbe2[20], 
+        descr = """\
+            1st plunge nice L-mode, 2nd caught disruption on way out.
+            Data on way in very similar.""",
+        stars = '***', **def_XPR)
 
-E.rep(28444, 28442, "Max plunge at 1.75 s and 3.95 s")
-E.rep(28445, 28442, "100 V Kepco")
-E.rep(28446, 28442, "200 V Kepco, 12 Vpp, 5 VDC, 0.5 kHz")
+E.rep(28444, 28442, "Max plunge at 1.75 s and 3.95 s",
+        times = (1.89, 4.09),
+        posit = (0.17, 0.17),
+        descr = """\
+            OK L-mode data on both plunges, but Kepco breaks in
+            a bit due to highish density.""",
+        stars = '***')
+
+E.rep(28445, 28444, "100 V Kepco",
+        times = 1.89,
+        posit = 0.17,
+        descr = """\
+            Nice data on way in, then I1 starts emitting and even saturates.
+            100 V Kepco isn't enough. Vf on tip 3 agrees well with VF from 
+            sweeps, then goes into emission, approaching Vp.""",
+        stars = '****')
+
+E.rep(28446, 28445, "200 V Kepco, 12 Vpp, 5 VDC, 0.5 kHz",
+        descr = """\
+            200 V Kepco worked much better due to low density, but not enough
+            positive voltage for good fits everywhere. I1 goes up on second 
+            plunge. Vf on tip3 has same features as on previous shot.""",
+        stars = '*****')
 
 # Francois Ryter
-E.rep(28448, 28442, "1 kHz, 16 Vpp (digital fcn gen.), VDC from Kepco")
-E.rep(28449, 28442, "0.5 kHz, reduced VDC slightly")
-E.rep(28450, 28442, "2nd plunge to 1.6 s")
-E.rep(28451, 28442, "Max penetration -> shot didn't run")
-E.rep(28452, 28442, "Max penetration -> arcs")
+E.rep(28448, 28446, "1 kHz, 16 Vpp (digital fcn gen.), VDC from Kepco",
+        times = (1.06, 1.86),
+        posit = (0.10, 0.10),
+        descr = "Unspectacular L-mode data on both plunges.",
+        stars = '**')
+
+E.rep(28449, 28448, "0.5 kHz, reduced VDC slightly",
+        times = (1.07, 1.88),
+        posit = (0.12, 0.12),
+        descr = "Unspectacular L-mode data again",
+        stars = '**')
+
+E.rep(28450, 28449, "2nd plunge to 1.6 s",
+        times = (1.07, 1.67),
+        descr = "Also very similar to last two shots",
+        stars = '**')
+
+E.rep(28451, 28450, "Max penetration -> shot didn't run",
+        times = (1.09, 1.69),
+        posit = (0.17, 0.17),
+        descr = "Plasma died before first plunge.",
+        stars = '')
+
+E.rep(28452, 28451, "Max penetration -> arcs",
+        descr = """\
+            Nice signals on way in, arcs on way out. Plunges close together
+            triggered bug in VPE delay generator programming, causing a VPE
+            after 2nd plunge. VF on tip 3 again goes into emission.""",
+        stars = '***')
 
 
 ############################################
@@ -374,7 +473,7 @@ E = campaign.add_experiment(date="20120720")
 E.add(28455, "Acquisition with turned-off Kepco", 
         head = head,
         ampI1 = CurrentProbe1[20],
-        ampI2 = CurrentProbe2[20], **def_XPR_LPS)
+        ampI2 = CurrentProbe2[20], **def_XPR)
 
 E.rep(28466, 28455, "0.5 kHz, 16 Vpp, Kepco offset just avoids saturation")
 E.rep(28467, 28455)
