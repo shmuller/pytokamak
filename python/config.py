@@ -51,6 +51,10 @@ class Shot:
 
         self.attrs = ('expt', 'shn', 'dig', 'head', 'amp_default', 
                 'lines', 'times', 'posit')
+        
+        kw.setdefault('times', ())
+        kw.setdefault('posit', ())
+
         for attr in self.attrs:
             setattr(self, attr, kw.pop(attr, None))
 
@@ -160,6 +164,10 @@ class ShotContainer:
     @property
     def times(self):
         return self.collect_as_dict('times')
+
+    @property
+    def posit(self):
+        return self.collect_as_dict('posit')
 
     @property
     def descr(self):

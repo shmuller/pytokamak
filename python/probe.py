@@ -127,11 +127,11 @@ class PiecewisePolynomial:
             Y[outl | outr] = self.fill
         return Y
 
-    @property
+    @memoized_property
     def T(self):
         return PiecewisePolynomial(self.c.swapaxes(2,3), self.x, **self.kw)
 
-    @property
+    @memoized_property
     def savefields(self):
         return DictView(self.__dict__, ('c', 'x', 'i0'))
 
@@ -677,9 +677,8 @@ class IVSeries2:
 
 
 class PhysicalResults:
-    def __init__(self, shn, usetex=usetex):
-        self.shn, self.usetex = shn, usetex
-        self.R = self.PP = None
+    def __init__(self, shn, R, i0, meas, usetex=usetex):
+        self.shn, self.R, self.i0, self.meas, self.usetex = shn, R, i0, meas, usetex
 
         self.keys = ('n_cs', 'Mach', 'nv', 'j', 'Vf', 'Te', 'Vp', 'cs', 'n', 'v', 'pe',
                 'R', 't', 'Dt')
@@ -730,12 +729,13 @@ class PhysicalResults:
         self.lim['Te'] = (0, 100)
         self.lim['R'] = (0, None)
 
-    def calc(self, R, i0, meas):
+    @memoized_property
+    def PP(self):
         qe = 1.6022e-19
         mi = 2*1.67e-27
 
-        Gp = meas.jp/qe
-        Gm = meas.jm/qe
+        Gp = self.meas.jp/qe
+        Gm = self.meas.jm/qe
 
         dtype = zip(self.keys, [np.double]*len(self.keys))
         res = np.empty(Gp.size, dtype).view(np.recarray)
@@ -744,8 +744,8 @@ class PhysicalResults:
         res.n_cs = n_cs = np.e*np.sqrt(Gp*Gm)
         res.nv = nv = n_cs*Mach
         res.j  = qe*nv
-        res.Vf = Vf = meas.Vf
-        res.Te = Te = meas.Te
+        res.Vf = Vf = self.meas.Vf
+        res.Te = Te = self.meas.Te
         res.Vp = Vf + 2.8*Te
 
         Ti = Te
@@ -754,8 +754,7 @@ class PhysicalResults:
         res.v  = v = Mach*cs
         res.pe = n*qe*Te
 
-        self.R = R
-        self.PP = PiecewisePolynomial(res[None], R.t, i0=i0)
+        return PiecewisePolynomial(res[None], self.R.t, i0=self.i0)
 
     def eval(self, plunge=None, inout=None):
         w = self.R.plunges(plunge, inout)
@@ -854,7 +853,7 @@ class PhysicalResults:
             label += " (out)"
 
         if keys is None:
-            keys = ('n', 'Mach'), ('Vf', 'v'), ('Te', 'j'), ('Vp', 'pe')
+            keys = ('Dt', 'R'), ('n', 'Mach'), ('Vf', 'v'), ('Te', 'j'), ('Vp', 'pe')
         keys = np.array(keys, ndmin=2)
 
         fig = get_tfig(fig, keys.shape, xlab=xlab, figsize=(10,10))
@@ -980,10 +979,11 @@ class Probe:
     def get_meas(self):
         pass
 
-    def results(self, **kw):
+    @memoized_property
+    def res(self):
         if self.PP is None:
             try:
-                self.load(**kw)
+                self.load()
             except LoadResultsError:
                 self.analyze()
                 self.save_res()
@@ -999,11 +999,9 @@ class Probe:
         self.get_meas(Isat, Vf, Te, meas)
        
         shn = self.digitizer.shn
-        self.res = PhysicalResults(shn)
-        self.res.calc(self['R'], self.PP.i0, meas)
-        return self.res
+        return PhysicalResults(shn, self['R'], self.PP.i0, meas)
         
-    @property
+    @memoized_property
     def h5name_res(self):
         return self.digitizer.IO_file.h5name[:-3] + "_res.h5"
 
@@ -1074,7 +1072,4 @@ class Probe:
 
     def plot_R(self, **kw):
         return self.plot(x='R', **kw)
-
-    
-
 
