@@ -14,7 +14,7 @@ import matplotlib.gridspec as gridspec
 import tight_figure
 reload(tight_figure)
 
-usetex = False
+usetex = True
 
 math_sel = tight_figure.MathSelector(usetex=usetex)
 

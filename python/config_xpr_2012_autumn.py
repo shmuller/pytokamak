@@ -134,3 +134,40 @@ E.rep(28675, 28674, "Three plunges",
         stars = '')
 
 
+############################################
+E = campaign.add_experiment(date="20121025")
+
+E.add(28747, "After repair of short circuit, 3 plunges to 2 cm",
+        times = (0.9, 1.7, 3.1),
+        posit = (0.02, 0.02, 0.02),
+        head = headI,
+        ampI1 = CurrentProbe1[20],
+        ampI2 = CurrentProbe2[20],
+        ampI3 = CurrentProbe3[20], 
+        descr = "Cleaning arcs on 1st plunge, others OK", 
+        stars = '', **def_XPR)
+
+E.rep(28753, 28747, "No plunges, only test if Kepcos still work",
+        stars = '')
+
+# Tilman Lunt
+E.rep(28754, 28753, "Gas puff imaging: Two plunges. Thermography on X-point",
+        times = (1.6, 2.9),
+        posit = (0.16, 0.16),
+        descr = "Tips still dirty. OK data on both plunges.",
+        stars = '**')
+
+E.rep(28755, 28754, "All the way",
+        times = (1.6, 2.7),
+        posit = (0.34, 0.34),
+        descr = "Shot didn't run",
+        stars = '')
+
+E.rep(28756, 28755, "Try again",
+        descr = "Very nice L-mode data",
+        stars = '****')
+
+
+
+
+

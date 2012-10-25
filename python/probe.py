@@ -837,7 +837,8 @@ class PhysicalResults:
 
         ax.plot(x, self.fact[key]*yc, label=label)
 
-    def plot(self, fig=None, keys=None, xkey='t', plunge=None, inout=None, mirror=False):
+    def plot(self, fig=None, keys=None, xkey='t', plunge=None, inout=None, 
+            mirror=False, figsize=(10, 10)):
         y = self.eval(plunge, inout)
                 
         x = self.fact[xkey]*self.clip(y[xkey], self.lim[xkey])
@@ -856,7 +857,7 @@ class PhysicalResults:
             keys = ('Dt', 'R'), ('n', 'Mach'), ('Vf', 'v'), ('Te', 'j'), ('Vp', 'pe')
         keys = np.array(keys, ndmin=2)
 
-        fig = get_tfig(fig, keys.shape, xlab=xlab, figsize=(10,10))
+        fig = get_tfig(fig, keys.shape, xlab=xlab, figsize=figsize)
 
         ax = fig.axes
         for i in xrange(keys.size):
@@ -919,8 +920,8 @@ class Probe:
         istype = lambda x: x.type == type
         return filter(istype, self.S.itervalues())
 
-    def plot_raw(self, fig=None):
-        keys = ('Current',), ('Voltage',), ('Position',)
+    def plot_raw(self, fig=None,
+            keys = (('Current',), ('Voltage',), ('Position',))):
         keys = np.array(keys, ndmin=2)
 
         fig = get_fig(fig, keys.shape, xlab=self.xlab)
