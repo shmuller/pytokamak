@@ -680,8 +680,8 @@ class PhysicalResults:
     def __init__(self, shn, R, i0, meas, usetex=usetex):
         self.shn, self.R, self.i0, self.meas, self.usetex = shn, R, i0, meas, usetex
 
-        self.keys = ('n_cs', 'Mach', 'nv', 'j', 'Vf', 'Te', 'Vp', 'cs', 'n', 'v', 'pe',
-                'R', 't', 'Dt')
+        self.keys = ('n_cs', 'Mach', 'nv', 'mnv', 'j', 'Vf', 'Te', 'Vp', 
+                'cs', 'n', 'v', 'pe', 'R', 't', 'Dt')
 
         sup = lambda x: r'$^{\mathdefault{%s}}$' % x
         sub = lambda x: r'$_{\mathdefault{%s}}$' % x
@@ -690,6 +690,7 @@ class PhysicalResults:
                 n_cs = r'm%s s%s' % (sup('-2'), sup('-1')),
                 Mach = None,
                 nv   = r'm%s s%s' % (sup('-2'), sup('-1')),
+                mnv  = r'g m%s s%s' % (sup('-2'), sup('-1')),
                 j    = r'kA m%s' % sup('-2'),
                 Vf   = r'V',
                 Te   = r'eV',
@@ -706,6 +707,7 @@ class PhysicalResults:
                 n_cs = math_sel.wrap(r'n c_s'),
                 Mach = r'Mach',
                 nv   = math_sel.wrap(r'nv'),
+                mnv  = math_sel.wrap(r'mnv'),
                 j    = math_sel.wrap(r'j'),
                 Vf   = math_sel.wrap(r'V_f'),
                 Te   = math_sel.wrap(r'T_e'),
@@ -714,14 +716,14 @@ class PhysicalResults:
                 n    = math_sel.wrap(r'n'),
                 v    = math_sel.wrap(r'v'),
                 pe   = math_sel.wrap(r'p_e'),
-                R    = math_sel.wrap(r'R'), 
+                R    = math_sel.wrap(r'R'),
                 t    = math_sel.wrap(r't'),
                 Dt   = math_sel.wrap(r'\Delta t'))
 
         self.fact = dict.fromkeys(self.keys, 1)
         self.fact['j'] = self.fact['cs'] = self.fact['v'] = 1e-3
         self.fact['R'] = 100
-        self.fact['Dt'] = 1e3
+        self.fact['mnv'] = self.fact['Dt'] = 1e3
 
         self.lim = dict.fromkeys(self.keys, (None, None))
         self.lim['n'] = (0, 3e19)
@@ -742,11 +744,12 @@ class PhysicalResults:
 
         res.Mach = Mach = 0.5*np.log(Gm/Gp)
         res.n_cs = n_cs = np.e*np.sqrt(Gp*Gm)
-        res.nv = nv = n_cs*Mach
-        res.j  = qe*nv
-        res.Vf = Vf = self.meas.Vf
-        res.Te = Te = self.meas.Te
-        res.Vp = Vf + 2.8*Te
+        res.nv  = nv = n_cs*Mach
+        res.mnv = mi*nv
+        res.j   = qe*nv
+        res.Vf  = Vf = self.meas.Vf
+        res.Te  = Te = self.meas.Te
+        res.Vp  = Vf + 2.8*Te
 
         Ti = Te
         res.cs = cs = np.sqrt(qe/mi*(Te+Ti))
@@ -761,8 +764,9 @@ class PhysicalResults:
         
         i, y = self.PP.eval(w=w)
         
+        R0 = 1.645
         y.t  = self.R.t[i]
-        y.R  = self.R.x[i]
+        y.R  = R0 - self.R.x[i]
         y.Dt = y.t
 
         tM = self.R.tM(plunge)
@@ -854,7 +858,7 @@ class PhysicalResults:
             label += " (out)"
 
         if keys is None:
-            keys = ('Dt', 'R'), ('n', 'Mach'), ('Vf', 'v'), ('Te', 'j'), ('Vp', 'pe')
+            keys = ('Dt', 'R'), ('n', 'Mach'), ('Vf', 'v'), ('Te', 'mnv'), ('Vp', 'pe')
         keys = np.array(keys, ndmin=2)
 
         fig = get_tfig(fig, keys.shape, xlab=xlab, figsize=figsize)
