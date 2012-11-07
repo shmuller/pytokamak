@@ -168,6 +168,70 @@ E.rep(28756, 28755, "Try again",
         stars = '****')
 
 
+############################################
+E = campaign.add_experiment(date="20121031")
+
+# Leena
+E.add(28794, "Ref. 27692, 1 plunge at 2.8 s, all the way through",
+        times = 2.8,
+        posit = 0.34,
+        head = headI,
+        ampI1 = CurrentProbe1[20],
+        ampI2 = CurrentProbe2[20],
+        ampI3 = CurrentProbe3[20], 
+        descr = "Nice data, but arcs and current limit", 
+        stars = '****', **def_XPR)
+
+E.rep(28795, 28794, "N2 FF",
+        times = 4.0,
+        descr = "Slightly better than last shot",
+        stars = '****')
+
+E.rep(28796, 28795, "More N2 FF (puff without limit, disruption)",
+        descr = "Disruption before plunge",
+        stars = '')
+
+E.rep(28797, 28796, "Less N2 FF",
+        descr = "Very low signal, but everything OK",
+        stars = '*****')
+
+E.rep(28798, 28797, "N2 FF 3.4e21/s",
+        descr = "Same as last shot, except for density",
+        stars = '*****')
+
+E.rep(28799, 28798, "N2 FF 2e21/s (1 valve)",
+        descr = """\
+            Almost identical to 28795. 
+            On way out, cable 3 ripped inside vacuum,
+            leading to loss of lower-left tip on channel S6""",
+        stars = '****')
+
+############################################
+E = campaign.add_experiment(date="20121106")
+
+# Leena
+E.add(28818, "1 plunge at 2.8 s, all the way through, NO flow measurement",
+        times = 2.8,
+        posit = 0.34,
+        head = headI,
+        ampI1 = CurrentProbe1[20],
+        ampI2 = CurrentProbe2[20],
+        ampI3 = CurrentProbe3[20], 
+        descr = """\
+            No flow measurement due to ripped cable on 28799.
+            Otherwise nice data, but arcs and current limit""",
+        stars = '***', **def_XPR)
+
+E.rep(28819, 28818, "Go only to X-point",
+        descr = "OK data with upper tip up to X-point.",
+        stars = '**')
+
+E.rep(28820, 28819, "No plunge",
+        descr = "",
+        stars = '')
+
+
+
 
 
 
