@@ -36,10 +36,10 @@ class IOMdsAUG(IOMds):
 
         IOMds.__init__(self, *args, **kw)
         
-	if os.uname()[1] == 'plaspc04':
-	    self.mdsserver, self.mdsport = "localhost", "8001"
-	else:
-	    self.mdsserver, self.mdsport = "mdsplus.aug.ipp.mpg.de", "8000"
+        if os.uname()[1] == 'plaspc04':
+            self.mdsserver, self.mdsport = "localhost", "8001"
+        else:
+            self.mdsserver, self.mdsport = "mdsplus.aug.ipp.mpg.de", "8000"
 
         self.mdsfmt = '_s = augsignal(%d,"%s","%%s","AUGD",*,*,*,*,*,"raw")' % (self.shn, diag)
 

@@ -14,7 +14,7 @@ import matplotlib.gridspec as gridspec
 import tight_figure
 reload(tight_figure)
 
-usetex = False 
+usetex = False
 
 math_sel = tight_figure.MathSelector(usetex=usetex)
 
@@ -27,6 +27,8 @@ ion = plt.ion
 def get_tfig(*args, **kw):
     kw.setdefault('figure', tfigure)
     return tight_figure.get_fig(*args, **kw)
+
+get_fig = tight_figure.get_fig
 
 def get_fig(*args, **kw):
     kw.setdefault('figure', figure)
@@ -180,7 +182,7 @@ class TdiError(Exception):
 class IOMds(IO):
     def __init__(self, shn=0, sock=None):
         self.shn, self._sock = shn, sock
-	self.mdsserver = "localhost"
+        self.mdsserver = "localhost"
         self.mdsport = "8000"
         self.mdstree = None
         self.mdsfmt = "%s"
