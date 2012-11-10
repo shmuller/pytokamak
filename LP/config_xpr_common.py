@@ -1,9 +1,8 @@
 import numpy as np
 
-from config import CylindricalTip, Head, Campaign
+from config import CylindricalTip, Head
 
 from probe import Amp
-
 
 ampUnity = Amp(fact=1.)
 ampInv   = Amp(fact=-1.)
@@ -106,13 +105,5 @@ def_LPS = dict(dig='LPS', amp_default=amp_default, lines=dict(LPS=lines_LPS))
 def_XPR = dict(dig='XPR', amp_default=amp_default, lines=dict(XPR=lines_XPR))
 
 def_XPR_LPS = dict(dig='XPR', amp_default=amp_default, lines=lines)
-
-campaign = Campaign()
-
-
-execfile("config_xpr_2012_spring.py")
-
-execfile("config_xpr_2012_autumn.py")
-
 
 

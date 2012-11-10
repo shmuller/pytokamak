@@ -145,6 +145,16 @@ class ShotContainer:
     def __iter__(self):
         return self.x.itervalues()
 
+    def __add__(self, other):
+        s = self.__class__()
+        s.x = self.x.copy()
+        s.x.update(other.x)
+        return s
+
+    def __iadd__(self, other):
+        self.x.update(other.x)
+        return self
+
     @staticmethod
     def _item(v, attr, cnd):
         x = np.array([getattr(v, attr)])

@@ -2,6 +2,11 @@
 # 2012 AUTUMN CAMPAIGN
 ######################
 
+from config_xpr_common import *
+from config import Campaign
+
+campaign = Campaign()
+
 tip1 = TipXPR(number=1, pos='lower left', V_keys='ampV', I_keys='ampI3')
 tip2 = TipXPR(number=2, pos='lower right', V_keys='ampV', I_keys='ampI1')
 tip3 = TipXPR(number=3, pos='upper', V_keys='ampV', I_keys='ampI2')
