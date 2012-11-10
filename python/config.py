@@ -142,6 +142,9 @@ class ShotContainer:
     def __getitem__(self, indx):
         return self.x[indx]
 
+    def __iter__(self):
+        return self.x.itervalues()
+
     @staticmethod
     def _item(v, attr, cnd):
         x = np.array([getattr(v, attr)])
@@ -186,7 +189,7 @@ class Experiment(ShotContainer):
     def __init__(self, date=None, campaign=None, ShotClass=Shot):
         self.date, self.campaign, self.ShotClass = date, campaign, ShotClass
         ShotContainer.__init__(self)
-    
+
     def add(self, shn, *args, **kw):
         self.x[shn] = self.ShotClass(*args, expt=self, shn=shn, **kw)
         
