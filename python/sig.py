@@ -11,8 +11,7 @@ import scipy.optimize as opt
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 
-import tight_figure
-reload(tight_figure)
+from sm_pyplot import tight_figure
 
 usetex = False
 
