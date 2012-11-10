@@ -1,4 +1,5 @@
 import copy
+import os
 import numpy as np
 
 import scipy.interpolate as interp
@@ -34,7 +35,12 @@ class IOMdsAUG(IOMds):
         diag = kw.pop('diag', 'XPR')
 
         IOMds.__init__(self, *args, **kw)
-        self.mdsport = "8001"
+        
+	if os.uname()[1] == 'plaspc04':
+	    self.mdsserver, self.mdsport = "localhost", "8001"
+	else:
+	    self.mdsserver, self.mdsport = "mdsplus.aug.ipp.mpg.de", "8000"
+
         self.mdsfmt = '_s = augsignal(%d,"%s","%%s","AUGD",*,*,*,*,*,"raw")' % (self.shn, diag)
 
         self.datadeco = '%s; word_unsigned(data(_s))'
