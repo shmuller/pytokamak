@@ -1004,7 +1004,7 @@ class Probe:
         self.get_meas(Isat, Vf, Te, meas)
        
         shn = self.digitizer.shn
-        return PhysicalResults(shn, self['R'], self.PP.i0, meas)
+        return PhysicalResults(shn, self['Rs'], self.PP.i0, meas)
         
     @memoized_property
     def h5name_res(self):
@@ -1053,10 +1053,10 @@ class Probe:
         if x is None:
             xlab = self.xlab
         elif x == 'R':
-            x = 100*self['R'].x
+            x = 100*self['Rs'].x
             xlab = "R [cm]"
 
-        w = self['R'].plunges(plunge, inout)
+        w = self['Rs'].plunges(plunge, inout)
 
         if fig is None:
             IV_series_viewer = IVSeriesViewer(self.IV_series)

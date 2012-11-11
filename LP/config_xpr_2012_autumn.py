@@ -7,6 +7,13 @@ from config import Campaign
 
 campaign = Campaign()
 
+# full range again, and cart is 5 mm further in than in spring
+#fixpoints = (1.436, -0.101), (7.06, 0.341)
+
+# the above is off by -2 cm, so take visible wall crossing from 28799 (full stroke)
+fixpoints = (2.46, 0), (7.06, 0.34)
+amp_XPR['ampR'] = Amp(fixpoints=fixpoints)
+
 tip1 = TipXPR(number=1, pos='lower left', V_keys='ampV', I_keys='ampI3')
 tip2 = TipXPR(number=2, pos='lower right', V_keys='ampV', I_keys='ampI1')
 tip3 = TipXPR(number=3, pos='upper', V_keys='ampV', I_keys='ampI2')

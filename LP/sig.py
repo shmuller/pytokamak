@@ -327,7 +327,7 @@ class Signal:
         return self
 
     def smooth(self, w=100):
-        self.x[:] = smooth(self.x, window_len=w)
+        self.x[:] = smooth(self.x, window_len=2*w+1)
         return self
 
     def mediansmooth(self, w=100):
@@ -350,7 +350,7 @@ class Signal:
             ind0 = ind1 = ind
         else:
             di = np.diff(np.r_[0,ind])
-            j = np.flatnonzero(di > threshold*np.median(di))
+            j = np.flatnonzero(di > threshold)
             ind0, ind1 = ind[j], ind[np.r_[j[1:]-1, -1]] + 1
         return ind0, ind1
 
@@ -458,7 +458,7 @@ class PositionSignal(Signal):
         Signal.__init__(self, x, t, **kw)
     
         self.baseline_slice = kw.get('baseline_slice', slice(None, 1000))
-        self.lvl_fact = kw.get('lvl_fact', 30)
+        self.lvl_fact = kw.get('lvl_fact', 0.1)
         self.dist_threshold = kw.get('dist_threshold', 1000)
 
     def get_baseline(self):
@@ -466,8 +466,8 @@ class PositionSignal(Signal):
 
     def get_crossings(self):
         x = self.get_baseline()
-        xm, xs = x.mean(), x.std()
-        lvl = xm + self.lvl_fact*xs
+        x0, xM = x.mean(), self.x.max()
+        lvl = x0 + self.lvl_fact*(xM - x0)
         return self.crossings(lvl, self.dist_threshold)
 
     @memoized_property
@@ -476,6 +476,10 @@ class PositionSignal(Signal):
         i0, i1 = ind0[is_rising], ind1[~is_rising]
         iM = self.local_argmax(i0, i1)
         return i0, iM, i1
+
+    @memoized_property
+    def Nplunges(self):
+        return len(self.t_ind[1])
 
     def tM(self, plunge=None):
         i0, iM, i1 = self.t_ind

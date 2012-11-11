@@ -7,14 +7,6 @@ from probe import Amp
 ampUnity = Amp(fact=1.)
 ampInv   = Amp(fact=-1.)
 
-fixpoints = (-1.8767, -0.106), (3.8011, 0.336)
-ampR_LPS  = Amp(fixpoints=fixpoints)
-ampV_LPS  = Amp(fact=100., offs=-183.76)
-
-fixpoints = (3.6812, -0.072), (7.0382, 0.170)
-ampR_XPR = Amp(fixpoints=fixpoints)
-ampV_XPR = Amp(fact=100., offs=-69.2227)
-
 ampVF = Amp(fact=100.)
 
 
@@ -73,12 +65,12 @@ amp_default = dict(
             ampVF = ampVF)
 
 amp_XPR = dict(
-            ampR = ampR_XPR, 
-            ampV = ampV_XPR)
+            ampR = None, 
+            ampV = Amp(fact=100., offs=-69.2227))
 
 amp_LPS = dict(
-            ampR = ampR_LPS, 
-            ampV = ampV_LPS)
+            ampR = None, 
+            ampV = Amp(fact=100., offs=-183.76))
 
 mapping_XPR = dict(
             ampR  = 'S5', 

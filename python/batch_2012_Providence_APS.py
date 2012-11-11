@@ -3,7 +3,7 @@ from matplotlib import rc
 
 rc('lines', linewidth=1.5)
 
-import probe_xpr
+from LP import probe_xpr
 
 R0 = 164.5
 

@@ -139,7 +139,8 @@ class ProbeXPR(Probe):
         for V in self.get_type('Voltage'):
             V.norm_to_region(s)
 
-        S['V'] = S['I1'].V
+        S['Rs'] = S['R'].copy().mediansmooth(100)
+        S['V']  = S['I1'].V
         S['It'] = S['I1'] + S['I2']
 
     def get_meas(self, Isat, Vf, Te, meas):

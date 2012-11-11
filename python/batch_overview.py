@@ -1,5 +1,4 @@
-import config_xpr
-import probe_xpr
+from LP import config_xpr, probe_xpr
 
 for expt in config_xpr.campaign:
     print ""
