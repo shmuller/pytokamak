@@ -165,7 +165,8 @@ class PiecewisePolynomial:
         x = x[i]
                 
         ax = get_axes(ax)
-        return ax.plot(x, y)
+        ax.plot(x, y)
+        return ax
 
 
 class Fitter:
@@ -544,6 +545,11 @@ class IVSeries:
             out = ma.masked_array(out, I_mask)
         return out
 
+    @memoized_property
+    def II_diff(self):
+        II_fit = self.eval(I_mask=False)
+        return [I - I_fit for I, I_fit in zip(self.II, II_fit)]
+
     def plot(self, fig=None, **kw):
         n = len(self.II)
         IIfit = self.eval(**kw)
@@ -738,6 +744,9 @@ class PhysicalResults:
 
         Gp = self.meas.jp/qe
         Gm = self.meas.jm/qe
+
+        Gp[Gp <= 0] = np.nan
+        Gm[Gm <= 0] = np.nan
 
         dtype = zip(self.keys, [np.double]*len(self.keys))
         res = np.empty(Gp.size, dtype).view(np.recarray)
@@ -980,6 +989,19 @@ class Probe:
 
     def analyze(self):
         self.PP = self.IV_series.PP
+
+    def PP_fluct(self, Vmax=-150):
+        self.analyze()
+        II_diff = self.IV_series.II_diff
+        i0 = self.PP.i0
+
+        out = np.empty((len(i0)-1, len(II_diff), 3))
+        for i, I_diff in enumerate(II_diff):
+            out[:,i,0] = I_diff.Isat(Vmax).apply_fun(np.std, i0[:-1], i0[1:])
+            
+        out[:,:,1] = self.PP.c[0,:,:,0]
+        out[:,:,2] = out[:,:,0]/out[:,:,1]
+        return PiecewisePolynomial(out[None], self.PP.x, i0=i0)
 
     def get_meas(self):
         pass

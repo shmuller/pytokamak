@@ -3,6 +3,7 @@ import numpy.ma as ma
 import os
 import h5py
 import copy
+import operator
 
 from pdb import set_trace
 
@@ -288,11 +289,38 @@ class Signal:
     def __getitem__(self, index):
         return self.__class__(self.x[index], self.t[index], **self.kw)
 
-    def __add__(self, other):
-        return Signal(other+self.x, self.t, **self.kw)
+    def _op_wrapper(op, calcfun):
+        def calcx(self, other):
+            if isinstance(other, Signal):
+                if other.units != self.units:
+                    raise Exception("Unit mismatch")
+                other = other.x
+            
+            return op(self.x, other)
+
+        def calci(self, other):
+            x = calcx(self, other)
+            return self
+
+        def calc(self, other):
+            x = calcx(self, other)
+            return self.__class__(x, self.t, **self.kw)
+        
+        return locals()[calcfun]
+
+    __add__  = _op_wrapper(operator.add , 'calc')
+    __sub__  = _op_wrapper(operator.sub , 'calc')
+    __iadd__ = _op_wrapper(operator.iadd, 'calci')
+    __isub__ = _op_wrapper(operator.isub, 'calci')
+    __lt__   = _op_wrapper(operator.lt  , 'calcx')
+    __le__   = _op_wrapper(operator.le  , 'calcx')
+    __eq__   = _op_wrapper(operator.eq  , 'calcx')
+    __ne__   = _op_wrapper(operator.ne  , 'calcx')
+    __ge__   = _op_wrapper(operator.ge  , 'calcx')
+    __gt__   = _op_wrapper(operator.gt  , 'calcx')
 
     def __mul__(self, other):
-        return Signal(other*self.x, self.t, **self.kw)
+        return self.__class__(other*self.x, self.t, **self.kw)
 
     def __imul__(self, other):
         try:
@@ -539,9 +567,6 @@ class VoltageSignal(Signal):
         PPF.chop_sweeps()
         return PPF.get_iE()
 
-    def is_Isat(self, Vmax=-100):
-        return self.x <= Vmax
-
     def plot_sweeps(self, ax=None):
         ax = get_axes(ax)
         Signal.plot(self, ax)
@@ -565,11 +590,15 @@ class CurrentSignal(Signal):
         return s
 
     def __add__(self, other):
-        return CurrentSignal(self.x + other.x, self.t, V=self.V,
-                             name=self.name + '+' + other.name)
+        return self.__class__(self.x + other.x, self.t, V=self.V,
+                              name=self.name + '+' + other.name)
+
+    def Isat(self, Vmax=-150):
+        x = ma.masked_array(self.x, self.V.x > Vmax)
+        return self.__class__(x, self.t, V=self.V, name=self.name)
 
     def capa_pickup(self):
-        self.dV_dt = self.V.deriv()
+        self.dV_dt = self.V.copy().smooth(10).deriv()
 
         cnd = self.t - self.t[0] < 0.05
         dV_dtc = self.dV_dt.x[cnd]
@@ -579,16 +608,16 @@ class CurrentSignal(Signal):
         dI.norm_to_region(cnd)
         self.C = (dI.x[cnd]*dV_dtc).sum()/N
 
+    @property
     def I_capa(self):
         if self.C is None:
             self.capa_pickup()
-        return self.C*self.dV_dt.x
+        I_capa = self.C*self.dV_dt.x
+        return self.__class__(I_capa, self.t, V=self.V, name=self.name + '_capa')
 
+    @property
     def I_corr(self):
-        I_capa = self.I_capa()
-        s = self.copy()
-        s.x[:] -= I_capa
-        return s
+        return self - self.I_capa
 
 
 class Digitizer:
