@@ -1,10 +1,14 @@
+import config_xpr_200x
+reload(config_xpr_200x)
+
 import config_xpr_2012_spring
 reload(config_xpr_2012_spring)
 
 import config_xpr_2012_autumn 
 reload(config_xpr_2012_autumn)
 
-campaign = config_xpr_2012_spring.campaign \
+campaign = config_xpr_200x.campaign \
+         + config_xpr_2012_spring.campaign \
          + config_xpr_2012_autumn.campaign
 
 

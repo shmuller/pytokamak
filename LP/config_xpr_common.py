@@ -59,9 +59,9 @@ amp_default_unity = dict(
 amp_default = dict(
             ampR  = None, 
             ampV  = None, 
-            ampI1 = CurrentProbe1[20],
-            ampI2 = CurrentProbe2[20],
-            ampI3 = CurrentProbe3[20],
+            ampI1 = ampUnity,
+            ampI2 = ampUnity,
+            ampI3 = ampUnity,
             ampVF = ampVF)
 
 amp_XPR = dict(

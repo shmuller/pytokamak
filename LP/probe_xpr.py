@@ -33,6 +33,7 @@ class IOMdsAUG(IOMds):
         #   _t1, _t2, _oshot, _oedition, _qual)
 
         diag = kw.pop('diag', 'XPR')
+        raw  = kw.pop('raw', True)
 
         IOMds.__init__(self, *args, **kw)
         
@@ -41,9 +42,15 @@ class IOMdsAUG(IOMds):
         else:
             self.mdsserver, self.mdsport = "mdsplus.aug.ipp.mpg.de", "8000"
 
-        self.mdsfmt = '_s = augsignal(%d,"%s","%%s","AUGD",*,*,*,*,*,"raw")' % (self.shn, diag)
+        if raw:
+            mdsfmt = '_s = augsignal(%d,"%s","%%s","AUGD",*,*,*,*,*,"raw")'
+            self.datadeco = '%s; word_unsigned(data(_s))'
+        else:
+            mdsfmt = '_s = augsignal(%d,"%s","%%s","AUGD")'
+            self.datadeco = '%s; data(_s)'
 
-        self.datadeco = '%s; word_unsigned(data(_s))'
+        self.mdsfmt =  mdsfmt % (self.shn, diag)
+
         self.timedeco = '%s; dim_of(_s)'
         self.sizedeco = '%s; size(_s)'
 
@@ -54,18 +61,12 @@ class IOFileAUG(IOFile):
 
 
 class DigitizerXPR(Digitizer):
-    def __init__(self, shn, sock=None):
+    def __init__(self, shn, sock=None, raw=False):
         Digitizer.__init__(self, shn, sock, name='XPR')
 
-        self.IO_mds = IOMdsAUG(shn, sock, diag='XPR')
+        self.IO_mds = IOMdsAUG(shn, sock, diag='XPR', raw=raw)
         self.IO_file = IOFileAUG(shn, diag='XPR')
         self.nodes = ('S1', 'S2', 'S3', 'S4', 'S5', 'S6', 'S7', 'S8', 't')
-
-        #f = 20./16283
-        #offs = (8759, 8830, 8756, 8770, 8759, 8747, 8746, 8752, 0)
-        #self.amp = {node: Amp(fact=f, offs=-f*o) for node, o in zip(self.nodes, offs)}
-        self.amp = {node: amp14Bit.copy() for node in self.nodes}
-        self.amp['t'] = ampUnity.copy()
 
     def update_window(self):
         """Detect failing data readout and cut window
@@ -85,24 +86,40 @@ class DigitizerXPR(Digitizer):
         Digitizer.calib(self)
 
 
-class DigitizerLPS(Digitizer):
+class DigitizerXPRRaw(DigitizerXPR):
     def __init__(self, shn, sock=None):
+        DigitizerXPR.__init__(self, shn, sock, raw=True)
+
+        self.amp = {node: amp14Bit.copy() for node in self.nodes[:-1]}
+
+
+class DigitizerLPS(Digitizer):
+    def __init__(self, shn, sock=None, raw=False):
         Digitizer.__init__(self, shn, sock, name='LPS')
 
-        self.IO_mds = IOMdsAUG(shn, sock, diag='LPS')
+        self.IO_mds = IOMdsAUG(shn, sock, diag='LPS', raw=raw)
         self.IO_file = IOFileAUG(shn, diag='LPS')
         self.nodes = ('CUR1', 'VOL1', 'CUR2', 'VOL2', 'VOL3', 'VOL4', 't')
 
         self.window = slice(2048, None)
 
-        #f = 10./4095
-        #offs = (0,0,0,0,0,0,0)
-        #self.amp = {node: Amp(fact=f, offs=-f*o) for node, o in zip(self.nodes, offs)}
-        self.amp = {node: amp12Bit.copy() for node in self.nodes}
-        self.amp['t'] = ampUnity.copy()
+
+class DigitizerLPSRaw(DigitizerLPS):
+    def __init__(self, shn, sock=None):
+        DigitizerLPS.__init__(self, shn, sock, raw=True)
+
+        self.amp = {node: amp12Bit.copy() for node in self.nodes[:-1]}
 
         for node in ('CUR1', 'VOL3'):
             self.amp[node] *= ampInv
+
+
+class DigitizerLPSOld(DigitizerLPS):
+    def __init__(self, shn, sock=None):
+        DigitizerLPS.__init__(self, shn, sock, raw=False)
+
+        for node in ('CUR1', 'CUR2', 'VOL3'):
+            self.amp[node] = ampInv.copy()
 
 
 class ProbeXPR(Probe):
@@ -115,9 +132,11 @@ class ProbeXPR(Probe):
             dig = self.config.dig
         
         if dig == 'LPS':
-            DigitizerClass = DigitizerLPS
+            DigitizerClass = DigitizerLPSRaw
+        elif dig == 'XPR':
+            DigitizerClass = DigitizerXPRRaw
         else:
-            DigitizerClass = DigitizerXPR
+            DigitizerClass = DigitizerLPSOld
 
         digitizer = DigitizerClass(shn, sock)
         Probe.__init__(self, digitizer)

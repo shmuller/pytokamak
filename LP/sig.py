@@ -181,7 +181,7 @@ class TdiError(Exception):
 
 class IOMds(IO):
     def __init__(self, shn=0, sock=None):
-        self.shn, self._sock = shn, sock
+        self.shn = shn
         self.mdsserver = "localhost"
         self.mdsport = "8000"
         self.mdstree = None
@@ -190,17 +190,12 @@ class IOMds(IO):
         self.timedeco = "dim_of(%s)"
         self.sizedeco = "size(%s)"
 
-    def get_sock(self):
-        if self._sock is None:
-            self.set_sock()
-        return self._sock
-
-    def set_sock(self):
-        self._sock = mdsconnect(self.mdsserver + ':' + str(self.mdsport))
+    @memoized_property
+    def sock(self):
+        s = mdsconnect(self.mdsserver + ':' + str(self.mdsport))
         if self.mdstree is not None:
-            mdsopen(self._sock, self.mdstree, self.shn)
-
-    sock = property(get_sock, set_sock)
+            mdsopen(s, self.mdstree, self.shn)
+        return s
 
     def _mdsstr(self, node):
         mdsfmt = self.mdsfmt
@@ -627,7 +622,11 @@ class Digitizer:
         self.IO_mds = self.IO_file = None
         self.nodes = ()
         self.window = slice(None)
-        self.amp = None
+        self.amp = dict()
+
+    @memoized_property
+    def x(self):
+        return self.load()
 
     def load_raw_mds(self):
         self.x = self.IO_mds.load(self.nodes)
@@ -650,7 +649,10 @@ class Digitizer:
 
     def calib(self):
         for node in self.nodes:
-            self.amp[node].apply(self.x[node])
+            try:
+                self.amp[node].apply(self.x[node])
+            except KeyError:
+                pass
 
     def _load_calib(self, loadfun):
         loadfun()
