@@ -17,6 +17,7 @@ import config_xpr as config
 
 IOMds = probe.IOMds
 IOFile = probe.IOFile
+Signal = probe.Signal
 Digitizer = probe.Digitizer
 Amp = probe.Amp
 Probe = probe.Probe
@@ -33,7 +34,7 @@ class IOMdsAUG(IOMds):
         #   _t1, _t2, _oshot, _oedition, _qual)
 
         diag = kw.pop('diag', 'XPR')
-        raw  = kw.pop('raw', True)
+        raw  = kw.pop('raw', False)
 
         IOMds.__init__(self, *args, **kw)
         
@@ -114,12 +115,46 @@ class DigitizerLPSRaw(DigitizerLPS):
             self.amp[node] *= ampInv
 
 
+class DigitizerXPOS(Digitizer):
+    def __init__(self, shn, sock=None):
+        Digitizer.__init__(self, shn, sock, name='XPOS')
+
+        self.IO_mds = IOMdsAUG(shn, sock, diag='LPS')
+        self.IO_file = IOFileAUG(shn, diag='LPS_XPOS')
+        self.nodes = ('XPOS', 't')
+
+        self.amp = dict(XPOS=Amp(offs=-2745))
+
+
 class DigitizerLPSOld(DigitizerLPS):
     def __init__(self, shn, sock=None):
-        DigitizerLPS.__init__(self, shn, sock, raw=False)
+        DigitizerLPS.__init__(self, shn, sock)
+
+        self.dig_xpos = DigitizerXPOS(self.shn, self.sock)
+
+        self.more_nodes = ('XPOS',)
 
         for node in ('CUR1', 'CUR2', 'VOL3'):
             self.amp[node] = ampInv.copy()
+
+    def _load_raw_factory(name):
+        def load_raw(self):
+            getattr(DigitizerLPS, name)(self)
+            getattr(self.dig_xpos, name)()
+
+            x, t = self.dig_xpos.x['XPOS'], self.dig_xpos.x['t']
+            R = Signal(x, t)
+
+            self.x['XPOS'] = R(self.x['t'])
+            return self.x
+        return load_raw
+
+    load_raw_mds  = _load_raw_factory('load_raw_mds')
+    load_raw_file = _load_raw_factory('load_raw_file')
+
+    def save(self):
+        DigitizerLPS.save(self)
+        self.dig_xpos.save()
 
 
 class ProbeXPR(Probe):
@@ -135,7 +170,7 @@ class ProbeXPR(Probe):
             DigitizerClass = DigitizerLPSRaw
         elif dig == 'XPR':
             DigitizerClass = DigitizerXPRRaw
-        else:
+        elif dig == 'LPS_old':
             DigitizerClass = DigitizerLPSOld
 
         digitizer = DigitizerClass(shn, sock)

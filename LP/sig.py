@@ -87,6 +87,86 @@ class DictView(MutableMapping):
         self.valid_keys.remove(key)
 
 
+class PiecewisePolynomial:
+    def __init__(self, c, x, **kw):
+        self.c, self.x, self.kw = c, x, kw
+
+        if isinstance(self.c, (tuple, list)):
+            self.c = np.concatenate([c[None] for c in self.c], axis=0)
+
+        self.fill = kw.get('fill', None)
+        self.i0 = kw.get('i0', np.arange(x.size))
+        self.i1 = kw.get('i1', None)
+
+        self.N = self.i0.size
+        self.shape = self.c.shape[2:]
+
+    def __getitem__(self, index):
+        if not isinstance(index, tuple): index = (index,)
+        index = (slice(None), slice(None)) + index
+        return PiecewisePolynomial(self.c[index], self.x, **self.kw)
+
+    def __call__(self, X, side='right'):
+        xi = self.x[self.i0]
+        ind = np.searchsorted(xi, X, side) - 1
+        outl, outr = ind < 0, ind > self.N-2
+        ind[outl], ind[outr] = 0, self.N-2
+        
+        dX = X - xi[ind]
+
+        #Y = reduce(lambda Y, c: Y*dX + c[ind], self.c)
+        
+        c = self.c
+        Y = c[0,ind].copy()
+        for a in c[1:]:
+            Y = Y*dX + a[ind]
+
+        if self.fill is not None:
+            Y[outl | outr] = self.fill
+        return Y
+
+    @memoized_property
+    def T(self):
+        return PiecewisePolynomial(self.c.swapaxes(2,3), self.x, **self.kw)
+
+    @memoized_property
+    def savefields(self):
+        return DictView(self.__dict__, ('c', 'x', 'i0'))
+
+    def _mask(self, w):
+        ind0, ind1 = np.searchsorted(self.i0, w)
+        return np.concatenate(map(np.arange, ind0, ind1))
+
+    @staticmethod
+    def cat(a, axis=0):
+        return a[0].__array_wrap__(ma.concatenate(a, axis))
+
+    def eval(self, w=None):
+        try:
+            i0 = self.i0[self._mask(w)]
+        except:
+            i0 = self.i0   
+
+        il, ir = i0[:-1], i0[1:]
+        yl, yr = self(self.x[il], 'right'), self(self.x[ir], 'left')
+
+        shape = (il.size + ir.size,)
+        i = self.cat((il[:,None], ir[:,None]), 1).reshape(shape)
+        y = self.cat((yl[:,None], yr[:,None]), 1).reshape(shape + self.shape)
+        return i, y
+
+    def plot(self, ax=None, x=None, w=None):
+        if x is None:
+            x = self.x
+
+        i, y = self.eval(w=w)
+        x = x[i]
+                
+        ax = get_axes(ax)
+        ax.plot(x, y)
+        return ax
+
+
 class IOH5:
     def __init__(self, h5name="test.h5"):
         self.h5name = h5name
@@ -120,24 +200,25 @@ class IO:
     def put_node(self, node, val):
         pass
     
-    def load(self, nodes):
+    def load(self, nodes, more_nodes=()):
         if isinstance(nodes, str):
             nodes = (nodes,)
         self.nodes = nodes
-        M = len(nodes)
+        M = len(nodes) + len(more_nodes)
         N = self.get_size(nodes[0])
 
         dtype = [np.float32]*M
         dtype[nodes.index('t')] = np.float32
-        x = np.empty(N, zip(nodes, dtype))
+        x = np.empty(N, zip(nodes + more_nodes, dtype))
 
         for node in nodes:
             x[node][:] = self.get_node(node)
 
         return x
 
-    def save(self, x):
-        for node in x.dtype.names:
+    def save(self, x, nodes=None):
+        nodes = nodes or x.dtype.names
+        for node in nodes:
             self.put_node(node, x[node])
 
 
@@ -162,17 +243,15 @@ class IOFile(IO):
     def put_node(self, node, val):
         self._f.create_dataset(node, data=val, compression="gzip")
 
-    def load(self, nodes):
+    def load(self, *args):
         self._f = h5py.File(self.h5name,"r")
-    
-        x = IO.load(self, nodes)
-
+        x = IO.load(self, *args)
         self._f.close()
         return x
 
-    def save(self, x):
+    def save(self, *args):
         self._f = h5py.File(self.h5name,"w")
-        IO.save(self, x)
+        IO.save(self, *args)
         self._f.close()
 
 
@@ -281,10 +360,13 @@ class Signal:
         self.units = kw.get('units', "")
         self.tunits = kw.get('tunits', "s")
 
+    def __call__(self, t):
+        return self.PP(t)
+
     def __getitem__(self, index):
         return self.__class__(self.x[index], self.t[index], **self.kw)
 
-    def _op_wrapper(op, calcfun):
+    def _op_factory(op, calcfun):
         def calcx(self, other):
             if isinstance(other, Signal):
                 if other.units != self.units:
@@ -303,16 +385,16 @@ class Signal:
         
         return locals()[calcfun]
 
-    __add__  = _op_wrapper(operator.add , 'calc')
-    __sub__  = _op_wrapper(operator.sub , 'calc')
-    __iadd__ = _op_wrapper(operator.iadd, 'calci')
-    __isub__ = _op_wrapper(operator.isub, 'calci')
-    __lt__   = _op_wrapper(operator.lt  , 'calcx')
-    __le__   = _op_wrapper(operator.le  , 'calcx')
-    __eq__   = _op_wrapper(operator.eq  , 'calcx')
-    __ne__   = _op_wrapper(operator.ne  , 'calcx')
-    __ge__   = _op_wrapper(operator.ge  , 'calcx')
-    __gt__   = _op_wrapper(operator.gt  , 'calcx')
+    __add__  = _op_factory(operator.add , 'calc')
+    __sub__  = _op_factory(operator.sub , 'calc')
+    __iadd__ = _op_factory(operator.iadd, 'calci')
+    __isub__ = _op_factory(operator.isub, 'calci')
+    __lt__   = _op_factory(operator.lt  , 'calcx')
+    __le__   = _op_factory(operator.le  , 'calcx')
+    __eq__   = _op_factory(operator.eq  , 'calcx')
+    __ne__   = _op_factory(operator.ne  , 'calcx')
+    __ge__   = _op_factory(operator.ge  , 'calcx')
+    __gt__   = _op_factory(operator.gt  , 'calcx')
 
     def __mul__(self, other):
         return self.__class__(other*self.x, self.t, **self.kw)
@@ -348,6 +430,14 @@ class Signal:
     def norm_to_region(self, cnd):
         self.x[:] -= self.x[cnd].mean()
         return self
+
+    @memoized_property
+    def PP(self):
+        x, t = self.x.astype(np.double), self.t.astype(np.double)
+        x0, x1 = x[:-1], x[1:]
+        t0, t1 = t[:-1], t[1:]
+        dx_dt = (x1 - x0)/(t1 - t0)
+        return PiecewisePolynomial((dx_dt, x0), t)
 
     def smooth(self, w=100):
         self.x[:] = smooth(self.x, window_len=2*w+1)
@@ -620,7 +710,7 @@ class Digitizer:
         self.shn, self.sock, self.name = shn, sock, name
 
         self.IO_mds = self.IO_file = None
-        self.nodes = ()
+        self.nodes = self.more_nodes = ()
         self.window = slice(None)
         self.amp = dict()
 
@@ -629,23 +719,23 @@ class Digitizer:
         return self.load()
 
     def load_raw_mds(self):
-        self.x = self.IO_mds.load(self.nodes)
+        self.x = self.IO_mds.load(self.nodes, self.more_nodes)
         return self.x
         
     def load_raw_file(self):
-        self.x = self.IO_file.load(self.nodes)
+        self.x = self.IO_file.load(self.nodes, self.more_nodes)
         return self.x
 
     def load_raw(self):
         try:
-            self.x = self.IO_file.load(self.nodes)
-        except:
-            self.x = self.IO_mds.load(self.nodes)
+            self.load_raw_file()
+        except IOError:
+            self.load_raw_mds()
             self.save()
         return self.x
     
     def save(self):
-        self.IO_file.save(self.x)
+        self.IO_file.save(self.x, self.nodes)
 
     def calib(self):
         for node in self.nodes:
