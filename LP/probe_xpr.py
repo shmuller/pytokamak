@@ -123,8 +123,6 @@ class DigitizerXPOS(Digitizer):
         self.IO_file = IOFileAUG(shn, diag='LPS_XPOS')
         self.nodes = ('XPOS', 't')
 
-        self.amp = dict(XPOS=Amp(offs=-2745))
-
 
 class DigitizerLPSOld(DigitizerLPS):
     def __init__(self, shn, sock=None):
@@ -142,8 +140,9 @@ class DigitizerLPSOld(DigitizerLPS):
             getattr(DigitizerLPS, name)(self)
             getattr(self.dig_xpos, name)()
 
-            x, t = self.dig_xpos.x['XPOS'], self.dig_xpos.x['t']
-            R = Signal(x, t)
+            x = self.dig_xpos.x
+            R = Signal(x['XPOS'].astype('d'), x['t'].astype('d'))
+            R.despike()
 
             self.x['XPOS'] = R(self.x['t'])
             return self.x

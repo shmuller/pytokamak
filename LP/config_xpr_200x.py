@@ -13,7 +13,7 @@ tip3 = TipXPR(number=3, pos='upper', V_keys='ampVF', I_keys='ampI1')
 
 headI = Head(tips=(tip1, tip2, tip3), R_keys='ampR')
 
-amp_LPS_old = dict(ampR = Amp(fact=0.004, offs=0.))
+amp_LPS_old = dict(ampR = Amp(fact=0.004, offs=-2745*0.004))
 
 mapping_LPS_old = dict(
             ampR  = 'XPOS', 

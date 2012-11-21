@@ -433,7 +433,7 @@ class Signal:
 
     @memoized_property
     def PP(self):
-        x, t = self.x.astype(np.double), self.t.astype(np.double)
+        x, t = self.x.astype('d'), self.t.astype('d')
         x0, x1 = x[:-1], x[1:]
         t0, t1 = t[:-1], t[1:]
         dx_dt = (x1 - x0)/(t1 - t0)
@@ -446,6 +446,9 @@ class Signal:
     def mediansmooth(self, w=100):
         mediansmooth(self.x, w)
         return self
+
+    def despike(self, w=2):
+        return self.mediansmooth(w)
 
     def deriv(self, name=""):
         delta = lambda x: np.r_[x[1]-x[0], x[2:]-x[:-2], x[-1]-x[-2]]

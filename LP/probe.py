@@ -833,7 +833,7 @@ class Probe:
     
     @memoized_property
     def x(self):
-        return self.digitizer.load()
+        return self.digitizer.x
 
     @memoized_property
     def S(self):
