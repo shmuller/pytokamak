@@ -848,7 +848,7 @@ if (cos1 < 0.017) {
 /*            do {
 */    
                 /* Schleifenzaehler */
-                last_phi = phi_me_pr;
+                last_phi = phi_me_pr;      /*2006-11-17 hwm:  only for iteration */
                 i++;
     
                 /* Berechne Schichdicken und deren Differenz zur Umgebung */
@@ -937,9 +937,15 @@ if ((cos1 < 0.017) && (ind == 0)){
         
     /* ---------------------------------------------------------------------
        wenn a_sonde_perp > 0.0 dann wurde bereits eine effektive Sondenfl"ache
-       senkrecht zur Feldrichtung eingegeben. Es wird davon ausgegangen, da"s
+       senkrecht zur Feldrichtung eingegeben. 
+
+       original Kommentar:
+       Es wird davon ausgegangen, da"s
        es sich hierbei um eine freistehende Sonde handelt, die von beiden
        Seiten Ionen und Elektronen aufsammeln kann. 
+       2012-01-17: hwm
+                   Diese Annahme geht in der C routine nicht mehr ein.
+                   Die Flaeche ist Hoehe*Breite*sin(Winkel).
 
        Falls a_sonde_perp > 0.0 und a_sonde_proj > 0.0 dann wird eine 
        Kombination beider Effekte erwartet, d.h. der Gesamtstrom zur Sonde
