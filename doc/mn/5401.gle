@@ -1,0 +1,60 @@
+
+size 18 25
+set font pldr hei .4
+amove 0 13
+begin graph
+	size 18 7 
+	nobox
+        data 15401.dat d1=c2,c3
+	ytitle "  electron temperature / eV" hei .4
+	xaxis   min 2100  max 2250 hei .4 
+	yaxis   min 0 max 50 hei .4 nticks 5
+	d1 marker fcircle  color blue
+end graph
+amove 0 18.5
+begin graph
+	size 18 7 
+	nobox
+        data 15401.dat d1=c2,c4
+        title "shot 5401  t0=2.5s" hei .4
+ 	ytitle " electron density /m^3 " hei .4
+	xaxis   min 2100  max 2250 hei .4 
+	yaxis   min 1e16 max 1e20 log hei .4 nticks 4
+	d1 marker fcircle  color blue 
+end graph
+amove 0 7.5   
+begin graph
+	size 18 7 
+	nobox
+        data 15401.dat d1=c2,c6
+	ytitle "  Floating Potenial /V" hei .4
+	xaxis   min 2100  max 2250 hei .4
+	yaxis   min -50 max 10 hei .4 nticks 4
+	d1 marker fcircle color blue 
+end graph
+amove xg(2100) yg(0)
+aline xg(2250) yg(0)
+amove 0 2
+begin graph
+	size 18 7 
+	nobox
+        data 15401.dat d1=c2,c3
+        data 15401.dat d2=c2,c4
+        xtitle " R / mm" 
+	ytitle "N_{e} * T_{e}	" 
+	xaxis   min 2100  max 2250 hei .4
+	yaxis   min 1e18  max 2e21 hei .4 nticks 4 log
+        let d3 = d2*d1
+        d3 marker fcircle color blue
+
+end graph
+set lstyle 2
+amove xg(2177) 2.
+aline xg(2177) 24.5
+amove xg(2116) 2.
+aline xg(2116) 24.5
+set lstyle 1 hei .4
+amove xg(2120) 4.5
+text Separatrix (FPG)
+amove xg(2170) 6.5
+text Limiter (ICRH)

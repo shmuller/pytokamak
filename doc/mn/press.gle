@@ -1,0 +1,50 @@
+size 18 25
+amove 0 16
+begin graph
+	size 18 9 
+	nobox
+        data 15401.dat d1=c2,c9
+	title "5401"
+	ytitle "  pressure /Pa"
+	xaxis   min 2100  max 2250 hei .4 
+	yaxis   min 0 max 100 hei .4 nticks 5
+	d1 marker circle  color blue 
+end graph
+set lstyle 2
+amove xg(2177) yg(0)
+aline xg(2177) yg(100)
+amove xg(2120) yg(0)
+aline xg(2120) yg(100)
+set lstyle 1 hei .4
+amove 0 8
+begin graph
+	size 18 9 
+	nobox
+        data 15402.dat d1=c2,c9
+	title "5402"
+	ytitle "  pressure /Pa"
+	xaxis   min 2100  max 2250 hei .4 
+	yaxis   min 0 max 100 hei .4 nticks 5
+	d1 marker circle  color blue 
+end graph
+set lstyle 2
+amove xg(2177) yg(0)
+aline xg(2177) yg(100)
+amove xg(2131) yg(0)
+aline xg(2131) yg(100)
+set lstyle 1 hei .4
+amove 0 0 
+begin graph
+	size 18 9 
+	nobox
+        data 15403.dat d1=c2,c9
+	title "5403"
+	ytitle "  pressure /Pa"
+	xaxis   min 2100  max 2250 hei .4 
+	yaxis   min 0 max 100 hei .4 nticks 5
+	d1 marker circle  color blue 
+end graph
+set lstyle 2
+amove xg(2177) yg(0)
+aline xg(2177) yg(100)
+set lstyle 1 hei .4

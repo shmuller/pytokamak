@@ -243,6 +243,123 @@ E.rep(28820, 28819, "No plunge",
         stars = '')
 
 
+############################################
+E = campaign.add_experiment(date="20121122")
+
+# DC biasing testing - NO POSITION SIGNAL
+E.add(28871, "DC biasing test: -200 V",
+        times = 3.2,
+        posit = 0.05,
+        head = headI,
+        ampI1 = CurrentProbe1[20],
+        ampI2 = CurrentProbe2[20],
+        ampI3 = CurrentProbe3[20], 
+        descr = """\
+            Got only -100 V. DC voltage dropped as expected""",
+        stars = '', **def_XPR)
+
+E.rep(28872, 28871, "Only line 1 on bias voltage; line 1 not on V-divider",
+        descr = "Line 1 signal departs from Isat after short time")
+
+E.rep(28873, 28872, "Sweep, line 1 back on V-divider",
+        descr = "Sweep signal visible")
+
+E.rep(28874, 28873, "All tips on sweeps",
+        descr = "Works.")
+
+E.rep(28875, 28874, "Isolated tip at -200 V from 2nd Kepco",
+        descr = "No plunge")
+
+E.rep(28876, 28875, "Repeat, this time with plunge",
+        descr = "Isat on isolated tip worked!")
+
+E.rep(28877, 28876, "Now Mach tips on VDC, sweep on upper tip",
+        descr = "Isat on isolated tip worked!")
+
+E.rep(28878, 28877, "Kepco of isolated tip also on VDC - HST test, no plasma")
+
+E.rep(28879, 28878, "5x9V batteries on isolated tip! - HST test, no plasma")
+
+E.rep(28880, 28879, "5x9V batteries on isolated tip! Plasma", 
+        descr = "Strong variations on battery voltage measurement!")
+
+E.rep(28883, 28880, "5x9V batteries on isolated tip, no connection to probe", 
+        descr = """\
+            Voltage divided by 200, as expected, not 100. Some current measured
+            on floating tip.""")
+
+E.rep(28884, 28883, "Repeat, with isolated tip short circuited", 
+        descr = "Same current as on last shot")
+
+E.rep(28885, 28880, "Repeat of 28880, with 10 s acquisition", 
+        descr = "Strong variations of V measurements again")
+
+E.rep(28886, 28885, "DAQ out of rack, only V measurement via divider", 
+        descr = """\
+            No voltage, batteries were disconnected. Some of them destroyed.""")
+
+E.rep(28887, 28886, "No voltage connected", 
+        descr = "")
+
+E.rep(28888, 28887, "-44 V measured on battery before shot", 
+        descr = "")
+
+E.rep(28889, 28888, "-200 V via Kepco", 
+        descr = "")
+
+E.rep(28890, 28889, "Current measurement on S2", 
+        descr = "")
+
+E.rep(28891, 28890, "-200 V via Kepco on S1, batteries on S6", 
+        descr = "")
+
+
+############################################
+E = campaign.add_experiment(date="20121123")
+
+# DC biasing testing - NO POSITION SIGNAL
+E.add(28894, "Continue from yesterday: Only V signal again.",
+        head = headI,
+        ampI1 = CurrentProbe1[20],
+        ampI2 = CurrentProbe2[20],
+        ampI3 = CurrentProbe3[20], 
+        descr = """\
+            Voltage very noisy but stable.""",
+        stars = '', **def_XPR)
+
+E.rep(28895, 28894, "Put current measurement back on", 
+        descr = "Voltage looks the same as on last shot.")
+
+E.rep(28896, 28895, "With batteries on S6, like 28891", 
+        descr = "Voltage lower than on last shot.")
+
+E.rep(28897, 28896, "Repeat", 
+        descr = "")
+
+E.rep(28898, 28897, "Ground from Kepco to digitizer", 
+        descr = "")
+
+E.rep(28899, 28898, "Connect Kepco's minus to ground (green), with current on S2", 
+        descr = "")
+
+E.rep(28900, 28899, "Digitizer now on rack transformer, plunge at 1 s",
+        times = 1.,
+        posit = 0.05,
+        descr = "Not armed in time. Measured -275 V, low noise")
+
+E.rep(28901, 28898, "Digitizer back on 2nd transformer, no plunge",
+        descr = "Measured -200 V, a bit more noise.")
+
+E.rep(28902, 28901, "Total rack on 2nd transformer.",
+        descr = "Measured -200 V")
+
+E.rep(28903, 28902, "Total rack on rack transformer.",
+        descr = "Measured -200 V")
+
+E.rep(28904, 28903, "Everything on 2nd transformer, Kepco -200 V w/ ground connection",
+        times = 1.,
+        posit = 0.05,
+        descr = "Worked! Quite a long arc, but Voltage didn't collapse.")
 
 
 
