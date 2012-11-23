@@ -1,3 +1,6 @@
+/* this version is required for IDL > IDL 5.4 */
+
+
 #include <math.h>
 #include <stdio.h>
 #include <stddef.h>
@@ -16,12 +19,12 @@
 #define IDL_FLOAT	float
 #define IDL_DOUBLE	double
 
-
-
+/* 2006-01-31: hwm */
+/* the structure of the IDL strings changed with IDL 5.5 */
 typedef struct 
 	{
-	IDL_USHORT	slen;
-	IDL_USHORT	stype;
+	IDL_INT 	slen;
+	IDL_SHORT	stype;
 	char		*s;
 	} idl_string_struct ;
 
