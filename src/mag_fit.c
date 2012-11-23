@@ -4,6 +4,10 @@
 #include <stdlib.h>
 #include <string.h>
 #include <signal.h>
+#include <ctype.h>
+#include <time.h>
+
+/* #include </afs/ipp/u/mnw/C/marquardt/mag_fit.h> */
 
 #define INT32		int
 #define IDL_SHORT	short int
@@ -13,12 +17,6 @@
 #define IDL_DOUBLE	double
 
 
-/* struct idl_string_struct
-	{
-	IDL_USHORT	slen;
-	IDL_USHORT	stype;
-	char		*s;
-	}; */
 
 typedef struct 
 	{
@@ -32,42 +30,27 @@ typedef struct
 
 
 /* physikal. Konstanten */
-static double	    c_e    = 1.6022e-19;
-static double	    c_eps0 = 8.8542e-12;
-static double	    c_me   = 9.1095e-31;
-static double	    c_mp   = 1.6726e-27;
-static double	    c_quot = 41.3124;  		/* = 0.15^2 * c_mp / c_me */
-static double	    c_pi   = 3.1415927;
-static double	    c_hpi  = 0.5 * 3.1415927;
-static double	    c_dpi  = 3.1415927 + 3.1415927;
+#define	    c_e    1.6022e-19
+#define	    c_eps0 8.8542e-12
+#define	    c_me   9.1095e-31
+#define	    c_mp   1.6726e-27
+#define	    c_pi   3.1415927
 
 
 
 /* schnelle Berechnung von ^0.75 durch look-up-table */
-static int	n_look_up = 400;
-static int 	n_look_max = 398;           /* = n_look_up -2 */
-static double	delta_look_up = -0.1;
-static double	inv_delta_look_up = -10.;   /* 1/ delta_look_up */
-static double	look_up[1000];		    /* eigentlich: look_up[n_look_up] */
-static double	look_up_alpha[1000], look_up_beta[1000];
-static double	*ptr_alpha, *ptr_beta;
+#define		n_look_up 		8000
+#define		delta_look_up 		(-0.04)
+#define		inv_delta_look_up 	(1.0/delta_look_up)
+static double	*look_up_alpha=NULL, *look_up_beta=NULL;
 
-/* look-up-table fuer exp-Funktion */
-static int	exp_lt_n = 20002, exp_lt_ninits=0;
-static double   exp_lt_min = -10.0, exp_lt_max = 10.0;
-static double	exp_lt_delta = 0.001, exp_lt_inv = 1000.0;
-static double	exp_lt_alpha[20000], exp_lt_beta[20000];
-static double 	*exp_lt_ptr_a, *exp_lt_ptr_b;
+/* Grenzen fuer Fit und NL-Solver */
+#define		GTOLF	1.e-8
+#define		GTOLX	1.e-8
+#define		GTOLMIN	1.e-6
 
 
-
-/* Funktionen zur Berechnung der Kennlinien, globale Definitionen */
-int	mag_doppel();
-int	fast_doppel();
-
-
-#define NR_END 1
-#define FREE_ARG char*
+/* Macros fuer max, min, etc. */
 
 static double dsqrarg;
 #define DSQR(a) ((dsqrarg=(a)) == 0.0 ? 0.0 : dsqrarg*dsqrarg)
@@ -94,6 +77,7 @@ static int iminarg1,iminarg2;
 
 
 /* Numerical Recipes standard error handler */
+
 void nrerror(error_text)
 char error_text[];
 {
@@ -103,30 +87,34 @@ char error_text[];
 }
 
 
+/* dynamische Speicherverwaltung */
 
-/* allocate a int vector with subscript range v[nl..nh] */
+#define NR_END 1
+#define FREE_ARG char*
+
+/* allocate an integer vector with subscript range v[nl..nh] */
 int *ivector(nl, nh)
 long	nl;
 long	nh;
 {
-	int *v;
-
+	int *v;       
+                
 	v=(int *)malloc((size_t) ((nh-nl+1+NR_END)*sizeof(int)));
 	if (!v) nrerror("allocation failure in ivector()");
 	return v-nl+NR_END;
 }
+                             
 
-
-/* free a double vector allocated with ivector() */
+/* free an integer vector allocated with ivector() */
 void free_ivector(v, nl, nh)
 int	*v;
 long	nl;
-long	nh;
+long	nh;              
 {
 	free((FREE_ARG) (v+nl-NR_END));
-}
+}                           
 
-
+ 
 /* allocate a double vector with subscript range v[nl..nh] */
 double *dvector(nl, nh)
 long	nl;
@@ -160,14 +148,14 @@ long nch,ncl,nrh,nrl;
 	/* allocate pointers to rows */
 	m=(double **) malloc((unsigned int)((nrow+NR_END)*sizeof(double*)));
 	if (!m) nrerror("allocation failure 1 in dmatrix()");
-	m += NR_END;
+	m += NR_END; 
 	m -= nrl;
 
 	/* allocate rows and set pointers to them */
 	m[nrl]=(double *) malloc((unsigned int)
 				((nrow*ncol+NR_END)*sizeof(double)));
 	if (!m[nrl]) nrerror("allocation failure 2 in dmatrix()");
-	m[nrl] += NR_END;
+	m[nrl] += NR_END; 
 	m[nrl] -= ncl;
 
 	for(i=nrl+1;i<=nrh;i++) m[i]=m[i-1]+ncol;
@@ -190,123 +178,26 @@ long nch,ncl,nrh,nrl;
 
 
 /*	string conversion to upper and to lower case */
-int upcase( str )
+void upcase(str)
 char	*str;
    {
    int	i, len;
-   char *cptr;
    len = strlen(str);
-   cptr = str;
-   for (i=0; i<len; i++, cptr++) *cptr=toupper(*cptr);
+   for (i=0; i<len; i++) str[i]=toupper(str[i]);
    }	/* upcase */
    
-int lowcase( str )
+   
+void lowcase(str)
 char	*str;
    {
    int	i, len;
-   char *cptr;
    len = strlen(str);
-   cptr = str;
-   for (i=0; i<len; i++, cptr++) *cptr=tolower(*cptr);
+   for (i=0; i<len; i++) str[i]=tolower(str[i]);
    }	/* lowcase */
 
-/*	--------------------------------------------------------
-
-			init_exp_lt
-			=========
-
-	Initialisierung der look-up Tabelle fuer die lineare
-	Interpolation bei der Berechnung von exp(x)
- 	-------------------------------------------------------- 
-
-	M. Weinlich, 09.06.95
-
- 	-------------------------------------------------------- */
-
-int init_exp_lt()
-
-
-    {
-	double	*ptr1, *ptr2;
-	double 	x1, y1, x_div, temp;
-	int	i;
-
-	/* Initialisierung nur einmal */
-	if (exp_lt_ninits > 0 ) return;
-	exp_lt_ninits++;
-
-	/* Initialisierung der globalen Pointer */
-	exp_lt_ptr_a = exp_lt_alpha;
-	exp_lt_ptr_b = exp_lt_beta;
-
-	/* Initialisierung der Arrays */
-	x1   = exp_lt_min;
-	y1   = exp(x1);
-	ptr1 = exp_lt_alpha;
-	ptr2 = exp_lt_beta;
-	x_div = exp_lt_min * exp_lt_inv;
-
-	for (i=0 ; i<exp_lt_n; i++  ) {
-
-	    /* Funktionswert bei naechstem x */
-	    temp = exp(x1 += exp_lt_delta) - y1;
-
-	    *ptr1++ = y1 - temp * (x_div++)  ;
-	    *ptr2++ = temp * exp_lt_inv;
-
-	    /* Inkrementieren der Variablen */
-	    y1 += temp; 
-
-	    }
-
-    }		/* init_exp_lt */
 
 
 
-
-
-/*	--------------------------------------------------------
-
-			exp_lt
-			=========
-
-	Naeherung fuer exp(x) im Intervall [exp_lt_min,exp_lt_max]
-
-
- 	-------------------------------------------------------- 
-
-	M. Weinlich, 09.06.95
-
- 	-------------------------------------------------------- */
-
-double exp_lt(x)
-
-    double	x;
-
-    {
-    int	  	index;
-
-
-	
-    if ( x <= exp_lt_min ) {
-	if ( x <= -35. ) return 0.0;
-	return exp(x);
-	}
-
-    if ( x >= exp_lt_max ) return exp(x);
-
-    index = (int) ( (x-exp_lt_min) * exp_lt_inv);
-
-    /* Kontrolle der Berechnung */
-    /* printf( "exp_lt:  f(x=%g) = %g ( soll = %g) \n", 
-		x, *(exp_lt_alpha+index) + *(exp_lt_beta+index)*x, exp(x)); */
-
-    /* lineare Interpolation fuer y */
-    return ( *(exp_lt_alpha+index) + *(exp_lt_beta+index)*x ) ;
-	
-    }		/* exp_lt */
-
-	
 
 
 
@@ -329,55 +220,60 @@ double exp_lt(x)
 /*	--------------------------------------------------------
 
 			init_quick_075
-			=========
+			==============
 
 	Initialisierung der look-up Tabelle fuer die lineare
 	Interpolation bei der Berechnung von x^0.75
-
+ 
  	-------------------------------------------------------- 
 
 	M. Weinlich, 19.09.93
 
  	-------------------------------------------------------- */
 
-int init_quick_075()
-
+void init_quick_075()
 
     {
-	double	*ptr1, *ptr2;
-	double 	x, y1, y2, temp;
-	int	i;
+    
+    double  x=0.0, y1=0.0, y2, temp;
+    int     i;
 
+    if ( look_up_alpha != NULL ) {
+       /* printf( "init_quick_075: keine Initialisierung mehr noetig! \n"); */
+       return;
+       }    
+    
+    /* Stelle noetigen Speicherplatz bereit */   
+    look_up_alpha = dvector(0, n_look_up);
+    look_up_beta  = dvector(0, n_look_up);
 
-	/* Initialisierung der globalen Pointer */
-	ptr_alpha = look_up_alpha;
-	ptr_beta  = look_up_beta;
+    for (i=0 ; i<n_look_up; i++  ) {
 
-	/* Initialisierung der Arrays */
-	x    = 0.0;
-	y1   = 0.0;
-	ptr1 = ptr_alpha;
-	ptr2 = ptr_beta;
+        /* Schichtdicke = const * (phi)^0.75 (Child-Langmuir) 
+           x = delta_look_up * (float)(i); 
+           y2 = pow( x, 0.75);  */
 
-	for (i=0 ; i<n_look_up; i++  ) {
+        /* Schichtdicke fuer heisse monoenerget. Ionen (M. Weinich) */
+        /* temp = ( temp + 2. ) * sqrt( temp - 1. ) - y1;*/
+        /* 
+        x += delta_look_up; 
+        temp = sqrt( 1. - x-x );
+        y2 = ( temp + 2. ) * sqrt( temp - 1. );
+        temp = y2 - y1;
+        */
+        
+        x += delta_look_up+delta_look_up; 
+        temp = sqrt(1.-x)-1;
+        y2 = (temp+3.) * sqrt(temp);
+        temp = y2 - y1;
+        
+        look_up_alpha[i] = y1 - temp * (double)i;
+        look_up_beta[i]  = temp * inv_delta_look_up;
 
-	    /* Funktionswert bei naechstem x */
-	    x += delta_look_up;
+        /* Inkrementieren der Variablen */
+        y1 = y2;
 
-	    /* Schichtdicke = const * (phi)^0.75 (Child-Langmuir) */
-	    /* y2 = pow( x, 0.75);  */
-
-	    /* Schichtdicke fuer heisse monoenerget. Ionen (M. Weinich) */
-	    temp = sqrt( 1. - x-x );
-	    temp = ( temp + 2. ) * sqrt( temp - 1. ) - y1;
-
-	    *ptr1++ = y1 - temp * (double)i;
-	    *ptr2++ = temp * inv_delta_look_up;
-
-	    /* Inkrementieren der Variablen */
-	    y1 += temp;
-
-	    }
+        }
 
     }		/* init_quick_075 */
 
@@ -416,22 +312,23 @@ double quick_075(x)
 
     {
     int	  	index;
-
+    double	temp;
 
     /* keine negativen Argumente erlaubt */
     if ( x >= 0. ) return 0.0;
 
     /* die Werte sind im Abstand delta_x = delta_look_up tabelliert */
     /* index  ausserhalb des erlaubten Bereichs? */
-    index = IMIN( (int) ( x * inv_delta_look_up), n_look_max);
-
-    /* Kontrolle der Berechnung */
-    /* printf( "quick_075:  f(x=%g) = %g \n", 
-		x, *(ptr_alpha+index) + *(ptr_beta+index)*x); */
-
+    index = (int)(x * inv_delta_look_up);
+    
     /* lineare Interpolation fuer y */
-    return ( *(ptr_alpha+index) + *(ptr_beta+index)*x ) ;
-	
+    if (index < n_look_up-1) {
+        return ( look_up_alpha[index] + look_up_beta[index]*x );
+        }
+    else {
+	temp = sqrt( 1. - x-x );
+	return ( ( temp + 2. ) * sqrt( temp - 1. ));
+        }
     }		/* quick_075 */
 
 	
@@ -458,47 +355,53 @@ double quick_075(x)
 
  	-------------------------------------------------------- */
 
-double schicht_power( phi_sonde, phi_mag, eps )
-
-    double	phi_sonde;
-    double	phi_mag;
-    double	eps;
+double schicht_power( phi_de_w, eps_de_sqr, eps_de )
+ 
+    double	*phi_de_w;
+    double	*eps_de_sqr, *eps_de;
 
     {
-    double 	temp ;
-    double      eps_square, eta;
-    int	  	index;
+    double 	temp;
+    double      eps_sqr;
 
+    /* keine negativen Argumente unter Wurzel erlaubt: phi_de_w > -1   */
+    /* Theorie nur fuer negative Sonde definiert, da im einfachen      */
+    /* Bild keine Schicht vor positiver Sonde:         phi_de_w >  0   */
+    /*                                                                 */
+    /* lineare Extrapolation der Steigung der spannungsabhaengigen     */
+    /* Schichtdicke als Steigung des Schichtwachstums der magnetischen */
+    /* Schicht                                                         */
+    /*                                                                 */
+    if ( (*phi_de_w) < 0. ) {
+        /* konstanter additiver Beitrag zur Schichtdicke, der bei Berechnung */
+        /* fuer phi_de_w > 0 weggelassen wird, da er sich weghebt und sonst  */
+        /* nur zu zusaetzlicher Rechenzeit fuehrt */
+        temp = (6. - (*eps_de_sqr) ) * ((*eps_de)+(*eps_de));
+        return ( 12*(*phi_de_w) / (*eps_de)  + temp );
+        }
 
-    /* keine negativen Argumente unter Wurzel erlaubt */
-    temp = phi_mag - phi_sonde;
-    temp = temp+temp;
+    
+    /* el. Feld phi' = eps */
+    temp = 4. - (*eps_de_sqr);
+    eps_sqr = 4.*sqrt(1.+(*phi_de_w))-temp;
 
-    if ( temp < 1. ) return 0.0;
-
-    /* berechne eps^2 */
-    eps_square = eps*eps;
-
-    /* berechne eta */
-    eta = sqrt( sqrt(1.+temp) - 1. + eps_square );
-
-
-    /* Potentialabhaengiger Schichtfaktor */
-    temp = ( eta*eta + 3.*(1.-eps_square) ) * eta + ( 2.*eps_square-3.)*eps; 
- 
-    /* Schichtdicke kann nicht negativ werden */
-    if ( temp < 0 ) temp = 0.0;
-
-    /* das war's */
-    return ( temp ) ;
-	
+    /* eps_sqr > 0 und schicht_power >0 */
+    if (eps_sqr < 0) {
+       printf("\n\neps_sqr < 0, das duerfte nie(!) passieren\n\n\n");
+       return 0;
+       }
+        
+    /* nur Differenzen werden gebraucht, d.h. konstante Teile */
+    /* koennen weggelassen werden  */
+    return ((eps_sqr + temp+temp+temp) * sqrt(eps_sqr));
+       	
     }		/* schicht_power */
 
 	
 
 
 
-
+ 
 /* 	-------------------------------------------------------- 
 
  			mag_doppel 
@@ -524,7 +427,11 @@ double schicht_power( phi_sonde, phi_mag, eps )
 
         params(15)      Potetialdifferenz z. W. d_phi_w
 
-	params(16) 	Verhaeltnis T_e / T_e	a_tau
+	params(16) 	Verhaeltnis T_i / T_e	a_tau
+	
+	params(17) 	Hoehe der Sonde senkrecht
+			zur Oberflaeche		p_height
+			
 
 
 	--> Aenderung auf gamma = 3 (Adiabatenkoeffizient)
@@ -546,220 +453,232 @@ int mag_doppel(vpr, strom, n_vpr, params)
     {
 
     /* Local variables */
-    double 	n_e, t_e, beta, alpha1, alpha2, dv;
-    double 	a_height, a_width, a_mass, a_proj_area ;
+    
+    static double	n_e=1., log_ne=0;
+    static double	t_e=1., log_te=0;
+    static double	inv_beta=1., log_invbeta=0.;
+    static double 	alpha1=1., log_alpha1=0.;
+    static double	alpha2=1., log_alpha2=0.;
+    
+    static double	cos1=0., cos1_sqr=0., sin1=1., tan1=1.;
+    static double	cos2=0., cos2_sqr=0., sin2=1., tan2=1.;
+    
+    double 	dv;
+    double 	a_height, a_width, p_height, a_mass, a_proj_area, a_sonde_perp;
     double 	a_z, a_b_loc, a_tau;
-    double	psi1,psi2,cos1,sin1,tan1, cos2, sin2, tan2, tan1p, tan2p;
-    double	delta_phi, phi_sonde, d_phi_mag1, d_phi_mag2, 
-			d_phi_w, dv_by_te, last_phi ;
-    double 	phi1, d_phi, dw1, dw2, zeta1, zeta2, rho_s;
-    double 	eps1, eps2;
-    double	j_isat, I_isat, j_quot, log_j_quot, cquot, log_nenner, 
-	     		ns_add1, ns_add2, ld_by_l, c_i_bohm;
-    double	sf1, sf2, h_add1, h_add2, h_diff_phis;
-    double	ld, hl1, hl2, hb1, hb2 , delta1, delta2, lfac, bfac;
-    double	temp;
-    double	zeta;
+    double	last_phi, save_exp ;
+    double	phi_me_w, phi_me_pr, phi_me_de;
+    double	phi_me2_de, phi_diff;
+    double 	delta_phi, phi_norm, dw1, dw2; 
+    double	zeta1, zeta2, zeta1_sqr, zeta2_sqr, rho_s;
+    double 	eps1, eps2, eps1_sqr, eps2_sqr, q;
+    double	j_isat, I_isat, log_j_quot, log_inv_exp, 
+	     		ns_add1, ns_add2,  c_i_bohm, log_add;
+    double 	norm_e1, norm_e2, norm_l1, norm_l2;
+    double	sf1, sf2;
+    double	ld_sqr;
+    double	hl1, hl2, hb1, hb2;
+    double 	delta1, delta2, delta1_fac, delta2_fac, lfac, bfac;
+    double	temp, tt1, tt2, tt3;
 
     int 	i, ind;
     int		n_changes=0;
-    int 	verbose;
+    
+    int 	verbose=0;
 
     /* here we are ... */
-    /* printf("Beginn mag_doppel\n"); */
+    if (verbose) printf("Beginn mag_doppel\n"); /* */
 
+    /* Zuordnung der Fit-Variablen */
     /* Ueberpruefung auf unsinnige Fit-Parameter:
  	0.002  <  t_e            <  400
         1.e7   <  n_e sqrt(t_e)  <  1.e28
-        0.001  <  beta           <  60
+        0.001  <  beta           <  148
         0.000  <  alpha          <  100
 	0.000  <  cos(psi)       <  1.000
     */
 
-    verbose = ( 0 == 1 );
 
-    if ( params[1] < -6. ) {
-        if (verbose) printf( "Fehler t_e : %g", exp(params[1]) ); 
-	/* keine Aenderung in n_e als Folge */
-	temp      = params[0] + 0.5*params[1];
-        params[1] = -6.;
-	params[0] = temp - 0.5*params[1];
-        if (verbose) printf( " --> %g \n", exp(params[1]));
-	n_changes++;
+    if (log_te != params[1]) {
+       log_te = params[1];
+        /* Bereichsueberpruefung */
+        if (log_te < -6) {
+           params[1] = log_te = -6;
+           n_changes++;
+           }
+        else if (log_te > 6.) {
+           params[1] = log_te = 6.;
+           n_changes++;
+           }
+       t_e = exp(log_te);
+       }
+       
+
+    temp = params[0]-0.5*log_te;
+    if (log_ne != temp) {
+       log_ne = temp;
+        /* Bereichsueberpruefung */
+        if (log_ne < 15) {
+           log_ne = 15;
+           params[0] = log_ne+0.5*log_te;
+           n_changes++;
+           }
+        else if (log_ne > 65.) {
+           log_ne = 65.;
+           params[0] = log_ne+0.5*log_te;
+           n_changes++;
+           }
+       n_e    = exp(log_ne);
+       }
+       
+    if (log_alpha1 != params[2]) {
+       log_alpha1 = params[2];
+        /* Bereichsueberpruefung */
+        if (log_alpha1 < -50) {
+           log_alpha1 = -50;
+           params[2] = log_alpha1;
+           n_changes++;
+           }
+        else if (log_alpha1 > 5.) {
+           log_alpha1 = 5.;
+           params[2] = log_alpha1;
+           n_changes++;
+           }
+       alpha1 = exp(log_alpha1);
+       }
+       
+    if (log_invbeta != -params[3]) {
+       /* beta     = exp(params[3]); */
+       log_invbeta = -params[3];
+        /* Bereichsueberpruefung */
+        if (log_invbeta < -5) {
+           log_invbeta = -5;
+           params[3] = -log_invbeta;
+           n_changes++;
+           }
+        else if (log_alpha1 > 5.) {
+           log_invbeta = 5.;
+           params[3] = -log_invbeta;
+           n_changes++;
+           }
+       inv_beta    = exp(log_invbeta);
+       }
+       
+    dv = params[4];   
+    
+    if (log_alpha2 != params[5]) {
+        log_alpha2 = params[5];
+        /* Bereichsueberpruefung */
+        if (log_alpha2 < -50) {
+           params[5] = log_alpha2 = -50;
+           n_changes++;
+           }
+        else if (log_alpha2 > 5.) {
+           params[5] = log_alpha2 = 5.;
+           n_changes++;
+           }
+        alpha2 = exp(log_alpha2);
         }
-    else if ( params[1] > 6. ) {
-        if (verbose) printf( "Fehler t_e : %g", exp(params[1]) );
-	/* keine Aenderung in n_e als Folge */
-	temp      = params[0] + 0.5*params[1];
-        params[1] = 6.;
-	params[0] = temp - 0.5*params[1];
-        if (verbose) printf( " --> %g \n", exp(params[1]));
-	n_changes++;
+       
+    if (cos1 != params[6]) {
+        cos1 = params[6];
+        /* Bereichsueberpruefung */
+        if (cos1 < 1.e-5) {
+           params[6] = cos1 = 1.e-5;
+           n_changes++;
+           }
+        else if (cos1 > 1.) {
+           params[6] = cos1 = 1.;
+           n_changes++;
+           }
+        /* abgeleitete Groessen */
+        cos1_sqr = cos1*cos1;
+        sin1     = sqrt(1. - cos1_sqr);
+        tan1     = sin1/cos1;
+        }
+        
+    if (cos2 != params[7]) {    
+        cos2 = params[7];
+        /* Bereichsueberpruefung */
+        if (cos2 < 1.e-6) {
+           params[7] = cos2 = 1.e-6;
+           n_changes++;
+           }
+        else if (cos2 > 1.) {
+           params[7] = cos2 = 1.;
+           n_changes++;
+           }
+        /* abgeleitete Groessen */
+        cos2_sqr = cos2*cos2;
+        sin2     = sqrt(1. - cos2_sqr);
+        tan2     = sin2/cos2;
         }
 
-    if ( params[0] < 15. ) {
-        if (verbose) printf( "Fehler n_e : %g", exp(params[0]-0.5*params[1]) );
-	params[0] = 15.;
-        if (verbose) printf( " --> %g \n", exp(params[0]-0.5*params[1])); 
-	n_changes++;
-        }
-    else if ( params[0] > 65. ) {
-        if (verbose) printf( "Fehler n_e : %g", exp(params[0]-0.5*params[1]) );
-	params[0] = 65.;
-        if (verbose) printf( " --> %g \n", exp(params[0]-0.5*params[1]));
-	n_changes++;
-        }
-
-    if ( params[3] < -7. ) {
-	if (verbose) printf( "Fehler in beta: %g", exp(params[3]));
-	params[3] = -7.;
-        if (verbose) printf( " --> %g \n", exp(params[3]));
-	n_changes++;
-	}
-    else if ( params[3] > 4. ) {
-	if (verbose) printf( "Fehler in beta: %g", exp(params[3]));
-	params[3] = 4.;
-        if (verbose) printf( " --> %g \n", exp(params[3]));
-	n_changes++;
-	}
-
-    if ( params[2] < -50. ) {
-	if (verbose) printf( "Fehler in alpha1: %g", exp(params[2]));
-	params[2] = -50.;
-        if (verbose) printf( " --> %g \n", exp(params[2]));
-	n_changes++;
-	}
-    else if ( params[2] > 5. ) {
-	if (verbose) printf( "Fehler in alpha1: %g", exp(params[2]));
-	params[2] = 5.;
-        if (verbose) printf( " --> %g \n", exp(params[2]));
-	n_changes++;
-	}
-
-    if ( params[5] < -50. ) {
-	if (verbose) printf( "Fehler in alpha2: %g", exp(params[5]));
-	params[5] = -50.;
-        if (verbose) printf( " --> %g \n", exp(params[5]));
-	n_changes++;
-	}
-    else if ( params[5] > 5. ) {
-	if (verbose) printf( "Fehler in alpha2: %g", exp(params[5]));
-	params[5] = 5.;
-        if (verbose) printf( " --> %g \n", exp(params[5]));
-	n_changes++;
-	}
-
-    if ( params[6] < 0.001 ) {
-        if (verbose) printf( "Fehler in cos1 : %g", params[6] );
-        params[6] = 0.001;
-        if (verbose) printf(" --> %g \n", params[6]);
-	n_changes++;
-        }
-    else if ( params[6] > 0.999 ) {
-        if (verbose) printf( "Fehler in cos1 : %g", params[6] );
-        params[6] = 0.999;
-        if (verbose) printf(" --> %g \n", params[6]);
-	n_changes++;
-        }
-
-    if ( params[7] < 0.001 ) {
-        if (verbose) printf( "Fehler in cos2 : %g", params[7] );
-        params[7] = 0.001;
-        if (verbose) printf(" --> %g \n", params[7]);
-	n_changes++;
-        }
-    else if ( params[7] > 0.999 ) {
-        if (verbose) printf( "Fehler in cos2 : %g", params[7] );
-        params[7] = 0.999;
-        if (verbose) printf(" --> %g \n", params[7]);
-	n_changes++;
-        }
-
-/*    if ( n_changes == 1 ) {
-	printf( "Achtung: insgesamt %d Parameter musste geaendert werden!\n",
+    
+    /* Abbruch, da keine sinnvollen Input-Parameter? */    
+    if (verbose) {
+       if ( n_changes == 1 ) {
+	  printf( "Achtung: insgesamt %d Parameter musste geaendert werden!\n",
 		n_changes);
-	}
-    else if ( n_changes > 1 ) {
-	printf( "Achtung: insgesamt %d Parameter mussten geaendert werden!\n",
+	  }
+       else if ( n_changes > 1 ) {
+	  printf( "Achtung: insgesamt %d Parameter mussten geaendert werden!\n",
 		n_changes);
-	if ( n_changes > 3 ) return (-21);
-	}
-*/
+	  }
+       }
 
     if ( n_changes > 4 ) {
-	/* printf( "Abbruch, da insgesamt %d Parameter ", n_changes); */
-	/* printf( "geaendert werden mussten  !\n"); */
+        if (verbose) {
+	   printf( "Abbruch, da insgesamt %d Parameter ", n_changes);
+	   printf( "geaendert werden mussten  !\n");
+	   }
 	return (-21); 
 	}
 
 
-
-   /* sind die neuen Parameter Z und B_loc sinnvoll belegt? */
-
-   /* in den meiseten Faellen Wasserstoff als Fuellgas */
-   if ( params[13] < 1. ) {
-      params[13] = 1. ;
-      }
-
-   /* Standard: B_t = 2.0T */
-   if (( params[14] < 0.6 ) & ( params[14] > -0.6 )) {
-      params[14] = 2.;
-      }
- 
-    /* Ionen- und Elektronentemperatur sind postiv */
-    if ( params[16] < 0.1 ) {
-	params[16] = 1.;
-	}
-
-    /* Zuordnung der Fit-Variablen */
-    n_e    = exp(params[0]-0.5*params[1]);
-    t_e    = exp(params[1]);
-    alpha1 = exp(params[2]);
-    beta   = exp(params[3]);
-    dv     = params[4];
-    alpha2 = exp(params[5]);
-
-    cos1   = params[6];
-    cos2   = params[7];
-    
+    /* ab hier kann einfach ausgelesen werden, keine Umwandlung mehr noetig */    
+        
     /* wichtige Sonden-Dimensionen */
     a_width  = params[10]; 
-    a_height = params[11];
-    a_mass   = params[12];
-    a_z      = params[13];
+    a_height = params[11]; 
+    p_height = params[17];
 
+    /* projezierte Flaeche einer flush mounted Sonde */
+    a_proj_area  = a_width*a_height*cos1;	/* <= 0, wenn nicht definiert */
 
+    /* projezierte Flaeche einer pin probe */
+    a_sonde_perp = a_width*p_height*sin1;	/* <= 0, wenn nicht definiert */
+    
+    /* Massenzahl des Fuellgases, meist Deuterium */
+    if ( params[12] < 1. ) a_mass = params[12] = 2. ;
+    		else a_mass = params[12];
+    
+    /* Kernladungszahl, Fuellgas meist Wassertoff-Isotop */
+    if ( params[13] < 1.) a_z = params[13]=1.;
+    		else a_z  = params[13];
+
+    
     /* Betrag des lokalen Magnetfelds am Ort der Sonde */
-    a_b_loc  = fabs(params[14]); 
+    /* Standard: |B_t| = 2.0T */
+    if ( fabs(params[14]) < 0.6 ) a_b_loc = params[14] = 2.;
+   		else a_b_loc  = fabs(params[14]); 
 
-    /* T_i / T_e */
-    a_tau    = params[16];
+    /* T_i / T_e,  Ionen- und Elektronentemperatur sind postiv */
+    if ( params[16] < 0.05 ) a_tau = params[16] = 1.;
+    		else a_tau = params[16];
 
-    sin1 = sqrt( 1. - cos1*cos1 );
-    sin2 = sqrt( 1. - cos2*cos2 );
-    tan1 = sin1/cos1;
-    tan2 = sin2/cos2;
+     
 
-    a_proj_area = a_width*a_height*cos1;
 
 
     /* Berechnung der Ionensaettigungsstromdichte 
        ==========================================
 
-       Sekundaerelektronenemissionskoeffizient g = 0.4
+       Sekundaerelektronenemissionskoeffizient g = 0.6
 
        c_i_Bohm = sqrt(  ( Z*T_e + 3 T_i ) / m_i )  wobei 3 = (n+2)/n, n=1
-       # c_e_Bohm = sqrt(  (3 T_e + T_i/Z ) / m_e )
-
        j_isat = n_e * c_i_Bohm * e
 
-       # j_esat = 1/4 n_e * c_e_Bohm * e ( 1-g)
-
-       # j_quot = j_esat / j_isat; 
-       # j_quot = (1-g)/4 * sqrt( (a_mass*c_mp) /c_me ); 
- 
-
-       neu: 23.11.94 (mnw)
        --> im Doppelsondenbild kommen keine beschleunigten Elektronen zur
 	   Elektrode, sondern immer nur thermische Plasmaelektronen.   
 
@@ -772,430 +691,247 @@ int mag_doppel(vpr, strom, n_vpr, params)
 
     */
 
-    c_i_bohm = sqrt( (3.*a_tau+a_z)* c_e * t_e/ (a_mass*c_mp) );
+    c_i_bohm = sqrt( (3.*a_tau+a_z)* c_e * t_e/ a_mass /c_mp );
     j_isat = n_e * c_e * c_i_bohm;
-    I_isat = a_proj_area * j_isat;
 
-    j_quot = 6.8376426 * sqrt( a_mass/(a_z+3.*a_tau) ) ;
-    log_j_quot = log(j_quot);
-
-    /* Berechne phi_wall: */
-    dv_by_te = dv / t_e;
-    d_phi_w = log( (1.0+beta) / (1.0+beta*exp(dv_by_te)) ) - log_j_quot;
-    params[15] = d_phi_w;	/* Abspeichern fuer spaetere Verwendung */
-
+    /* log_j_quot = log(j_quot); */
+    log_j_quot = 1.922443023 + 0.5*log(a_mass/(a_z+3.*a_tau));
 
     /* Debye-Laenge vor Schichten */
-    ld = sqrt(t_e * c_eps0 / (n_e * c_e)) ;
-
-    /* Einfluss der Schichten --> Reduzierung in l_debye u.ae. */
-    temp  = sqrt( 1. + 3.*a_tau/a_z );
-    zeta1 = temp * cos1;
-    zeta2 = temp * cos2;
-
-    /* Ionengyroradius bei Schallgeschwindigkeit */
-    rho_s = c_i_bohm * ( a_mass * c_mp ) / ( c_e * a_b_loc ) ;
-
-    /* an beiden Sonden Potentialdifferenz                             */
-    /* V_wall - V_el.sheath = V_wall - V_plasma + ( V_mag1 - V_plasma) */
-    d_phi_mag1 = log(zeta1)	; 	/* i.d.R. < 0.0 */
-    d_phi_mag2 = log(zeta2)	; 	/* i.d.R. < 0.0 */
-
-    /* Abschaetzung fuer das elektrische Feld am Eintritt in Debye-Schicht */
-    eps1 = - log(zeta1) * ld / ( sqrt(zeta1+zeta1) * rho_s );
-    eps2 = - log(zeta2) * ld / ( sqrt(zeta2+zeta2) * rho_s );
-
-    /* Vorfaktoren der Schichtdicken */
-    sf1 = ld * sqrt(2./ zeta1) * alpha1 / 3.;
-    sf2 = ld * sqrt(2./ zeta2) * alpha2 / 3.;
-
-    /* Potentialdifferenz in el.stat. Schicht an umgebender Wand (V=0)  */
-    dw1 = schicht_power( d_phi_w,          d_phi_mag1, eps1 );
-    dw2 = schicht_power( d_phi_w+dv_by_te, d_phi_mag2, eps2 );
-
-    /* Hilfsgroessen, muessen nur einmal berechnet werden */
-    h_add1 = sf1*dw1;
-    h_add2 = sf2*dw2;
-
-    lfac = 1. / ( a_height * sqrt(cos1*beta/cos2) );
-    bfac = 1. / ( a_width * sqrt(cos1*beta/cos2) );
-
-    tan1p = tan1 + 2.;
-    tan2p = tan2 + 2.;
-
-    /* ab jetzt Berechnung fuer alle Spannungswerte */
-    for ( ind=0; ind < n_vpr; ind++ ) 
-        {
-
-        /* Spannung an Doppelsonde: phi_sonde */
-        phi_sonde = vpr[ind] / t_e;
-        /* Verschiebung von phi2 gegen phi1: phi2 = phi1 + d_phi */
-        d_phi = dv_by_te - phi_sonde;
-        /* Startwert fuer phi1 = V_sonde_1 - V_wall */
-        if (phi_sonde < d_phi_w) 
-	    phi1 = phi_sonde;
-        else 
-	    phi1 = d_phi_w;
-
-        /* Hilfsgroessen, muessen nur einmal berechnet werden */
-        /* h_diff_phis = d_phi_mag2 - d_phi; */
-        /* nenner      = (cquot * exp(d_phi) + 1.) * j_quot ; */
-        log_nenner  = log((1.0 + beta*exp(d_phi))) + log_j_quot; 
-
-
-        /*   	------ eigentliche Iteration ------ 	*/
-
-        i = 0;
-        last_phi = phi1 + phi1;
-
-        while( ( fabs(phi1/last_phi-1.) > .001 ) && (i < 20) ) 
-	    {
-
-	    /* Schleifenzaehler */
-	    last_phi = phi1;
-	    ++i;
-
-	    /* Nichtsaettigungskoeffizienten muessen immer groesser als -1 */
-	    delta1 = sf1*( schicht_power(phi1,d_phi_mag1,eps1) -dw1);
-	    delta2 = sf2*( schicht_power(phi1+d_phi,d_phi_mag2,eps2) -dw2);
-	    hl1 = delta1 / a_height;
-	    hb1 = delta1 / a_width;
-	    hl2 = delta2 * lfac;
-	    hb2 = delta2 * bfac;
-	    ns_add1 = 1. + hb1+hb1 + (hb1+hb1+1.)*hl1*tan1p ;
-	    ns_add2 = 1. + hb2+hb2 + (hb2+hb2+1.)*hl2*tan2p ;
-	    if (ns_add1 < 0.) ns_add1 = 0.;
-	    if (ns_add2 < 0.) ns_add2 = 0.;
-
-	    /* naechste Naeherung fuer phi1 */
-	    temp = ns_add1 + beta*ns_add2;
-	    if (temp <= 0. ) break;
-	    phi1 = log(temp) - log_nenner;
-
-            }  	/* while ( ... ) */
-
-
-        /* Berechnung des Strom-Vektors */
-	delta1 = sf1*( schicht_power(phi1,d_phi_mag1,eps1) - dw1 );
-	hl1 = delta1 / a_height;
-	hb1 = delta1 / a_width;
-	ns_add1 = 1. + hb1+hb1 + (hb1+hb1+1.)*hl1*(2.+tan1) ;
-        if (ns_add1 < 0.) ns_add1 = 0.;
-        strom[ind] = -I_isat * (ns_add1 - j_quot * exp(phi1));
-
-        }	/* for ind=0, n_vpr-1 */
-
-    return 0 ;
-
-    }		 /* mag_doppel */
-
-
-
-
-
-
-/* 	-------------------------------------------------------- 
-
- 			fast_doppel 
-			==========
-
- 	berechnet einen Punkt aus Kennlinie einer beidseitig  
- 	nichtsaettigenden Doppelsonde 
-
-  	--> In mag_doppel wird V_1 - V_pl un V_wall - V_pl getrennt
-	    bestimmt. Sind diese beiden Potentialdifferenzen bekannt,
-	    so kann die effektiv wirksame Schichtdicke d_1 - d_wall
-	    berechnet werden, die ihrerseits wiederum die effektive
-	    projizierte Sondenflaeche bestimmt.
-
-	--> Die Bestimmung von V_1 - V_pl muss leider iterativ erfolgen,
-	    was sehr viel Zeit kostet ( etwa 30% der Gesamtzeit in 
-	    mag_doppel )
-
-	--> Um diesen iterativen Aufwand zu vermeiden, wird in fast_doppel
-	    d_1 - d_wall durch d(V_Sonde - V_floating) angenaehert. Nun
-	    ist die projizierte Flaeche ohne groesseren Aufwand berechenbar.
-
- 	params(0)	Elektronendichte 	log(n_e) 
- 	params(1)	Elektronentemperatur 	log(T_e) 
- 	params(2)	Korrekturfaktor		log(alpha_1) 
- 	params(3)	Flaechenverhaeltnis 	log(beta) 
- 	params(4)	Unterschied in V_plas. 	delta_V 
- 	params(5)	Korrrekturfaktor 	log(alpha_2) 
- 	params(6)	Winkel an Sonde		cos(psi1) 
- 	params(7)	Winkel an Gegenelektr.	cos(psi2) 
-
- 	params(10)	Sondenbreite		a_width 
- 	params(11)	Sondenhoehe		a_height 
- 	params(12)	Massezahl des Fuellg.	a_mass 
-
-	params(13)	Kernladungszahl	d. F.g.	a_z
-	params(14)	Toroidalfeld		B_t
-
-        params(15)       Potetialdifferenz z. W. d_phi_w
-
-	params(16)	T_i/T_e			a_tau
-
-	--> Erweiterung, um auch Sonden bei senkrechtem Einfall behandeln
-	    zu k"onnen (z.B. Mitelebenenmanipulator, Rohde). Es muss lediglich
-	    die projizierte L"ange bzw. H"ohe angegeben werden, da die 
-	    Sondenbreite a_width = params(13) bereits als senkrecht zum
-	    Magnetfeld vorausgesetzt wird.
-
-	params(17)	Sondenhoehe		p_height
-
-	--> Aenderung auf gamma = 3 (Adiabatenkoeffizient)
-	    wg. Riemann
-
- 	-------------------------------------------------------- 
-
-	M. Weinlich, 19.03.94
-
- 	-------------------------------------------------------- */
-
-int fast_doppel(vpr, strom, n_vpr, params)
-
-    double 	*vpr;
-    double 	*strom;
-    int 	n_vpr;
-    double 	*params;
-
-    {
-
-    /* Local variables */
-    double 	n_e, t_e, inv_beta, alpha1, alpha2, dv;
-    double 	a_height, a_width, a_mass;
-    double	p_height;
-    double	a_sonde_proj, a_sonde_perp;
-    double	delta_phi ;
-    double	j_isat, I_isat, ns_add1, ns_add2;
-    double	sf1, sf2, lfac, bfac;
-    double	ld, delta1, delta2;
-    double	temp;
-
-    double	*ptr_vpr, *ptr_strom;
-    int 	i, ind;
-    int		n_changes=0;
-
-    static double	cos1=0., cos2=0., tan1p=1.e38, tan2p=1.e38;
-
-
-    /* Ueberpruefung auf unsinnige Fit-Parameter:
- 	0.002  <  t_e            <  400
-        1.e7   <  n_e sqrt(t_e)  <  1.e28
-        0.001  <  beta           <  60
-        0.000  <  alpha          <  100
-	0.000  <  cos(psi)       <  1.000
-    */
-
-    if ( params[1] < -6. ) {
-        /* printf( "Fehler t_e : %g", exp(params[1]) ); */
-	/* keine Aenderung in n_e als Folge */
-	temp      = params[0] + 0.5*params[1];
-        params[1] = -6.;
-	params[0] = temp - 0.5*params[1];
-        /* printf( " --> %g \n", exp(params[1])); */
-	n_changes++;
-        }
-    else if ( params[1] > 6. ) {
-        /* printf( "Fehler t_e : %g", exp(params[1]) ); */
-	/* keine Aenderung in n_e als Folge */
-	temp      = params[0] + 0.5*params[1];
-        params[1] = 6.;
-	params[0] = temp - 0.5*params[1];
-        /* printf( " --> %g \n", exp(params[1])); */
-	n_changes++;
-        }
-
-    if ( params[0] < 15. ) {
-        /* printf( "Fehler n_e : %g", exp(params[0]-0.5*params[1]) ); */
-	params[0] = 15.;
-        /* printf( " --> %g \n", exp(params[0]-0.5*params[1])); */
-	n_changes++;
-        }
-    else if ( params[0] > 65. ) {
-        /* printf( "Fehler n_e : %g", exp(params[0]-0.5*params[1]) ); */
-	params[0] = 65.;
-        /* printf( " --> %g \n", exp(params[0]-0.5*params[1])); */
-	n_changes++;
-        }
-
-    if ( params[3] < -7. ) {
-	/* printf( "Fehler in beta: %g", exp(params[3])); */
-	params[3] = -7.;
-        /* printf( " --> %g \n", exp(params[3])); */
-	n_changes++;
-	}
-    else if ( params[3] > 4. ) {
-	/* printf( "Fehler in beta: %g", exp(params[3])); */
-	params[3] = 4.;
-        /* printf( " --> %g \n", exp(params[3])); */
-	n_changes++;
-	}
-
-    if ( params[2] < -50. ) {
-	/* printf( "Fehler in alpha1: %g", exp(params[2])); */
-	params[2] = -50.;
-        /* printf( " --> %g \n", exp(params[2])); */
-	n_changes++;
-	}
-    else if ( params[2] > 5. ) {
-	/* printf( "Fehler in alpha1: %g", exp(params[2])); */
-	params[2] = 5.;
-        /* printf( " --> %g \n", exp(params[2])); */
-	n_changes++;
-	}
-
-    if ( params[5] < -50. ) {
-	/* printf( "Fehler in alpha2: %g", exp(params[5])); */
-	params[5] = -50.;
-        /* printf( " --> %g \n", exp(params[5])); */
-	n_changes++;
-	}
-    else if ( params[5] > 5. ) {
-	/* printf( "Fehler in alpha1: %g", exp(params[5]));  */
-	params[5] = 5.;
-        /* printf( " --> %g \n", exp(params[5]));  */
-	n_changes++;
-	}
-
-    if ( params[6] < 0.001 ) {
-        /* printf( "Fehler in cos1 : %g", params[6] ); */
-        params[6] = 0.001;
-        /* printf(" --> %g \n", params[6]); */
-	n_changes++;
-        }
-    else if ( params[6] > 0.999 ) {
-        /* printf( "Fehler in cos1 : %g", params[6] ); */
-        params[6] = 0.999;
-        /* printf(" --> %g \n", params[6]); */
-	n_changes++;
-        }
-
-    if ( params[7] < 0.001 ) {
-        /* printf( "Fehler in cos2 : %g", params[7] ); */
-        params[7] = 0.001;
-        /* printf(" --> %g \n", params[7]); */
-	n_changes++;
-        }
-    else if ( params[7] > 0.999 ) {
-        /* printf( "Fehler in cos2 : %g", params[7] ); */
-        params[7] = 0.999;
-        /* printf(" --> %g \n", params[7]); */
-	n_changes++;
-        }
-
-    if ( n_changes > 3 ) {
-	/* printf( "Abbruch, da insgesamt %d Parameter ", n_changes); 
-	printf( "geaendert werden mussten  !\n");  */
-	return (-21);
-	}
-
-    /* Zuordnung der Fit-Variablen */
-    n_e    = exp(params[0]-0.5*params[1]);
-    t_e    = exp(params[1]);
-    alpha1 = exp(params[2]);
-    inv_beta = exp(-params[3]) ;
-    dv     = params[4];
-    alpha2 = exp(params[5]);
-
-    /* Winkelfunktionen muessen nur neu berechnet werden, wenn sich
-       auch die Winkel geaendert haben */
-    if (cos1 != params[6]) {
-        cos1   = params[6];
-        tan1p  = sqrt(1./(cos1*cos1) -1.) + 2.;
-	}
-    if (cos2 != params[7]) {
-    	cos2   = params[7];
-    	tan2p  = sqrt(1./(cos2*cos2) -1.) + 2.;
-	}
-
-
-    /* wichtige Sonden-Dimensionen */
-    a_width  = params[10]; 
-    a_height = params[11];
-    a_mass   = params[12];
-
-    p_height = params[17];
-
-    /* daraus abgeleitete Fl"achen einer projezierten Sonde bzw. der Sonde */
-    a_sonde_proj = a_width * a_height * cos1;
-    a_sonde_perp = a_width * p_height;
-
-    /* Berechnung der Ionensaettigungsstromdichte 
-       ==========================================
-
-       j_isat = n_e c_s e 
-       j_isat = n_e * sqrt(t_e * c_e * 2.0 / (a_mass * c_mp)) * c_e; 
- 
-       neue Ergebnisse awc 01.09.93 
-       c_i_Bohm = sqrt(  ( Z*T_e + 3 T_i ) / m_i )  wobei 3 = (n+2)/n, n=1
-       c_e_Bohm = sqrt(  (3 T_e + T_i/Z ) / m_e )
-       Sekundaerelektronenemissionskoeffizient g = 0.4
-       j_isat = n_e * c_i_Bohm * e
-       j_esat = 1/4 n_e * c_e_Bohm * e ( 1-g)
-       j_quot = 0.15 * sqrt( (a_mass*c_mp) /c_me );  
-    */
-
-    j_isat = n_e * c_e * sqrt( 4.* c_e * t_e/ (a_mass*c_mp) );
-
-
-    /* L_debye */
-    ld = sqrt(t_e * c_eps0 / (n_e * c_e)) ;
-
+    ld_sqr = t_e * c_eps0 / n_e / c_e ;
+
+
+    if ( a_proj_area > 0. ) {
+    
+        I_isat = a_proj_area * j_isat;
+        
+        /* Einfluss der Schichten --> Reduzierung in l_debye u.ae. */
+        /* allgemeinerer Ausdruck fuer zeta = n_i,De / n_i,me */
+        q = a_z/(6.*a_tau);
+        zeta1_sqr = sqrt(q*q + (q+q+1)*cos1_sqr ) - q;
+        zeta2_sqr = sqrt(q*q + (q+q+1)*cos2_sqr ) - q;
+        zeta1 = sqrt(zeta1_sqr);
+        zeta2 = sqrt(zeta2_sqr);
+        
+        /* Normierung des el. Feldes:                                            */
+        /* alle Potentialgroessen wie phi_me_w sind in [eV/k_B T_e] ausgedrueckt */
+        /* damit sie mit der Normierung aus dem paper uebereinstimmen, muessen   */
+        /* sie noch durch eine Faktor (s.u.) geteilt werden                      */
+        norm_e1 = 0.5 + zeta1_sqr/(4.*q) ;
+        norm_e2 = 0.5 + zeta2_sqr/(4.*q) ;
+        
+        /* Normierung der Laenge                                                 */
+        /* alle Laengen werden auf Debyelaenge an der mag. Schicht multipliziert */
+        /* mit einer dimensionslosen Groesse normiert. Hier enthaelt die         */
+        /* Normierung beides, die Debye-Laenge und die Skalierung, da alle       */
+        /* Laengen in [m] ausgedrueckt werden                                    */
+        norm_l1 = sqrt( ld_sqr * norm_e1 / zeta1 ) ;
+        norm_l2 = sqrt( ld_sqr * norm_e2 / zeta2 ) ;
+                
+        /* Potentialabfall in magnetischer Schicht, in eV/k_B T_e */
+        phi_me_de  = -log(zeta1);
+        phi_me2_de = -log(zeta2);
+    
+        /* Ionengyroradius bei Schallgeschwindigkeit */
+        rho_s = c_i_bohm * a_mass * c_mp  /  c_e / a_b_loc  ;
+    
+        /* Abschaetzung fuer das elektrische Feld am Eintritt in Debye-Schicht */
+	/* muss immer positiv sein                                             */
+        eps1 = DMAX( (phi_me_de / norm_e1) * (norm_l1 / rho_s), 0.) ;
+        eps2 = DMAX( (phi_me2_de / norm_e2) * (norm_l2 / rho_s), 0.) ;
+
+/* printf("old: eps1=%g, eps2=%g \n", eps1, eps2); */
    
-    /* ---------------------------------------------------------------------
-       wenn a_sonde_proj > 0.0 dann wurde eine geometrische Sondenfl"ache
-       und ein Projektionswinkel angegeben. Dies hei"st, da"s f"ur eine
-       flush mounted Sonde eine Kennlinie unter Ber"ucksichtigung der
-       Schichteffekte berechnet werden soll.
-       --------------------------------------------------------------------- */
+        /* neue Abschaetzung, awc 02.01.97 */
+/*        temp = -4*(1-cos1)*(1-cos1) + 2.*sin1*sin1*phi_me_de/norm_e1;
+        eps1 = pow( sqrt(temp)*norm_l1/rho_s, 1./3. );
+        
+        temp = -4*(1-cos2)*(1-cos2) + 2.*sin2*sin2*phi_me2_de/norm_e2;
+        eps2 = pow( sqrt(temp)*norm_l2/rho_s, 1./3. );
+        
+printf("new: eps1=%g, eps2=%g \n", eps1, eps2);
+*/        		
+        eps1_sqr = eps1*eps1;
+        eps2_sqr = eps2*eps2;
+        
+        /* Potentialdifferenz zwischen den beiden Referenz-Plasmapotentialen */
+        /* phi_me2 = phi_me1 - delta_phi */
+        delta_phi = dv / t_e;
+           
+        /* Berechne phi_me - phi_wall fuer V=0 */
+        log_add    = log_j_quot - log(1.+inv_beta);
+        phi_me_w   = log_add + log( inv_beta+exp(delta_phi) )  ;
+        params[15] = phi_me_w;      /* Abspeichern fuer spaetere Verwendung */
 
-    if ( a_sonde_proj > 0.0 )  
-	{
-
-        /* potentialunabhaengige Vorfaktoren vor Schichtdicke */
-        sf1 = ld / 3.0 * alpha1 / sqrt(cos1);	
-        sf2 = ld / 3.0 * alpha2 / sqrt(cos2);
-        temp = sqrt( cos2 * inv_beta / cos1 );
+         
+        /* Schichtdicke an der umgebenden Wand, d.h. bei V=0 */
+        phi_norm = (phi_me_w - phi_me_de) / norm_e1;
+        dw1 = schicht_power( &phi_norm, &eps1_sqr, &eps1 );
+        phi_norm = (phi_me_w - delta_phi - phi_me2_de) / norm_e2;
+        dw2 = schicht_power( &phi_norm, &eps2_sqr, &eps2 );
+    
+        /* Vorfaktoren der Schichtdicken, incl. Normierung der Laenge */
+        sf1 = norm_l1 / 12. * alpha1 ;
+        sf2 = norm_l2 / 12. * alpha2 ;
+    
+        /* Hilfsgroessen, muessen nur einmal berechnet werden */
+        temp = sqrt(cos2*inv_beta/cos1);
         lfac = temp / a_height;
         bfac = temp / a_width;
+        
+        delta1_fac = tan1 / a_height;
+        delta2_fac = tan2 * lfac;
 
+/*            
+if (cos1 < 0.017) {
+   printf("\n\n");
+   printf("cos1=%g, phi_me_de=%g, phi_me_w=%g \n", 
+   		cos1, phi_me_de, phi_me_w );
+   printf("eps1=%g, eps1_sqr=%g, rho_s=%g, norm_e1=%g, norm_l1=%g \n", 
+		eps1, eps1_sqr, rho_s, norm_e1, norm_l1);
+   printf("te=%g, ne=%g, beta=%g, delta_phi=%g, alpha1=%g \n", 
+   		t_e, n_e, 1./inv_beta, delta_phi, alpha1);
+   printf("d1_fac=%g, d2_fac=%g, sf1=%g, sf2=%g \n", 
+   		delta1_fac, delta2_fac, sf1, sf2);
+   phi_norm = (phi_me_w - phi_me_de) / norm_e1;
+   printf("phi_norm=%g, dw1=%g \n",phi_norm, dw1);
+   }
+*/
+         
+ tt1 = 0.;
+ tt2 = 0.;
+ tt3 = 0.;
+ 
         /* ab jetzt Berechnung fuer alle Spannungswerte */
-        I_isat = a_sonde_proj * j_isat;
-
-        for ( ind=0, ptr_vpr=vpr, ptr_strom=strom; ind < n_vpr; ind++ ) 
+        /* phi_me passt sich jeweils so der von aussen angelegten Sondenspannung */
+        /* an, dass die Doppelsondengleichung erfuellt ist, d.h. phi_me ist      */
+        /* ist eine implizite Funktion von phi_sonde-phi_wall                    */
+        for ( ind=0; ind < n_vpr; ind++ ) 
             {
-
+    
             /* Spannung an Doppelsonde: phi_sonde */
-            delta_phi = (dv - *ptr_vpr++) / t_e;
+            /* phi_pr_w = vpr[ind] / t_e;           */
+            /* phi_diff = delta_phi - phi_pr_w;     */
+            phi_diff = (dv - vpr[ind]) / t_e;
+            
+            /* Startwert fuer Potentialdifferenz zwischen mag. Schicht und Sonde */
+            /* stimmt exakt fuer saettigende Doppelsonde, nur bei sehr hohem     */
+            /* Nichtsaettigungsanteil ist noch eine weitere Iteration noetig     */
+            if ( phi_diff < -300. ) {
+                save_exp    = 0.;
+                log_inv_exp = log_invbeta;  	/* log_invbeta = log(inv_beta)*/
+                }
+            else if ( phi_diff > 300. ) {
+                save_exp    = 1.95e130;               /* = exp(300) */
+                log_inv_exp = phi_diff;
+                }
+            else { 
+                save_exp    = exp(phi_diff);
+                log_inv_exp = log(inv_beta + save_exp);
+                }
+            phi_me_pr = log_inv_exp + log_add;
+                
+       
+            /*      ------ eigentliche Iteration ------     */
+    
+/* keine Iteration mehr: phi_me_pr wird lediglich fuer Berechnung der Nicht- */
+/* saettung benoetigt. Diese wird als eine Korrektur aufgefasst, so dass     */
+/* die Abschaetzung voellig genuegt.                                         */
+/* Test an Kennlinie mit psi=89.4 und vpr=-200,200 zeigt, dass die Iteration */
+/* nur Aenderungen (in T_e und n_e) um max. 3% bringt. Dafuer lohnt sich der */
+/* Aufwand an Rechenzeit aber nicht.                                         */
 
-	    /* Nichtsaettigungskoeffizienten muessen immer groesser als -1 */
-            if (delta_phi < 0) {
-		ns_add1 = 1.0;
-	        delta2  = sf2 * quick_075( delta_phi );
-	        ns_add2 = ( (delta2+delta2)*bfac +1.) * 
-				( 1. + delta2*tan2p*lfac );
-		}
-	    else {
-	    	delta1  = sf1 * quick_075( -delta_phi );
-	    	ns_add1 = ( (delta1+delta1)/a_width + 1.) * 
-				( 1. + delta1*tan1p/a_height );
-		ns_add2 = 1.0;
-		}
-
-            /* Berechnung des Strom-Vektors */
-	    temp = exp( delta_phi );
-	    /* temp = exp_lt( delta_phi ); */ 
-
-            *ptr_strom++ =  I_isat * 
-			(ns_add2 - ns_add1 * temp) / ( inv_beta + temp );
-
-            }	/* for ind=0, n_vpr-1 */
-
-        }	/* if (a_sonde_proj > 0.0) .....    */
-
-
+            i = 0;
+/*            do {
+*/    
+                /* Schleifenzaehler */
+                last_phi = phi_me_pr;
+                i++;
+    
+                /* Berechne Schichdicken und deren Differenz zur Umgebung */
+                phi_norm = (phi_me_pr - phi_me_de) / norm_e1;
+                delta1   = sf1*( schicht_power(&phi_norm,&eps1_sqr,&eps1) - dw1);
+                phi_norm = (phi_me_pr - phi_diff - phi_me2_de) / norm_e2;
+                delta2   = sf2*( schicht_power(&phi_norm,&eps2_sqr,&eps2) - dw2);
+    
+    /*
+                hl1 = delta1 / a_height;
+                hb1 = delta1 / a_width; 
+                hl2 = delta2 * lfac;
+                hb2 = delta2 * bfac; 
+    */          
+                /* keine Expansion der Schicht parallel zur Oberflaeche */
+                ns_add1 = 1. + delta1 * delta1_fac;
+                ns_add2 = 1. + delta2 * delta2_fac; 
+                
+                /* Expansion entlang Oberflaeche = Expansion senkrecht */
+    /*          ns_add1 = 1. + hb1+hb1 + (hb1+hb1+1.)*hl1*(tan1+2) ;
+                ns_add2 = 1. + hb2+hb2 + (hb2+hb2+1.)*hl2*(tan2+2) ; 
+    */
+                /* Expansion entlang Oberflaeche = 0.5*Expansion senkrecht
+                   diese Version wird von PIC-Rechnungen favorisiert (axb) */
+    /*          ns_add1 = (1. + hb1)*(1+ hl1*(1+tan1)) ;
+                ns_add2 = (1. + hb2)*(1+ hl2*(1+tan2)) ; 
+    */          
+                /* Nichtsaettigung(Sondenflaeche) kann nicht kleiner NULL  */
+                /* werden. Sondenflaeche kann auch nie gleich Null werden, */
+                /* da ein paar Ionen immer den Weg zur Sonde finden werden */
+                ns_add1 = DMAX(ns_add1,0.);
+                ns_add2 = DMAX(ns_add2,0.);
+    
+                /* naechste Naeherung fuer phi1 */
+                /* nur fuer starke Nichtsaettigung, sonst genuegt es, wenn in */
+                /* Pseudo-Schleife ns_add1,2 berechnet wurden */
+/*                if (ns_add1 > 1.3)  phi_me_pr = log_inv_exp + log_j_quot
+                    			       - log(inv_beta*ns_add1+ns_add2);
+*/
+                   
+/*                phi_me_pr = log_inv_exp + log_j_quot
+                    			       - log(inv_beta*ns_add1+ns_add2);
+*/    
+ 
+/* keine Iteration mehr: phi_me_pr wird lediglich fuer Berechnung der Nicht- */
+/* saettung benoetigt. Diese wird als eine Korrektru aufgefasst, so dass     */
+/* die Abschaetzung voellig genuegt.                                         */
+/* Test an Kennlinie mit psi=89.4 und vpr=-200,200 zeigt, dass die Iteration */
+/* nur Aenderungen (in T_e und n_e) um max. 3% bringt. Dafuer lohnt sich der */
+/* Aufwand an Rechenzeit aber nicht.                                         */
+              
+/*                } while( ( fabs(phi_me_pr/last_phi-1.) > .05 ) && (i < 10) ) ;
+*/   
+            /* Berechnung des Strom-Vektors, ns_add1,2 wird aus letzter */
+            /* Iteration uebernommen, 5% genauigkeit in phi_pr_me langt */
+            strom[ind] = I_isat * 
+                           (ns_add2 - ns_add1*save_exp) / (inv_beta + save_exp);
+                           
+   
+/*
+if ((cos1 < 0.017) && (ind == 0)){
+   phi_norm = (phi_me_pr - phi_me_de) / norm_e1;
+   printf("vpr=%g, phi=%g, dp1=%g, delta1=%g, delta2=%g, ns1=%g, ns2=%g\n", 
+   		vpr[ind], phi_norm,
+   		schicht_power(&phi_norm,&eps1_sqr,&eps1),
+   		delta1, delta2, ns_add1, ns_add2);
+   }
+*/
+   
+    /*
+    if ( (ns_add1 < 1.) && (ns_add2 < 1.)) {
+       printf("ns < 1: vpr=%g, strom=%g\n", vpr[ind], strom[ind]);
+       printf("delta1=%g, delta2=%g, ns1=%g, ns2=%g\n",
+       	delta1, delta2, ns_add1, ns_add2);
+       printf("eps1=%g, eps2=%g \n", eps1, eps2);
+       }
+   */    
+/*           if ( (fabs(strom[ind]) < 0.001) && (vpr[ind] > 2*t_e) ) {
+               printf("vpr=%g, strom=%g\n", vpr[ind], strom[ind]);
+               }
+*/
+            }       /* for ind=0, n_vpr-1 */
+    
+        } /* if a_proj_area > 0 */
+        
+        
     /* ---------------------------------------------------------------------
        wenn a_sonde_perp > 0.0 dann wurde bereits eine effektive Sondenfl"ache
        senkrecht zur Feldrichtung eingegeben. Es wird davon ausgegangen, da"s
@@ -1211,38 +947,49 @@ int fast_doppel(vpr, strom, n_vpr, params)
 	{
 
         /* Initialisierung, falls n"otig */
-        if (a_sonde_proj <= 0.) {
-            for ( ind=0, ptr_strom=strom; ind<n_vpr; ind++, *ptr_strom++ =0.0); 
+        if (a_proj_area <= 0.) {
+            for ( ind=0; ind<n_vpr; strom[ind++]=0.0); 
 	    }
 
         /* Kennlinie einer Doppelsonde mit Potentialverschiebung und
 	   Fl"achenverh"altnis beta */
-        I_isat = 2.* a_sonde_perp * j_isat;
-        bfac = alpha2 * ld / a_width; 
+        I_isat = a_sonde_perp * j_isat;
+        bfac = alpha2 * sqrt(ld_sqr) / a_width; 
 
 
-        for ( ind=0, ptr_vpr=vpr, ptr_strom=strom; ind < n_vpr; ind++ ) 
+        for ( ind=0; ind < n_vpr; ind++ ) 
 	    {
 
             /* Spannung an Doppelsonde: phi_sonde */
-            delta_phi = (dv - *ptr_vpr++) / t_e;
-	    temp = exp( delta_phi );
+            delta_phi = (dv - vpr[ind]) / t_e;
 
             /* Nichts"attigungsverhalten im Elektronenast? */
-	    /* ns_add2 = bfac * quick_075(delta_phi) ; */
             /* Berechnung des Strom-Vektors */
-            *ptr_strom++ +=  I_isat * 
-		(1. + bfac * quick_075(delta_phi) - temp) / ( inv_beta + temp );
+            /* *ptr_strom++ +=  I_isat * 
+		(1. + bfac * quick_075(delta_phi) - temp) / (inv_beta+temp); */
 
+	    if ( delta_phi < -300. ) {
+                strom[ind] +=  I_isat * (1.+bfac*quick_075(delta_phi))
+                                   / inv_beta  ;
+		}
+	    else if ( delta_phi > 300. ) {
+                strom[ind] +=  - I_isat ;
+	        }
+	    else { 
+	        temp = exp( delta_phi );
+                strom[ind] +=  I_isat * 
+		       (1.+ bfac*quick_075(delta_phi) - temp) / (inv_beta+temp);
+		}
 	    }
 
 
 	}	/* if (a_sonde_perp > 0.0) .....    */
 
-
     return 0 ;
 
-    }		 /* fast_doppel */
+    }		 /* mag_doppel */
+
+
 
 
 
@@ -1278,11 +1025,10 @@ int f_deriv( func, x, yfit, n_x, pars, do_var, n_pars, deriv)
     {
 
     /* Local variables */
-    static int 		i, j, rc;
-    static double 	save, d_par, temp;
+    static int 		i, j;
+    static double 	d_par, temp;
     static double	*y2=NULL;
-    static double	min=1.e30;
-    static int		n_y2=-1;
+    static int		n_y2=0;
 
 
     /* Function Body */
@@ -1297,18 +1043,11 @@ int f_deriv( func, x, yfit, n_x, pars, do_var, n_pars, deriv)
 	}
 
     /* allociere Speicherplatz nur 1x */
-    if (y2==NULL) {
-        n_y2 = n_x+n_x;
-        y2 = dvector(0,n_y2-1);
-        printf("f_deriv: Lege Speicherbereich an: y2 = %X, Laenge = %d\n",
-					y2, n_x+n_x);
-        }
-
     /* Gebe Speicher frei, wenn Aenderung in n_x  */
     if ( n_x > n_y2 ) {
-	printf("f_deriv: Aendere Speicherbereich: y2 = %X, Laenge = %d\n",
-			y2, n_x+n_x);
-	free_dvector(y2,0,n_y2-1);
+	/* printf("f_deriv: Aendere Speicherbereich: y2 = %X, Laenge = %d\n",
+			y2, n_x+n_x); */
+	if ( n_y2 > 0 ) free_dvector(y2,0,n_y2-1);
         y2 = dvector(0,n_x+n_x-1);
         n_y2 = n_x+n_x;
 	}
@@ -1325,16 +1064,20 @@ int f_deriv( func, x, yfit, n_x, pars, do_var, n_pars, deriv)
 	/* einige Parameter sollen festgehalten werden */
 	if ( do_var[j] )  {
 
-	    d_par  = (pars[j] == 0. ) ? 1.e-9 : pars[j] *1.e-6;
-	    pars[j]  += d_par; 
+	    /* die folgenden Zeilen dienen dazu, die Auswirkungen
+		   von Rundungsfehlern zu minimieren */
+	    temp=pars[j];
+	    d_par=1.e-6*fabs(temp);
+	    if (d_par == 0.0) d_par=1.e-9;
+	    pars[j] = temp+d_par;
+	    d_par   = pars[j]-temp;
+		
 	    if ( (*func)(x, y2, n_x, pars) < 0) return -111;
-	    pars[j]  -= d_par; 
-
+	    pars[j]  = temp; 
+	    		
 	    /* partielle Ableitung an jedem Punkt */
 	    d_par = 1./d_par;
-	    for( i=0; i< n_x; i++) deriv[j][i] = (*y2++ - *yfit++) * d_par;	
-	    y2   = y2 - n_x;
-	    yfit = yfit - n_x;
+	    for( i=0; i< n_x; i++) deriv[j][i] = (y2[i] - yfit[i]) * d_par;	
 	
 	    }		/* if do_var[j] */
 
@@ -1391,11 +1134,14 @@ double b;
 
 {
 	double absa,absb;
+	
 	absa=fabs(a);
 	absb=fabs(b);
+	
 	if ((absa < 1.e30) && (absb < 1.e30)) return sqrt(absa*absa+absb*absb);
 	if (absa > absb) return absa*sqrt(1.0+DSQR(absb/absa));
 	return (absb == 0.0 ? 0.0 : absb*sqrt(1.0+DSQR(absa/absb)));
+	
 }		/* Ende von dphythag */
 
 
@@ -1426,35 +1172,27 @@ double	**v;
 
 {
 	int flag,i,its,j,jj,k,l,nm;
-	/* double anorm,c,f,g,h,s,scale,x,y,z,*rv1; */
 	double anorm,c,f,g,h,s,scale,x,y,z;
 
 	static double	*rv1=NULL;
 	static int	n_rv1=0;
 
 	/* rv1=dvector(1,n); */
-	if ( rv1 == NULL ){
-	    /* printf("dsvdcmp: Belege Speicherplatz: n = %d\n",n); */
-	    rv1=dvector(1,n);
-	    n_rv1 = n;
-	    }
         if ( n > n_rv1 ) {
-	    printf("dsvdcmp: Aendere Speicherplatz: n = %d --> %d\n",
-			n_rv1, n);
-	    free_dvector(rv1,1,n_rv1);
-	    rv1=dvector(1,n);
+	    if (n_rv1 > 0) free_dvector(rv1,0,n_rv1-1);
+	    rv1=dvector(0,n-1);
 	    n_rv1 = n;
 	    }
 
 	g=scale=anorm=0.0;
-	for (i=1;i<=n;i++) {
+	for (i=0;i<n;i++) {
 		l=i+1;
 		rv1[i]=scale*g;
 		g=s=scale=0.0;
-		if (i <= m) {
-			for (k=i;k<=m;k++) scale += fabs(a[k][i]);
+		if (i < m) {
+			for (k=i;k<m;k++) scale += fabs(a[k][i]);
 			if (scale) {
-				for (k=i;k<=m;k++) {
+				for (k=i;k<m;k++) {
 					a[k][i] /= scale;
 					s += a[k][i]*a[k][i];
 				}
@@ -1462,20 +1200,20 @@ double	**v;
 				g = -SIGN(sqrt(s),f);
 				h=f*g-s;
 				a[i][i]=f-g;
-				for (j=l;j<=n;j++) {
-					for (s=0.0,k=i;k<=m;k++) s += a[k][i]*a[k][j];
+				for (j=l;j<n;j++) {
+					for (s=0.0,k=i;k<m;k++) s += a[k][i]*a[k][j];
 					f=s/h;
-					for (k=i;k<=m;k++) a[k][j] += f*a[k][i];
+					for (k=i;k<m;k++) a[k][j] += f*a[k][i];
 				}
-				for (k=i;k<=m;k++) a[k][i] *= scale;
+				for (k=i;k<m;k++) a[k][i] *= scale;
 			}
 		}
 		w[i]=scale *g;
 		g=s=scale=0.0;
-		if (i <= m && i != n) {
-			for (k=l;k<=n;k++) scale += fabs(a[i][k]);
+		if (i < m && i != (n-1) ) {
+			for (k=l;k<n;k++) scale += fabs(a[i][k]);
 			if (scale) {
-				for (k=l;k<=n;k++) {
+				for (k=l;k<n;k++) {
 					a[i][k] /= scale;
 					s += a[i][k]*a[i][k];
 				}
@@ -1483,50 +1221,50 @@ double	**v;
 				g = -SIGN(sqrt(s),f);
 				h=f*g-s;
 				a[i][l]=f-g;
-				for (k=l;k<=n;k++) rv1[k]=a[i][k]/h;
-				for (j=l;j<=m;j++) {
-					for (s=0.0,k=l;k<=n;k++) s += a[j][k]*a[i][k];
-					for (k=l;k<=n;k++) a[j][k] += s*rv1[k];
+				for (k=l;k<n;k++) rv1[k]=a[i][k]/h;
+				for (j=l;j<m;j++) {
+					for (s=0.0,k=l;k<n;k++) s += a[j][k]*a[i][k];
+					for (k=l;k<n;k++) a[j][k] += s*rv1[k];
 				}
-				for (k=l;k<=n;k++) a[i][k] *= scale;
+				for (k=l;k<n;k++) a[i][k] *= scale;
 			}
 		}
 		anorm=DMAX(anorm,(fabs(w[i])+fabs(rv1[i])));
 	}
-	for (i=n;i>=1;i--) {
-		if (i < n) {
+	for ( i=(n-1);i>=0;i--) {
+		if (i < (n-1)) {
 			if (g) {
-				for (j=l;j<=n;j++) v[j][i]=(a[i][j]/a[i][l])/g;
-				for (j=l;j<=n;j++) {
-					for (s=0.0,k=l;k<=n;k++) s += a[i][k]*v[k][j];
-					for (k=l;k<=n;k++) v[k][j] += s*v[k][i];
+				for (j=l;j<n;j++) v[j][i]=(a[i][j]/a[i][l])/g;
+				for (j=l;j<n;j++) {
+					for (s=0.0,k=l;k<n;k++) s += a[i][k]*v[k][j];
+					for (k=l;k<n;k++) v[k][j] += s*v[k][i];
 				}
 			}
-			for (j=l;j<=n;j++) v[i][j]=v[j][i]=0.0;
+			for (j=l;j<n;j++) v[i][j]=v[j][i]=0.0;
 		}
 		v[i][i]=1.0;
 		g=rv1[i];
 		l=i;
 	}
-	for (i=IMIN(m,n);i>=1;i--) {
+	for (i=IMIN(m,n)-1;i>=0;i--) {
 		l=i+1;
 		g=w[i];
-		for (j=l;j<=n;j++) a[i][j]=0.0;
+		for (j=l;j<n;j++) a[i][j]=0.0;
 		if (g) {
 			g=1.0/g;
-			for (j=l;j<=n;j++) {
-				for (s=0.0,k=l;k<=m;k++) s += a[k][i]*a[k][j];
+			for (j=l;j<n;j++) {
+				for (s=0.0,k=l;k<m;k++) s += a[k][i]*a[k][j];
 				f=(s/a[i][i])*g;
-				for (k=i;k<=m;k++) a[k][j] += f*a[k][i];
+				for (k=i;k<m;k++) a[k][j] += f*a[k][i];
 			}
-			for (j=i;j<=m;j++) a[j][i] *= g;
-		} else for (j=i;j<=m;j++) a[j][i]=0.0;
+			for (j=i;j<m;j++) a[j][i] *= g;
+		} else for (j=i;j<m;j++) a[j][i]=0.0;
 		++a[i][i];
 	}
-	for (k=n;k>=1;k--) {
+	for (k=n-1;k>=0;k--) {
 		for (its=1;its<=30;its++) {
 			flag=1;
-			for (l=k;l>=1;l--) {
+			for (l=k;l>=0;l--) {
 				nm=l-1;
 				if ((double)(fabs(rv1[l])+anorm) == anorm) {
 					flag=0;
@@ -1547,7 +1285,7 @@ double	**v;
 					h=1.0/h;
 					c=g*h;
 					s = -f*h;
-					for (j=1;j<=m;j++) {
+					for (j=0;j<m;j++) {
 						y=a[j][nm];
 						z=a[j][i];
 						a[j][nm]=y*c+z*s;
@@ -1559,18 +1297,19 @@ double	**v;
 			if (l == k) {
 				if (z < 0.0) {
 					w[k] = -z;
-					for (j=1;j<=n;j++) v[j][k] = -v[j][k];
+					for (j=0;j<n;j++) v[j][k] = -v[j][k];
 				}
 				break;
 			}
 
 			/* substantieller Fehler, SVD konvergiert nicht */
 			if (its == 30) {
-			   fprintf(stderr,"\n\n\ndsvcmp: ");
+			   /*
+			   fprintf(stderr,"dsvcmp: ");
 			   fprintf(stderr,"no convergence in 30 iterations");
-			   fprintf(stderr," ... sorry!\n\n");
-			   fprintf(stderr,"\t--> returning without acttion");
-			   fprintf(stderr,"\n\n\n");
+			   fprintf(stderr," ... sorry!\n");
+			   fprintf(stderr,"\t--> returning without action\n");
+			   */
 			   return (-42);
 			   }
 
@@ -1597,7 +1336,7 @@ double	**v;
 				g = g*c-x*s;
 				h=y*s;
 				y *= c;
-				for (jj=1;jj<=n;jj++) {
+				for (jj=0;jj<n;jj++) {
 					x=v[jj][j];
 					z=v[jj][i];
 					v[jj][j]=x*c+z*s;
@@ -1612,7 +1351,7 @@ double	**v;
 				}
 				f=c*g+s*y;
 				x=c*y-s*g;
-				for (jj=1;jj<=m;jj++) {
+				for (jj=0;jj<m;jj++) {
 					y=a[jj][j];
 					z=a[jj][i];
 					a[jj][j]=y*c+z*s;
@@ -1625,7 +1364,6 @@ double	**v;
 		}
 	}
 
-	/* free_dvector(rv1,1,n); */
 
 	return (0);
 
@@ -1651,52 +1389,43 @@ double	**v;
 /*	-------------------------------------------------	*/
 
 
-void dsvbksb(u, w, v, m, n, b,x)
+void dsvbksb(u, w, v, m, n, b)
 double 	**u;
 double 	w[];
 double	**v;
 int	m,n;
 double	b[];
-double	x[];
 
 	{
 	int 	jj,j,i;
-	/* double 	s,*tmp; */
 	double 	s;
 
 	static double 	*tmp=NULL;
-	static int	n_tmp;
+	static int	n_tmp=0;
 
-	if (tmp == NULL ) {
-	    /* printf("dsvbksb: Belege Speicherplatz: n = %d \n", n); */
-	    tmp=dvector(1,n);
-	    n_tmp = n;
-	    }
+
 	if ( n > n_tmp ) {
-	    printf("dsvbksb: Aendere Speicherplatz: n = %d --> %d\n",
-			n_tmp, n);
-	    free_dvector(tmp,1,n_tmp);
-	    tmp=dvector(1,n);
-	    n_tmp = n;
+	    if (n_tmp > 0) free_dvector(tmp,0,n_tmp-1);
+	    tmp=dvector(0,n+n-1);
+	    n_tmp = n+n;
 	    }
 
 
-	for (j=1;j<=n;j++) {
-		s=0.0;
+	for (j=0;j<n;j++) {
 		if (w[j]) {
-			for (i=1;i<=m;i++) s += u[i][j]*b[i];
-			s /= w[j];
+			for (s=0.,i=0;i<m;i++) s += u[i][j]*b[i];
+			tmp[j] = s*w[j];
 			}
-		tmp[j]=s;
+		else {
+			tmp[j] = 0.;
+			}
 		}
 
-	for (j=1;j<=n;j++) {
+	for (j=0;j<n;j++) {
 		s=0.0;
-		for (jj=1;jj<=n;jj++) s += v[j][jj]*tmp[jj];
-		x[j]=s;
+		for (jj=0;jj<n;jj++) s += v[j][jj]*tmp[jj];
+		b[j]=s;
 		}
-
-	/* free_dvector(tmp,1,n); */
 
 	}		/* Ende von dsvbksb	*/
 
@@ -1731,15 +1460,10 @@ double 	**inv;
 	double temp;
 
 
-	for (i=1; i<=n; i++) {
-	    for ( j=1; j<=n; j++ ) {
-
-		temp = 0.0;
-		for (jj=1; jj<=n; jj++) {
-		    if (w[jj]>0.) temp += v[i][jj]*u[j][jj]/w[jj];
-		    }
+	for (i=0; i<n; i++) {
+	    for ( j=0; j<n; j++ ) {
+		for (temp=0.,jj=0; jj<n; jj++) temp += v[i][jj]*u[j][jj]*w[jj];
 		inv[i][j] = temp;
-
 		}	/* for i=1, n */
 	    }		/* for j=1, n */
 
@@ -1759,7 +1483,9 @@ double 	**inv;
 								
 	Eingabe:	Matrix A				
 			Vektor b				
-								
+			Dimension n
+			calc_inverse	Inverse wird nur berechnet, wenn
+					"true" (=0)					
 								
 	Rueckgabe:	A^(-1) in Matrix A 			
 			x in Vektor b				
@@ -1769,95 +1495,46 @@ double 	**inv;
 								
 	--> um Zeit zu sparen, werden die internen Felder nur 
 	    einmal angelegt und bei folgenden Aufrufen wieder-
-	    verwendet. Sollte sich die Dimension n aendern,
-	    muss dsvd_solver zuvor mit n<0 aufgerufen werden,
-	    um die internen Felder zu loeschen.						
+	    verwendet. Ist in einem folgenden Aufruf die Dimension
+	    groesser, so werden die Felder automatisch angepasst.
+	    Sollen die Felder vor Programm-Ende geloescht werden,
+	    so muss beim Funktionsaufruf eine negative Dimension
+	    n angegeben werden.
+	    
+	--> fuer kleine Systeme (2x2 und 3x3) ist die Loesung
+	    explizit fest vorgegeben. Ist die Determinante nahe
+	    Null, so wird die Loesung an die eigentliche svd-Routine
+	    weitergegeben.						
 		
 	-------------------------------------------------	
 								
-	M. Weinlich, 07.01.93					
+	M. Weinlich, 29.08.95					
 	entnommen aus Numerical Recipies			
 								
 	-------------------------------------------------	*/
 
 
-int dsvd_solver(a, b, n)
+int dsvd_solver(a, b, n, calc_inverse)
 double 	**a;
 double 	*b;
 int	n;
-
+int	calc_inverse;
 {
 	int 	rc;
 	int	i, j;
 
         double  det, a00, a01, a02, a10, a11, a12, a20, a21, a22, b0, b1, b2;
 
-	double	wmin, wmax;
+	double	wmin, wmax, temp;
 
-	static int	last_n=0;
 
 	/* Hilfsmatrizen fuer svd */
+	static int	last_n=0;
 	static double	**u=NULL;
 	static double	**v=NULL;
-	static double	**ha=NULL;
 	static double	*w=NULL;
-	static double	*x=NULL;
-	static double	*hb=NULL;
 
-	/* printf("Beginn dsvd_solver\n"); */
-/* printf("s"); */
-
-	/* allociere nur 1x den benoetigten Speicherplatz */
- 	if ( w == NULL ) {
-	    printf("dsvd_solver: Lege Speicherplatz an, n = %d\n", n);
-	    u  = dmatrix( 1, n, 1, n);
-	    v  = dmatrix( 1, n, 1, n);
-	    ha = dmatrix( 1, n, 1, n);
-	    w  = dvector( 1, n);
-	    x  = dvector( 1, n);
-	    hb = dvector( 1, n);
-	    last_n = n;
-	    }
-
-	/* Eingabe von n < 0 : Loesche interne Variablen */
-	if ( n <= 0 ) {
-	    printf("dsvd_solver: Loesche Speicherplatz, n = %d\n", n);
-	    free_dmatrix( u, 1, -n, 1, -n);
-	    free_dmatrix( v, 1, -n, 1, -n);
-	    free_dmatrix( ha, 1, -n, 1, -n);
-	    free_dvector( w, 1, -n);
-	    free_dvector( x, 1, -n);
-	    free_dvector( hb, 1, -n);
-	    u  = NULL;
-	    v  = NULL;
-	    ha = NULL;
-	    w  = NULL;
-	    x  = NULL;
-	    hb = NULL;
-	    last_n = 0;
-	    return 0;
-	    }
-
-	/* Aenderung in geforderter Dimension : Loesche interne Variablen */
-	if ( n > last_n ) {
-	    printf("dsvd_solver: Aendere Speicherplatz, n = %d --> n = %d\n", 
-			last_n, n);
-	    free_dmatrix( u, 1, last_n, 1, last_n);
-	    free_dmatrix( v, 1, last_n, 1, last_n);
-	    free_dmatrix( ha, 1, last_n, 1, last_n);
-	    free_dvector( w, 1, last_n);
-	    free_dvector( x, 1, last_n);
-	    free_dvector( hb, 1, last_n);
-	    u  = dmatrix( 1, n, 1, n);
-	    v  = dmatrix( 1, n, 1, n);
-	    ha = dmatrix( 1, n, 1, n);
-	    w  = dvector( 1, n);
-	    x  = dvector( 1, n);
-	    hb = dvector( 1, n);
-	    last_n = n;
-	    }
-
-
+   
 	/* Sonderbehandlung: 2x2 und 3x3 Matrizen koennen noch
 	                     von Hand invertiert werden! */
         if ( n == 2 ) {
@@ -1867,7 +1544,10 @@ int	n;
 	    a10 = a[1][0];
 	    a11 = a[1][1];
 	    det = a00*a11 - a01*a10;
-	    if ( fabs(det) > 1.e-30 ) {
+	    /* printf("Sonderbehandlung n=2 in dsvd_solver det = %g\n",det); */
+	    if ( fabs(det) > 1.e-60 ) {
+		b0 = b[0];
+		b1 = b[1];
 		/* inverse Matrix */
 		det = 1. / det;
 		a[0][0] = a11 * det;
@@ -1875,10 +1555,8 @@ int	n;
 		a[1][0] *= (-det);
 		a[1][1] = a00 * det;
 		/* Loesungsvektor */
-		b0 = b[0];
-		b1 = b[1];
 		b[0] = a[0][0]*b0 + a[0][1]*b1;
-		b[1] = a[1][0]*b0 + a[1][1]*b1;
+		b[1] = a[1][0]*b0 + a[1][1]*b1; 
 		/* das war's */
 		return 0;
 		}
@@ -1896,7 +1574,7 @@ int	n;
 	    a22 = a[2][2];
 	    det = a00*a11*a22 + a01*a12*a20 + a02*a10*a21 -
 			a02*a11*a20 - a01*a10*a22 - a00*a12*a21;
-	    if ( fabs(det) > 1.e-30 ) {
+	    if ( fabs(det) > 1.e-60 ) {
 		/* inverse Matrix */
 		det = 1. / det;
 		a[0][0] = det * (a11*a22 - a12*a21);
@@ -1921,53 +1599,79 @@ int	n;
 	    }
 
 
-/*	if (n<4) {
-	    printf( "\n\n");
-	    printf( "dsvd_solver: invertiere singulaere Matrix \n");
-	    printf( "             det = %g\n\n", det);
+	/* Aenderung in geforderter Dimension : Loesche interne Variablen */
+	if ( n > last_n ) {
+	    /* printf("dsvd_solver: Lege Speicherplatz an, n = %d\n", n); */
+	    if (last_n > 0) {
+	        /* printf("dsvd_solver: Aendere Speicherplatz, n = %d --> n = %d\n", 
+			last_n, n); */
+	        free_dmatrix( u, 0, last_n-1, 0, last_n-1);
+	        free_dmatrix( v, 0, last_n-1, 0, last_n-1);
+	        free_dvector( w, 0, last_n-1);
+	        }
+	    u  = dmatrix( 0, n-1, 0, n-1);
+	    v  = dmatrix( 0, n-1, 0, n-1);
+	    w  = dvector( 0, n-1);
+	    last_n = n;
 	    }
+
+	/* Eingabe von n < 0 : Loesche interne Variablen */
+	if ( n <= 0 ) {
+	    if ( last_n >= 0) return 0;
+	    /* wenn wirklich Speicher belegt wurde */
+	    free_dvector( w , 0, last_n-1);
+	    printf("1x free_dvector\n");
+	    printf("dsvd_solver: Loesche Speicherplatz, n = %d\n", n);
+	    free_dmatrix( u , 0, last_n-1, 0, last_n-1);
+	    printf("1x free_dmatrix\n");
+	    free_dmatrix( v , 0, last_n-1, 0, last_n-1);
+	    printf("2x free_dmatrix\n");
+
+	    u  = NULL;
+	    v  = NULL;
+	    w  = NULL;
+	    last_n = 0;
+	    return 0;
+	    }
+
+/*
+if (n < 4) {
+   printf("keine Standard-Loesung fuer n=%d gefunden, det = %g\n",n,det);
+   }
 */
 
-	/*	Achtung:	externe Felder haben Indizes
-				von 0..n-1, waehrend die neu
-				definierten internen Felder 
-				der svd-Routine Indizes von
-				1..n haben!!!			*/
-
-	/* kopiere a nach u */
-	for (i=1; i<=n; i++) {
-	    for (j=1; j<=n; j++) u[i][j] = a[i-1][j-1];
-	    }
-
-	/* kopiere b nach hb */
-	for (i=1; i<=n; i++) hb[i] = b[i-1];
-
 	/* singular value decomposition von A */
-	rc = dsvdcmp( u, n, n, w, v);
+	rc = dsvdcmp( a, n, n, w, v);
 	if ( rc < 0 ) return (rc);
 
 
 	/* was haben wir denn fuer Ergebnisse erhalten */
 	wmax = 0.0;
-	for (i=1; i<=n; i++) wmax = DMAX( wmax, w[i]);
+	for (i=0; i<n; i++) wmax = DMAX( wmax, w[i]);
 	wmin = wmax * 1.e-12;
-	for (i=1; i<=n; i++) if ( w[i] <= wmin ) w[i] = wmin; 
 	
+	/* eigentlich wird nicht w (>=0.0) sondern 1/w in den folgenden
+	   Routinen benoetigt, dabei muss jedoch 1/0 = 0 gesetzt werden */
+	for (i=0; i<n; i++) {
+	   temp = DMAX( wmin, w[i]);
+	   w[i] = ( (temp > 0.) ? 1./temp : 0.0);
+	   }
+	   
 	/* Loesung des Gleichungssystems */
-	dsvbksb( u, w, v, n, n, hb, x ); 
-
-	/* Berechnung der inversen Matrix */
-	dsvdinv( u, w, v, n, ha );	
-
-
-	/* Rueckschreiben der Ergebnisse - Loesungsvektor x --> b */
-	for (i=1; i<=n; i++) b[i-1] = x[i]; 
-
-	/* Rueckschreiben der Ergebnisse - Inverse Matrix --> A */
+	dsvbksb( a, w, v, n, n, b); 
+        
+        /* weiter nur, wenn auch Inverse berechnet werden muss */
+        if (calc_inverse != 0) return (0);
+        
+        printf( "Berechne auch Inverse\n");
+        
 	/* kopiere a nach u */
-	for (i=1; i<=n; i++) {
-	    for (j=1; j<=n; j++) a[i-1][j-1] = ha[i][j];
-	    }	
+	for (i=0; i<n; i++) {
+	    for (j=0; j<n; j++) u[i][j] = a[i][j];
+	    }
+
+        /* Berechnung der inversen Matrix */
+	dsvdinv( u, w, v, n, a );
 
 
 	return (0);
@@ -2008,13 +1712,13 @@ int	n;
 void covsrt(covar, ma, ia, mfit)
 
 double	**covar;
-int	ia[], ma;
+int	ma, ia[];
 int	mfit;
 
 {
 	int i,j,k;
-	float swap;
-
+	double swap;
+	
 	for (i=mfit;i<ma;i++)
 		for (j=0;j<=i;j++) covar[i][j]=covar[j][i]=0.0;
 	k=mfit-1;
@@ -2061,21 +1765,11 @@ double	*chisq;
 {
 	int 	i,j;
 
-	/* berechen chi^2, mit Sonderbehandlung fuer kleine n's */
-	if ( ndata == 2 ) {
-	   *chisq = DSQR( (y[0]-yfit[0])/sig[0] ) + 
-			DSQR( (y[1]-yfit[1])/sig[1] );
-	   }
-	else if (ndata == 3) {
-	   *chisq = DSQR( (y[0]-yfit[0])/sig[0] ) + 
-			DSQR( (y[1]-yfit[1])/sig[1] ) +
-			DSQR( (y[2]-yfit[2])/sig[2] );
-	   }
- 	else {
-	   *chisq=0.0;
-	    for (i=0;i<ndata;i++) 
+
+	*chisq=0.0;
+	for (i=0;i<ndata;i++) 
 		*chisq += DSQR( (y[i]-yfit[i])/sig[i] );
-	   }
+	  
 
 	/* Nebenbedingungen */
 	for (j=0; j<n_pars; j++) {
@@ -2130,45 +1824,36 @@ double	*alamda;
 
 	int 		i, j, k, l, m;
 	int		rc;
-	double		ochisq, temp, dy, wt;
+	double		ochisq, dy, wt;
 
 	static double 	*atry=NULL,
 			*beta=NULL,
 			*da=NULL,
 			*oneda=NULL;
 	static double 	**dyda=NULL;
-	static int	last_ma, last_ndata;
+	static int	last_ma=0, last_ndata=0;
 
 
 
         /* printf("Beginn mrqmin\n"); */
-
+        
 	/* stelle benoetigte Datenfelder bereit */
-	if ( beta == NULL ) {
-                /* printf( "mrqmin: Lege Speicher an, ma = %d\n",ma); */
-		atry  = dvector(0,ma-1);
-		beta  = dvector(0,ma-1);
-		da    = dvector(0,ma-1);
-	        dyda  = dmatrix(0,ma-1,0,2*ndata-1);
-		oneda = dvector(0,ma-1);
-		last_ma = ma;
-		last_ndata = ndata+ndata;
-		}
-
 	if (( ma > last_ma ) || ( ndata > last_ndata )) {
-                printf( "mrqmin: Aendere Speicher, ma = %d --> %d\n",
-					last_ma,ma);
-                printf( "                          nd = %d --> %d\n",
-					last_ndata,ndata);
-		free_dvector(oneda,0,last_ma-1);
-		free_dvector(da,0,last_ma-1);
-		free_dvector(beta,0,last_ma-1);
-		free_dvector(atry,0,last_ma-1);
-	        free_dmatrix(dyda,0,last_ma-1,0,last_ndata-1);
+                /* printf( "mrqmin: Aendere Speicher, ma = %d --> %d\n",
+					last_ma,ma); */
+                /* printf( "                          nd = %d --> %d\n",
+					last_ndata,ndata); */
+		if (last_ma > 0) {
+		    free_dvector(oneda,0,last_ma-1);
+		    free_dvector(da,0,last_ma-1);
+		    free_dvector(beta,0,last_ma-1);
+		    free_dvector(atry,0,last_ma-1);
+	            free_dmatrix(dyda,0,last_ma-1,0,last_ndata-1);
+	            }
 		atry  = dvector(0,ma-1);
 		beta  = dvector(0,ma-1);
 		da    = dvector(0,ma-1);
-	        dyda  = dmatrix(0,ma-1,0,2*ndata-1);
+	        dyda  = dmatrix(0,ma-1,0,ndata+ndata-1);
 		oneda = dvector(0,ma-1);
 		last_ma = ma;
 		last_ndata = ndata+ndata;
@@ -2198,6 +1883,8 @@ double	*alamda;
 	/* aktuelles chi_sqr */
 	calc_chisqr(y,yfit,sig,ndata,a,ia,ma,nb_values,nb_const,&ochisq);
 
+        /* gar kein Fit verlangt? */
+        if (mfit == 0) return (0);
 
 	/* Initialisierung der alpha und beta Matrizen */
 	for (j=0;j<mfit;j++) {
@@ -2240,12 +1927,12 @@ double	*alamda;
 
 	    for (j=0; j<mfit; j++) {
 	        for (k=0; k<mfit; k++) covar[j][k] = alpha[j][k];
-	        covar[j][j]=alpha[j][j]*(1.0+(*alamda));
+	        covar[j][j] *= (1.0+(*alamda)); 
 	        oneda[j] = beta[j];
 	        }		/* for j=0, mfit-1 */
 
 	    /* Loesung der Gleichung covar * da = oneda */
-	    rc = dsvd_solver(covar,oneda,mfit);
+	    rc = dsvd_solver(covar,oneda,mfit, 1);
 
 	    /* Fehler in svd aufgetreten? wenn ja, dann hat weitere Berechnung
 		keinen Sinn mehr --> geordneter Rueckzug aus mrqmin, immer
@@ -2253,10 +1940,8 @@ double	*alamda;
 	    if ( rc < 0 ) return rc;
 
 	    /* probiere neue Parameter aus */
-	    for (j=0,l=0;l<ma;l++) {
-	        atry[l]=a[l];
-	        if (ia[l]) atry[l]+=oneda[j++];
-	        }
+	    for (j=0,l=0;l<ma;l++) 
+	        atry[l] =  (ia[l])?  a[l]+oneda[j++] : a[l];
             rc  = (*func)(x, yfit, ndata, atry);
 	    if ( rc < 0 ) return(rc);
 	    calc_chisqr(y,yfit,sig,ndata,atry,ia,ma,nb_values,nb_const,chisq);
@@ -2305,7 +1990,7 @@ double	*alamda;
 
 int magfit( func, x, y, sig, yfit, n_x, pars, do_var, 
 		n_pars, nb_values, nb_const,
-		chi_sqr, iter_max, eps_abs, eps_rel)
+		chi_sqr, iter_max, eps_abs, eps_rel, verbose)
 
     int		(*func)();
     double 	*x;
@@ -2321,10 +2006,19 @@ int magfit( func, x, y, sig, yfit, n_x, pars, do_var,
     int 	*iter_max;
     double 	*eps_abs;
     double 	*eps_rel;
+    int		*verbose;
 
     {
 
     /* Local variables */
+    static double	n_e=1., log_ne=0.;
+    static double	t_e=1.,	log_te=0.;
+    static double	beta=1, log_beta=0.;
+    static double	alpha1=1., log_alpha1=0.;
+    static double	alpha2=1., log_alpha2=0.;
+    static double	psi1=0., cos1=1.;
+    static double	psi2=0., cos2=1.;
+    
     int 	do_continue, iteration, best_estimate, 
 		bad_estimate, too_much, do_nb, nb_angepasst;
     int 	i, j, k, ind1, ind2, rc;
@@ -2340,27 +2034,13 @@ int magfit( func, x, y, sig, yfit, n_x, pars, do_var,
     static double	**alpha=NULL;
     static double	*curr_nb=NULL;
     static int		*save_do_var=NULL;
-    static int		last_npars;
+    static int		last_npars=0;
 
     double	chi_est, mean, min;
     int		pos;
 
     static double	**sigma=NULL;
     static int		old_n_sigma=-1;
-
-
-    /* Initialisierung des Hilfsfelds */
-    if ( sigma == NULL ) {
-        printf("Matrix sigma angelegt mit %dx%d Elementen\n",*n_pars,*n_pars);
-        sigma = dmatrix(0, *n_pars-1, 0, *n_pars-1);
-	old_n_sigma = *n_pars;
-	}
-    else if ( *n_pars > old_n_sigma ) {
-        printf( "sigam geloescht mit %d Elementen\n", old_n_sigma );
-        free_dmatrix( sigma, 0, old_n_sigma-1, 0, old_n_sigma-1);
-        sigma = dmatrix(0, *n_pars-1, 0, *n_pars-1);
-	old_n_sigma = *n_pars;
-        }
 
 
     /* Function Body */
@@ -2402,25 +2082,19 @@ int magfit( func, x, y, sig, yfit, n_x, pars, do_var,
 */
 
 
-    /* Stelle benoetigte Hilfsfelder bereit, wenn noch kein Speicher allok. */
-    if ( alpha == NULL ) {
-        printf("magfit: stelle Speicher bereit, n_pars = %d\n", *n_pars);
-        alpha       = dmatrix( 0, *n_pars-1, 0, *n_pars-1);
-        curr_nb     = dvector(0, *n_pars-1);
-        save_do_var = ivector(0, *n_pars-1);
-	last_npars  = *n_pars;
-        }
-
-    /* Passe Speicher bei Aenderung der Anforderungen an */
+    /* Stelle benoetigte Hilfsfelder bereit, wenn noch kein Speicher allokiert,
+       bzw. passe Speicher bei Aenderung der Anforderungen an */
     if ( *n_pars > last_npars ) {
-        printf("magfit: aendere Speicher, n_pars = %d --> \n", 
-			last_npars, *n_pars);
-        free_dmatrix( alpha, 0, last_npars-1, 0, last_npars-1);
-        free_dvector( curr_nb, 0, last_npars-1);
-        free_ivector( save_do_var, 0, last_npars-1);
+	if ( last_npars > 0) {
+            free_dmatrix( alpha, 0, last_npars-1, 0, last_npars-1);
+            free_dvector( curr_nb, 0, last_npars-1);
+            free_ivector( save_do_var, 0, last_npars-1);
+            free_dmatrix( sigma, 0, last_npars-1, 0, last_npars-1);
+            }
         alpha       = dmatrix( 0, *n_pars-1, 0, *n_pars-1);
         curr_nb     = dvector(0, *n_pars-1);
         save_do_var = ivector(0, *n_pars-1);
+        sigma 	    = dmatrix(0, *n_pars-1, 0, *n_pars-1);
 	last_npars  = *n_pars;
         }
 
@@ -2437,30 +2111,57 @@ int magfit( func, x, y, sig, yfit, n_x, pars, do_var,
 
     /* Initialisierung der look-up-Tabelle */
     init_quick_075();
-    /* init_exp_lt(); */
 
-    /* in allen positiven Parametern logarithmischer Fit */
+/*
     if ( pars[0] <= 0.0 ) printf( "Fehler in pars[0] %g \n", pars[0]);
     if ( pars[1] <= 0.0 ) printf( "Fehler in pars[1] %g \n", pars[1]);
     if ( pars[2] <= 0.0 ) printf( "Fehler in pars[2] %g \n", pars[2]);
     if ( pars[3] <= 0.0 ) printf( "Fehler in pars[3] %g \n", pars[3]);
     if ( pars[5] <= 0.0 ) printf( "Fehler in pars[5] %g \n", pars[4]);
-    pars[0] = log(pars[0]*sqrt(pars[1]));
-    pars[1] = log(pars[1]);
-    pars[2] = log(pars[2]);
-    pars[3] = log(pars[3]);
-    pars[5] = log(pars[5]);
-    if (nb_const[0] > 0.0) nb_values[0] = log(nb_values[0]);
-    if (nb_const[1] > 0.0) nb_values[1] = log(nb_values[1]);
-    if (nb_const[2] > 0.0) nb_values[2] = log(nb_values[2]);
-    if (nb_const[3] > 0.0) nb_values[3] = log(nb_values[3]);
-    if (nb_const[5] > 0.0) nb_values[5] = log(nb_values[5]);
+*/
+    /* in allen positiven Parametern logarithmischer Fit */
+    if ( pars[0] <= 0.0 ) pars[0]=1.e-100 ;
+    if ( pars[1] <= 0.0 ) pars[1]=1.e-100 ;
+    if ( pars[2] <= 0.0 ) pars[2]=1.e-100 ;
+    if ( pars[3] <= 0.0 ) pars[3]=1.e-100 ;
+    if ( pars[5] <= 0.0 ) pars[5]=1.e-100 ;
 
-    /* Fit in cos(psi) statt in psi */
-    pars[6] = cos(pars[6]);
-    pars[7] = cos(pars[7]);
-    if (nb_const[6] > 0.0) nb_values[6] = cos(nb_values[6]);
-    if (nb_const[7] > 0.0) nb_values[7] = cos(nb_values[7]);
+    if (n_e != pars[0]) {
+       n_e = pars[0];
+       log_ne = log(n_e);
+       }
+    if (t_e != pars[1]) {
+       t_e = pars[1];
+       log_te = log(t_e);
+       }
+    if (beta != pars[2]) {
+       beta = pars[2];
+       log_beta = log(beta);
+       }
+    if (alpha1 != pars[3]) {
+       alpha1 = pars[3];
+       log_alpha1 = log(alpha1);
+       }
+    if (alpha2 != pars[5]) {
+       alpha2 = pars[5];
+       log_alpha2 = log(alpha2);
+       }
+    if (psi1 != pars[6]) {
+       psi1 = pars[6];
+       cos1 = cos(psi1);
+       }
+    if (psi2 != pars[7]) {
+       psi2 = pars[7];
+       cos2 = cos(psi2);
+       }    
+       
+    pars[0] = log_ne + 0.5*log_te;
+    pars[1] = log_te;
+    pars[2] = log_beta;
+    pars[3] = log_alpha1;
+    pars[5] = log_alpha2;
+    pars[6] = cos1;
+    pars[7] = cos2;
 
 
     /* Fit mit oder ohne Nebenbedingungen */
@@ -2477,6 +2178,19 @@ int magfit( func, x, y, sig, yfit, n_x, pars, do_var,
 	der Sonde als konstant angesehen. */
     chi_est = 0.0;
     if (do_nb) {
+
+	/* gegebenenfalls muessen die Nebenbedingungen angepasst werden */
+    	if (nb_const[0] > 0.0) nb_values[0] = log(nb_values[0]);
+    	if (nb_const[1] > 0.0) nb_values[1] = log(nb_values[1]);
+    	if (nb_const[2] > 0.0) nb_values[2] = log(nb_values[2]);
+    	if (nb_const[3] > 0.0) nb_values[3] = log(nb_values[3]);
+    	if (nb_const[5] > 0.0) nb_values[5] = log(nb_values[5]);
+ 
+        /* Fit in cos(psi) statt in psi */
+        if (nb_const[6] > 0.0) nb_values[6] = cos(nb_values[6]);
+        if (nb_const[7] > 0.0) nb_values[7] = cos(nb_values[7]);
+
+    	
 	/* Bestimme min(strom) */
 	min = 0.0;
 	for (i=0;i<*n_x;i++) if (y[i]<min) min = y[i];
@@ -2491,7 +2205,7 @@ int magfit( func, x, y, sig, yfit, n_x, pars, do_var,
 	temp = 0.1 * mean;
 	chi_est = (*n_x) * temp*temp;
 	/* Info, wo liegt der Schaetzwert? */
-	printf("Fit mit Nebenbedingungen, Schaetzwert fuer chi^2 = %g\n",
+	if (*verbose ) printf("Fit mit Nebenbedingungen, Schaetzwert fuer chi^2 = %g\n",
 		chi_est);
 	}
 
@@ -2500,8 +2214,8 @@ int magfit( func, x, y, sig, yfit, n_x, pars, do_var,
 
     /* aktuelle Anzahl der Fitparameter */
     for (j=0,mfit=0;j<*n_pars;j++) if (do_var[j]) mfit++;
-
-
+    
+    
     /* Initialisierung in mrqmin, erzeuge Vektoren, Matrizen, etc. */
     alamda = -1.0;
 
@@ -2513,6 +2227,9 @@ int magfit( func, x, y, sig, yfit, n_x, pars, do_var,
 	/* berechne naechsten Iterationsschritt */
         rc = mrqmin(func, x,y,sig,yfit,*n_x,pars,do_var,*n_pars, mfit, 
 			nb_values, curr_nb, sigma,alpha,chi_sqr,&alamda);
+
+        /* kein Fit verlangt? */
+        if (mfit == 0) break;
 
 	/* rc = -4711 ist Returncode fuer zu grosses alamda, d.h.
 	   Schaetzwert laesst sich aus dem einen oder anderen Grund
@@ -2554,41 +2271,44 @@ int magfit( func, x, y, sig, yfit, n_x, pars, do_var,
 
     /* 	Abgesang */
     
-    /* "ich lebe noch Zeil" muss nur abgeschlossen werden, wenn sie auch */
+    /* "ich lebe noch Zeile" muss nur abgeschlossen werden, wenn sie auch */
     /* wirklich angelegt wurde */
     /* if ( iter >= 10 ) fprintf ( stderr, "\n" ); */
 
     /* Fit ok, welches Chi? nur interessant fuer Nebenbedingungen, da in
        diesem Fall zu Beginn ein Chi abgeschaetzt werden musste */
-    if ( (best_estimate) && (do_nb) ){
+    if ( (best_estimate) && (do_nb) && (*verbose) ){
 	fprintf ( stderr, "Fit nach Levenberg-Marquardt erfolgreich beendet " );
 	fprintf ( stderr, "( chi^2 = %g ) \n", *chi_sqr );
 	}
 
     /* sind Fehler aufgetreten, wenn ja, welche? */
-    if (rc == -21 ) 
-	fprintf(stderr,"Zuviele Parameter ausserhalb ihres Wertebereichs\n");
-    else if (rc == -42) 
-	fprintf(stderr, "Iteration abgebrochen --- Fehler in svd\n" );
-    else if (bad_estimate) 
-	fprintf(stderr, "Iteration abgebrochen --- Signal 'bad estimate'\n" );
-    else if (too_much) 
-	fprintf(stderr, "Iteration nicht konvergiert\n" );
-    else if (rc != 0 ) 
-	fprintf(stderr, "Fehler waehrend Iteration, Fehlercode = %d\n",rc);
+    if ( *verbose ) {
+        if (rc == -21 ) 
+	    fprintf(stderr,
+			"Zuviele Parameter ausserhalb ihres Wertebereichs\n");
+        else if (rc == -42) 
+	    fprintf(stderr,"Iteration abgebrochen --- Fehler in svd\n");
+        else if (bad_estimate) 
+	    fprintf(stderr,"Iteration abgebrochen --- Signal 'bad estimate'\n");
+        else if (too_much) 
+	    fprintf(stderr,"Iteration nicht konvergiert\n");
+        else if (rc != 0 ) 
+	    fprintf(stderr, "Fehler waehrend Iteration, Fehlercode = %d\n",rc);
+	}
 
     if (bad_estimate) rc = -33;
     if (too_much) rc = -34;
 
     /* logarithmischer Fit in allen positiven Parametern */
     pars[0] = exp(pars[0]-0.5*pars[1]);
-    pars[1] = exp(pars[1]);
-    pars[2] = exp(pars[2]);
-    pars[3] = exp(pars[3]);
-    pars[5] = exp(pars[5]);
+    if (pars[1] == log_te)     pars[1]=t_e;    else pars[1] = exp(pars[1]);
+    if (pars[2] == log_beta)   pars[2]=beta;   else pars[2] = exp(pars[2]);
+    if (pars[3] == log_alpha1) pars[3]=alpha1; else pars[3] = exp(pars[3]);
+    if (pars[5] == log_alpha2) pars[5]=alpha2; else pars[5] = exp(pars[5]);
+    if (pars[6] == cos1)       pars[6]=psi1;   else pars[6] = acos(pars[6]);
+    if (pars[7] == cos2)       pars[7]=psi2;   else pars[7] = acos(pars[7]);
 
-    pars[6] = acos(pars[6]);
-    pars[7] = acos(pars[7]);
 
     /* 	als Info ueber Fit gebe erreichte Werte zurueck */
     *iter_max = iter ;
@@ -2635,412 +2355,60 @@ int magfit( func, x, y, sig, yfit, n_x, pars, do_var,
 		staendige Kennlinienform beruecksichtigt
 
  	-------------------------------------------------------- */
+ 	
+ 	
+ 	
+ 	
+ 	
 
 
 
-
-
-
-
-
-
-
-
-
-/* 	-------------------------------------------------------- 
-
- 			fast_doppel_nl 
-			==============
-
-	abgespeckte Version von fast_doppel aus mag_fit.c um ein
-	2x2 oder 3x3 nichtlineares Gleichungssystem zu loesen.
-
- 	berechnet einen Punkt aus Kennlinie einer beidseitig  
- 	nichtsaettigenden Doppelsonde 
-
-	Modifikationen: 	in params werden wie in fast_doppel alle
-				relevanten Parameter uebergeben, sie werden
-				jedoch nur einmal ausgelesen, genau dann wenn
-				init = TRUE = 1
-
-				die Prameter, nach denen das nl-System
-				geloest werden soll, sind in "vars" abgelegt:
-				n=2:	n_e*sqrt(T_e), T_e
-				n=3:	n_e*sqrt(T_e), T_e, beta
-
-
-	vpr		Vektor [n_vars], Spannungswerte
-	strom		Vektor [n_vars], Stromwerte --> Rueckgabe
-	vars		Vektor [n_vars], aktuelle Variablen zur Loesung des
-					 nl-Systems
-
- 	params(0)	Elektronendichte 	log(n_e) 
- 	params(1)	Elektronentemperatur 	log(T_e) 
- 	params(2)	Korrekturfaktor		log(alpha_1) 
- 	params(3)	Flaechenverhaeltnis 	log(beta) 
- 	params(4)	Unterschied in V_plas. 	delta_V 
- 	params(5)	Korrrekturfaktor 	log(alpha_2) 
- 	params(6)	Winkel an Sonde		cos(psi1) 
- 	params(7)	Winkel an Gegenelektr.	cos(psi2) 
-
- 	params(10)	Sondenbreite		a_width 
- 	params(11)	Sondenhoehe		a_height 
- 	params(12)	Massezahl des Fuellg.	a_mass 
-
-	params(13)	Kernladungszahl	d. F.g.	a_z
-	params(14)	Toroidalfeld		B_t
-
-
-	params(16)	T_i/T_e			a_tau
-
-	--> Erweiterung, um auch Sonden bei senkrechtem Einfall behandeln
-	    zu k"onnen (z.B. Mitelebenenmanipulator, Rohde). Es muss lediglich
-	    die projizierte L"ange bzw. H"ohe angegeben werden, da die 
-	    Sondenbreite a_width = params(13) bereits als senkrecht zum
-	    Magnetfeld vorausgesetzt wird.
-
-	params(17)	Sondenhoehe		p_height
-
-	--> Aenderung auf gamma = 3 (Adiabatenkoeffizient)
-	    wg. Riemann
-
- 	-------------------------------------------------------- 
-
-	M. Weinlich, 12.06.95
-
- 	-------------------------------------------------------- */
-
-int fast_doppel_nl(vpr, strom, vars, n_vars, init, params )
-
-    double 	*vpr;
-    double 	*strom;
-    double 	*vars;
-    int		n_vars;
-    int		init;
-    double	*params;
-
-    {
-
-    /* Local variables */
-    double 	n_e, t_e;
-    double	delta_phi ;
-    double	j_isat, I_isat, ns_add1, ns_add2;
-    double	sf1, sf2, lfac, bfac;
-    double	ld, delta1, delta2;
-    double	temp;
-
-    double	*ptr_vpr, *ptr_strom;
-    int 	i, ind;
-    int		n_changes=0;
-
-    static double	inv_beta, alpha1, alpha2, dv;
-    static double 	a_height, a_width, p_height, a_mass, a_tau;
-    static double	a_sonde_proj, a_sonde_perp;
-    static double	cos1, cos2, tan1p, tan2p;
-
-/* printf("f"); */
-
-
-
-    /* mehr als drei freie Parameter sind nicht erlaubt */
-    if ( n_vars > 3 ) {
-	fprintf( stderr, "Achtung: in fast_doppel_nl sind max. ");
-	fprintf( stderr, "3 freie Prameter erlaubt! \n");
-	fprintf( stderr, "         aktuelle Anzahl n_vars = %d \n", n_vars);
-        fprintf( stderr, "\n    ==> Abbruch \n\n");
-        exit(-1);
-	}
-
-
-    /* Auslesen von params in static-Variablen nur zur Inititalisierung */
-    if (init) {
-
-        /* wichtige Sonden-Dimensionen */
-        a_width  = params[10]; 
-        a_height = params[11];
-        a_mass   = params[12];
-        p_height = params[17];
-
-	params[3] = DMAX( params[3], 0.);
-	params[3] = DMIN( params[3], 54.);
-        inv_beta = 1./params[3] ;
-
-        params[2] = DMAX( params[2], 0.);
-	params[2] = DMIN( params[2], 100.);
-        alpha1 = params[2];
-
-        params[5] = DMAX( params[5], 0.);
-	params[5] = DMIN( params[5], 100.);
-        alpha2 = params[5];
-
-	params[6] = DMAX( params[6], 0.001);
-	params[6] = DMIN( params[6], 0.999);
-        cos1   = params[6];
-        tan1p  = sqrt(1./(cos1*cos1) -1.) + 2.;
-
-	params[7] = DMAX( params[7], 0.001);
-	params[7] = DMIN( params[7], 0.999);
-    	cos2   = params[7];
-    	tan2p  = sqrt(1./(cos2*cos2) -1.) + 2.;
-
-        dv     = params[4];
-
-        /* daraus abgeleitete Flaeche einer (projezierten) Sonde  */
-        a_sonde_proj = a_width * a_height * cos1;
-        a_sonde_perp = a_width * p_height;
-
-        }
-
-
-
-
-    /* Ueberpruefung auf unsinnige Fit-Parameter:
- 	0.002  <  t_e            <  400
-        1.e7   <  n_e sqrt(t_e)  <  1.e28
-        0.001  <  beta           <  60
-        0.000  <  alpha          <  100
-	0.000  <  cos(psi)       <  1.000
-    */
-
-    if ( vars[1] < -6. ) {
-        /* printf( "Fehler t_e : %g", exp(vars[1]) ); */
-	/* keine Aenderung in n_e als Folge */
-	temp      = vars[0] + 0.5*vars[1];
-        vars[1] = -6.;
-	vars[0] = temp - 0.5*vars[1];
-        /* printf( " --> %g \n", exp(vars[1])); */
-	n_changes++;
-        }
-    else if ( vars[1] > 6. ) {
-        /* printf( "Fehler t_e : %g", exp(vars[1]) ); */
-	/* keine Aenderung in n_e als Folge */
-	temp      = vars[0] + 0.5*vars[1];
-        vars[1] = 6.;
-	vars[0] = temp - 0.5*vars[1];
-        /* printf( " --> %g \n", exp(vars[1])); */
-	n_changes++;
-        }
-
-    if ( vars[0] < 15. ) {
-        /* printf( "Fehler n_e : %g", exp(params[0]-0.5*params[1]) ); */
-	params[0] = 15.;
-        /* printf( " --> %g \n", exp(params[0]-0.5*params[1])); */
-	n_changes++;
-        }
-    else if ( vars[0] > 65. ) {
-        /* printf( "Fehler n_e : %g", exp(params[0]-0.5*params[1]) ); */
-	params[0] = 65.;
-        /* printf( " --> %g \n", exp(params[0]-0.5*params[1])); */
-	n_changes++;
-        }
-    
-    /* Zuordnung der Fit-Variablen */
-    n_e    = exp(vars[0]-0.5*vars[1]);
-    t_e    = exp(vars[1]);
-
-    if ( n_vars == 3 ) {
-
-        if ( vars[2] < -7. ) {
-	    /* printf( "Fehler in beta: %g", exp(vars[2])); */
-	    vars[2] = -7.;
-            /* printf( " --> %g \n", exp(vars[2])); */
-	    n_changes++;
-	    }
-        else if ( vars[2] > 4. ) {
-	    /* printf( "Fehler in beta: %g", exp(vars[2])); */
-	    vars[2] = 4.;
-            /* printf( " --> %g \n", exp(vars[2])); */
-	    n_changes++;
-	    }
-
-        inv_beta = exp(-vars[2]) ;
-
- 	}
-
-
-
-    /* ==> ab hier folgt der identische Teil zu fast_doppel, lediglich
-           die Initialisierung bzw. Belegung der Variablen unterscheidet
-	   sich geringfuegig */
-
-
-    /* Berechnung der Ionensaettigungsstromdichte 
-       ==========================================
-
-       j_isat = n_e c_s e 
-       j_isat = n_e * sqrt(t_e * c_e * 2.0 / (a_mass * c_mp)) * c_e; 
- 
-       neue Ergebnisse awc 01.09.93 
-       c_i_Bohm = sqrt(  ( Z*T_e + 3 T_i ) / m_i )  wobei 3 = (n+2)/n, n=1
-       c_e_Bohm = sqrt(  (3 T_e + T_i/Z ) / m_e )
-       Sekundaerelektronenemissionskoeffizient g = 0.4
-       j_isat = n_e * c_i_Bohm * e
-       j_esat = 1/4 n_e * c_e_Bohm * e ( 1-g)
-       j_quot = 0.15 * sqrt( (a_mass*c_mp) /c_me );  
-    */
-
-    j_isat = n_e * c_e * sqrt( 4.* c_e * t_e/ (a_mass*c_mp) );
-
-
-    /* L_debye */
-    ld = sqrt(t_e * c_eps0 / (n_e * c_e)) ;
-
-   
-    /* ---------------------------------------------------------------------
-       wenn a_sonde_proj > 0.0 dann wurde eine geometrische Sondenfl"ache
-       und ein Projektionswinkel angegeben. Dies hei"st, da"s f"ur eine
-       flush mounted Sonde eine Kennlinie unter Ber"ucksichtigung der
-       Schichteffekte berechnet werden soll.
-       --------------------------------------------------------------------- */
-
-    if ( a_sonde_proj > 0.0 )  
-	{
-
-        /* potentialunabhaengige Vorfaktoren vor Schichtdicke */
-        sf1 = ld / 3.0 * alpha1 / sqrt(cos1);	
-        sf2 = ld / 3.0 * alpha2 / sqrt(cos2);
-        temp = sqrt( cos2 * inv_beta / cos1 );
-        lfac = temp / a_height;
-        bfac = temp / a_width;
-
-        /* ab jetzt Berechnung fuer alle Spannungswerte */
-        I_isat = a_sonde_proj * j_isat;
-
-        for ( ind=0, ptr_vpr=vpr, ptr_strom=strom; ind < n_vars; ind++ ) 
-            {
-
-            /* Spannung an Doppelsonde: phi_sonde */
-            delta_phi = (dv - *ptr_vpr++) / t_e;
-
-	    /* Nichtsaettigungskoeffizienten muessen immer groesser als -1 */
-            if (delta_phi < 0) {
-		ns_add1 = 1.0;
-	        delta2  = sf2 * quick_075( delta_phi );
-	        ns_add2 = ( (delta2+delta2)*bfac +1.) * 
-				( 1. + delta2*tan2p*lfac );
-		}
-	    else {
-	    	delta1  = sf1 * quick_075( -delta_phi );
-	    	ns_add1 = ( (delta1+delta1)/a_width + 1.) * 
-				( 1. + delta1*tan1p/a_height );
-		ns_add2 = 1.0;
-		}
-
-            /* Berechnung des Strom-Vektors */
-	    temp = exp( delta_phi );
-	    /* temp = exp_lt( delta_phi ); */ 
-
-            *ptr_strom++ =  I_isat * 
-			(ns_add2 - ns_add1 * temp) / ( inv_beta + temp );
-
-            }	/* for ind=0, n_vpr-1 */
-
-        }	/* if (a_sonde_proj > 0.0) .....    */
-
-
-    /* ---------------------------------------------------------------------
-       wenn a_sonde_perp > 0.0 dann wurde bereits eine effektive Sondenfl"ache
-       senkrecht zur Feldrichtung eingegeben. Es wird davon ausgegangen, da"s
-       es sich hierbei um eine freistehende Sonde handelt, die von beiden
-       Seiten Ionen und Elektronen aufsammeln kann. 
-
-       Falls a_sonde_perp > 0.0 und a_sonde_proj > 0.0 dann wird eine 
-       Kombination beider Effekte erwartet, d.h. der Gesamtstrom zur Sonde
-       setzt sich additiv aus beiden Teilen zusammen.
-       --------------------------------------------------------------------- */
-
-    if (a_sonde_perp > 0.0)
-	{
-
-        /* Initialisierung, falls n"otig */
-        if (a_sonde_proj <= 0.) {
-            for ( ind=0, ptr_strom=strom; ind<n_vars; ind++, *ptr_strom++ =0.0);
-	    }
-
-        /* Kennlinie einer Doppelsonde mit Potentialverschiebung und
-	   Fl"achenverh"altnis beta */
-        I_isat = 2.* a_sonde_perp * j_isat;
-        bfac = alpha2 * ld / a_width; 
-
-
-        for ( ind=0, ptr_vpr=vpr, ptr_strom=strom; ind < n_vars; ind++ ) 
-	    {
-
-            /* Spannung an Doppelsonde: phi_sonde */
-            delta_phi = (dv - *ptr_vpr++) / t_e;
-	    temp = exp( delta_phi );
-
-            /* Nichts"attigungsverhalten im Elektronenast? */
-	    /* ns_add2 = bfac * quick_075(delta_phi) ; */
-            /* Berechnung des Strom-Vektors */
-            *ptr_strom++ +=  I_isat * 
-		(1. + bfac * quick_075(delta_phi) - temp) / ( inv_beta + temp );
-
-	    }
-
-
-	}	/* if (a_sonde_perp > 0.0) .....    */
-
-
-    return 0 ;
-
-    }		 /* fast_doppel_nl */
-
-
-
-
-
-
-
-double fmin(x, n, vecfunc, vpr, ipr, icurr, init_fast_doppel_nl, params )
+double calc_fmin(x, n, vecfunc, vpr, ipr, icurr, params )
 
     double	*x;
     int		n;
     int 	(*vecfunc)();
     double	*vpr, *ipr, *icurr;
-    int		init_fast_doppel_nl;
     double	*params;
 
-    {
+    	{
 	int 	i;
 	double 	sum;
+	
+	params[0] = x[0];
+	params[1] = x[1];
+	if (n == 3) params[3]=x[2];
+	
+	(vecfunc)(vpr,icurr, n, params);
+	for (sum=0.0,i=0;i<n;i++) sum += DSQR(icurr[i]-ipr[i]); 
+	return (0.5*sum);
+	
+        } 	/* calc_fmin */
 
-/* printf(":"); */
-
-	(vecfunc)(vpr,icurr, x, n, init_fast_doppel_nl, params);
-
-	for (sum=0.0,i=0;i<n;i++) sum += DSQR(icurr[i]-ipr[i]);
-
-	return 0.5*sum;
-
-        } 	/* fmin */
 
 
-
-int fdjac(n, x, icurr, df, vecfunc, vpr, ipr, params )
+int fdjac(n, x, icurr, df, vecfunc, vpr, params )
 
     int		n;
     double	*x, *icurr, **df;
     int 	(*vecfunc)();
-    double	*vpr, *ipr, *params;
+    double	*vpr, *params;
 
 
     {
-	int 	i,j, k;
+	int 	i,j;
 	double 	h,temp;
 
 	static double	*f=NULL;
 
-	static double	eps=1.e-6;
+	static double	eps=1.e-5;
 
-/* printf("."); */
-
+  	
 	/* Standard-Initialisierung, n<=3 in allen Faellen */
 	if ( f==NULL ) f=dvector(0,2);
-
-
+	
 	for (j=0;j<n;j++) {
-
+		
 		temp=x[j];
 		h=eps*fabs(temp);
 
@@ -3051,19 +2419,27 @@ int fdjac(n, x, icurr, df, vecfunc, vpr, ipr, params )
 		h=x[j]-temp;
 
 		/* Funktionsauswertung bei kleinen Abweichungen in x*/
-		(*vecfunc)(vpr, f, x, n, 0, params);
+                params[0] = x[0];
+                params[1] = x[1];
+                if (n == 3) params[3]=x[2];
+                
+                (vecfunc)(vpr,f, n, params);
 
 		/* partielle Ableitungen */
-		for (i=0;i<n;i++) df[i][j]=(f[i]-icurr[i])/h;
+		h = 1./h; 
+		for (i=0;i<n;i++) df[i][j]=(f[i]-icurr[i])*h; 
 
 		/* Rueckschreiben der Parameter */
 		x[j]=temp;
 
 		}
 
+/*
+printf("fdjac: df[0][0]=%g, df[1][0]=%g, df[0][1]=%g, df[1][1]=%g\n",
+		df[0][0], df[1][0], df[0][1], df[1][1]);
+*/
 
-	/* keine Freigabe des Speicherplatzes, erfolgt am PRG-Ende automatisch
-	free_dvector(f,1,n); */
+	return 0;
 
     }	/* fdjac */
 
@@ -3081,75 +2457,89 @@ int lnsrch(n, xold, fold, g, p, x, f, stpmax, check,
 
     {
 	int 	i, n_try ;
-	double a,alam,alam2,alamin,b,disc,f2,fold2,rhs1,rhs2,slope,sum,temp,
+	double 	a,alam,alam2,alamin,b,disc,f2,rhs1,rhs2,slope,sum,temp,
 		test,tmplam;
 
-	static int	n_try_max = 200;
-	static double 	tolx=1.e-10;
+	static int	n_try_max = 100;
+	/* static double 	tolx=1.e-10; */
 
-/* printf("x"); */
 
 	*check=0;
 	for (sum=0.0,i=0;i<n;i++) sum += p[i]*p[i];
-	sum=sqrt(sum);
-	if (sum > stpmax)
-		for (i=0;i<n;i++) p[i] *= stpmax/sum;
+	if (sum > stpmax*stpmax) {
+		temp = stpmax/sqrt(sum);
+		for (i=0;i<n;i++) p[i] *= temp;
+		}
 	for (slope=0.0,i=0;i<n;i++)
 		slope += g[i]*p[i];
 
-	test=0.0;
-	for (i=0;i<n;i++) 
+	for (test=0.0, i=0;i<n;i++) 
 		test = DMAX( test, fabs(p[i])/DMAX(fabs(xold[i]),1.0) );
-	alamin=tolx/test;
+		
+	/* minimale Schrittweite */
+	alamin=GTOLX/test;
+	
+	/* Beginne immer mit vollem Newton-Schritt, laenger gehts nicht */
 	alam=1.0;
 
 	/* Endlosschleife, Funktion wird durch Returns innerhalb verlassen */
 	for (n_try=0; n_try < n_try_max; n_try++) {
+	
 		for (i=0;i<n;i++) x[i]=xold[i]+alam*p[i];
 
-/* printf("^"); */
-		*f=fmin(x,n,fast_doppel_nl, vpr, ipr, icurr, 0, params);
+		*f=calc_fmin(x,n,mag_doppel, vpr, ipr, icurr, params);
 
+		/* Abbruchbedingungen: 1) lambda zu klein 
+				       2) f_min klein genug */
 		if (alam < alamin) {
-			for (i=0;i<n;i++) x[i]=xold[i];
-			*check=1;
-			return 0;
-		} else if (*f <= fold + 1.e-4*alam*slope) return 0;
+		    for (i=0;i<n;i++) x[i]=xold[i];
+		    /* printf("lnsrch: Abbruch da lambda zu klein, n_try =%d\n", n_try); */
+		    *check=1;
+		    return 0;
+		    } 
+		else if (*f <= fold + 1.e-4*alam*slope) {
+		    /* printf("lnsrch: gewolltes Ende, da Verringerung in f\n"); */
+		    return 0;
+		    }
+
+		/* Berechne neues lambda aus kubischer Gleichung.
+		   Im ersten Durchgang (alam=1.) muss lediglich
+		   quadratische Gleichung geloest werden */
+		if (alam == 1.0)
+		    tmplam = -slope/(2.0*(*f-fold-slope));
 		else {
-			if (alam == 1.0)
-				tmplam = -slope/(2.0*(*f-fold-slope));
-			else {
-				rhs1 = *f-fold-alam*slope;
-				rhs2=f2-fold2-alam2*slope;
-				a = (rhs1/(alam*alam)-rhs2/(alam2*alam2))/
-				    	(alam-alam2);
-				b = (-alam2*rhs1/(alam*alam)+
-				     	alam*rhs2/(alam2*alam2))/(alam-alam2);
-				if (a == 0.0) 
-				    tmplam = -slope/(b+b);
-				else {
-				    disc=b*b-3.0*a*slope;
-				    if (disc<0.0) {
-				        /* fprintf(stderr, "Roundoff problem in lnsrch.\n"); */
-					return -21;
-					}
-				    else 
-					tmplam=(-b+sqrt(disc))/(3.0*a);
-				    }
-				tmplam = DMAX( tmplam, 0.5*alam );
+		    temp = alam-alam2;
+		    rhs1 = (*f-fold-alam*slope)/(alam*alam*temp);
+		    rhs2 = (f2-fold-alam2*slope)/(alam2*alam2*temp);
+		    a = rhs1-rhs2;
+		    b = -alam2*rhs1 + alam*rhs2;
+		    /* loese kubische Gleichung in lambda */
+		    if (a == 0.0) 
+		        tmplam = -slope/(b+b);
+		    else {
+		        temp = a+a+a;
+			disc=b*b-temp*slope;
+			if (disc<0.0) {
+			    /* printf("Roundoff problem in lnsrch, disc=%g, slope=%g, a=%g, b=%g\n",disc,slope, a, b); */
+			    return -21; 
+			    }
+			else 
+			    tmplam=(-b+sqrt(disc))/temp;
 			}
-		}
-		alam2=alam;
-		f2 = *f;
-		fold2=fold;
-		alam=DMAX(tmplam,0.1*alam);
+		    /* tmplam = DMIN( tmplam, 0.5*alam ); */
+		    }
+
+		tmplam = DMIN( tmplam, 0.5*alam ); 
+		alam2 = alam;
+		f2    = *f;
+		alam  = DMAX(tmplam,0.1*alam);
 		}
 
-	/* wird nie erreicht, da Endlosschleife */
 
         /* um Geschwindigkeit zu gewinnen, wird nach n_try_max Versuchen
 	   die Iteration abgebrochen und zum Nebenminimum erklaert */
 	*check = 1;
+	/* printf("lnsrch: Abbruch nach n_try_max Versuchen\n"); */
 	return 0;
 
 	}	/* lnsrch */
@@ -3195,56 +2585,84 @@ int newt( x, n, check, vpr, ipr, params, f )
 	double 	d, den, fold, stpmax, sum, temp, test; 
 
 
-	static int	*indx=NULL;
 	static double  	**fjac=NULL, *g=NULL, *p=NULL, *xold=NULL,
-			*icurr=NULL, **sfjac; 
+			*icurr=NULL; 
 
-	int	init_fast_doppel_nl, rc;
+	int	rc;
 
 	static int	maxits=100, maxsteps=100;
-	static double	tolf=1.e-8, tolmin=1.e-10, tolx=1.e-10;
+	static double	tolf=GTOLF;
 
 
-/* printf("Y"); */
+
+/*	printf( "Beginn von newt: vpr = %g, %g, ipr = %g, %g \n", 
+			vpr[0], vpr[1], ipr[0], ipr[1] );
+	printf( "                  x = %g %g\n", x[0], x[1]);
+*/
 
 	/* Lege benoetigte Datenfelder an, es gilt immer n<=3 */
-	if ( indx == NULL ) {
-	    indx = ivector(0,2);
-	    fjac = dmatrix(0,2,0,2);
-	    sfjac = dmatrix(0,2,0,2);
-	    g = dvector(0,2);
-	    p = dvector(0,2);
-	    xold = dvector(0,2);
+	if ( xold == NULL ) {
+	    fjac  = dmatrix(0,2,0,2);
+	    g     = dvector(0,2);
+	    p     = dvector(0,2);
+	    xold  = dvector(0,2);
 	    icurr = dvector(0,2);
-
 	    /* Initialisierung  der loop-up-tables */
-	    init_quick_075();
-
+	    /* init_quick_075(); */
 	    }
 
 
-
 	/* Fit erfolgt nicht direkt in n_e, T_e und beta */
-    	x[0] = log(x[0]*sqrt(x[1]));		/* n_e sqrt(T_e) > 0.0 */
+    	/* x[0] = log(fabs(x[0]*sqrt(x[1]))); */	/* n_e sqrt(T_e) > 0.0 */
 	x[1] = log( fabs(x[1]) ); 		/* T_e > 0.0 */
+    	x[0] = log(fabs(x[0])) + 0.5*x[1];	/* n_e sqrt(T_e) > 0.0 */
 	if ( n>2 ) x[2] = log( fabs(x[2]) );	/* beta > 0.0 */
+
+        /* in allen positiven Parametern logarithmischer Fit */
+        /* if ( params[0] <= 0.0 ) params[0]=1.e-30 ; */
+        /* if ( params[1] <= 0.0 ) params[1]=1.e-30 ; */
+        if ( params[2] <= 0.0 ) params[2]=1.e-30 ;
+        if ( params[3] <= 0.0 ) params[3]=1.e-30 ;
+        if ( params[5] <= 0.0 ) params[5]=1.e-30 ;
+    
+        /* params[0] = log(params[0]*sqrt(params[1])); */
+        /* params[1] = log(params[1]); */
+        params[2] = log(params[2]);
+        params[3] = log(params[3]);
+        params[5] = log(params[5]);
+    
+        /* Fit in cos(psi) statt in psi */
+        params[6] = cos(params[6]);
+        params[7] = cos(params[7]);
 
 
 	/* Inititalisiere Parameter zur Funktionsberechnung,
 	   berechen Funktionswerte "icurr" zu Startparametern */
-	init_fast_doppel_nl = 1	; 	/* TRUE */
-	*f=fmin(x, n, fast_doppel_nl, vpr, ipr, icurr, 
-				init_fast_doppel_nl, params);
-	init_fast_doppel_nl = 0	; 	/* FALSE */
+	*f=calc_fmin(x, n, mag_doppel, vpr, ipr, icurr, params);
+
+
+	/* die minimale Abweichung tolf, ab der die Ergebnisse akzeptiert
+	   werden, muss relativ zu ipr festgelegt werden */
+	for (tolf=0, i=0; i<n; i++) tolf = DMAX( tolf, fabs(ipr[i]));
+	tolf = 1.e-8*tolf;
 
 	/* maximale Abweichung der Funktionswerte von Sollwerten */
-	test=0.0;
-	for (i=0;i<n;i++) test = DMAX( test, fabs(icurr[i]-ipr[i]) );
+	for (test=0.0, i=0;i<n;i++) test = DMAX( test, fabs(icurr[i]-ipr[i]) );
 	if (test<0.01*tolf) {
 	    /* Variablen muessen wieder retransformiert werden */
     	    x[0] = exp(x[0]-0.5*x[1]);
     	    x[1] = exp(x[1]);
             if (n>2) x[2] = exp(x[2]) ;
+            /* logarithmischer Fit in allen positiven Parametern */
+            params[0] = exp(params[0]-0.5*params[1]);
+            params[1] = exp(params[1]);
+            params[2] = exp(params[2]);
+            params[3] = exp(params[3]);
+            params[5] = exp(params[5]);
+        
+            params[6] = acos(params[6]);
+            params[7] = acos(params[7]);
+            /* printf("newt: return ohne Suche, da Optimum bereits erreicht\n"); */
 	    return 0;
 	    }
 
@@ -3256,60 +2674,67 @@ int newt( x, n, check, vpr, ipr, params, f )
 	for (its=0;its<maxits;its++) {
 
 		/* berechne partielle Ableitungen */
-		fdjac(n,x,icurr,fjac,fast_doppel_nl, vpr, ipr, params);
+		fdjac(n,x,icurr,fjac,mag_doppel, vpr, params);
+
+		/* 1) negative Abweichung im Strom (p) und */		
+		/* 2) Speichere Ist-Zustand (x) zu Vergleichszwecken */
+		/* 3) Gradientenrichtung (g) fuer lineare Suche und */
+		for (i=0;i<n;i++) {
+		    /* p[i] = -(icurr[i]-ipr[i]); */
+		    p[i] = ipr[i]-icurr[i];
+		    xold[i]=x[i];
+		    }
+		fold=*f;
 		for (i=0;i<n;i++) {
 		    for (sum=0.0,j=0;j<n;j++) 
-			sum += fjac[j][i]*(icurr[j]-ipr[j]);
+			sum -= fjac[j][i]*p[j];
 		    g[i]=sum;
 		    }
 
-		/* Speichere Ist-Zustand zu Vergleichszwecken */
-		for (i=0;i<n;i++) xold[i]=x[i];
-		fold=*f;
-
-
-		for (i=0;i<n;i++) p[i] = -(icurr[i]-ipr[i]);
 
 		/* Loese lineares Gleichungssystem: J * dx = -F */
-		if ( (rc = dsvd_solver( fjac, p, n)) != 0 ) break;
-
+		if ( (rc = dsvd_solver( fjac, p, n, 1)) != 0 ) break;
+		
 		/* lineare Suche entlang Newton-Richtung */
 		if ( (rc = lnsrch(n, xold, fold, g, p, x, f, stpmax, check, 
 				vpr, ipr, icurr, params)) != 0 ) break;
 
 		/* Konvergenzkriterien erfuellt? */
-		test=0.0;
-		for (i=0;i<n;i++)
+		for (test=0.0, i=0;i<n;i++)
 			test = DMAX( test, fabs(icurr[i]-ipr[i]));
 		if (test < tolf) {
-			*check=0;
-			rc = 0;
-			break;
-			}
+		    *check=0;
+		    rc = 0;
+		    /* printf("newt: normales Ende, Konvergenzkriterium erfuellt\n"); */
+		    break;
+		    }
 
 		/* Gradienten gleich Null */
 		if (*check) {
-			test=0.0;
+			/* warning */
+		    	rc =  130;
 			den=DMAX(*f,0.5*n);
-			for (i=0;i<n;i++) 
+			for (test=0.0, i=0;i<n;i++) 
 			     test = DMAX( test, 
-				       fabs(g[i])*DMAX(fabs(x[i]),1.0)/den );
-			*check=(test < tolmin ? 1 : 0);
-		    	rc =  (130 + *check);
+				       fabs(g[i])*DMAX(fabs(x[i]),1.0) );
+			*check=( (test/den) < (GTOLMIN) ? 1 : 0);
+			/* error wegen Nebenminimum */
+		    	if (*check) rc = -130;
+		    	/* printf("newt: Abbruch wegen Null-Gradient\n"); */
 			break;
 			}
 
 		/* keine nennenswerte Aenderung in x mehr moeglich */
-		test=0.0;
-		for (i=0;i<n;i++) 
+		for (test=0.0, i=0;i<n;i++) 
 		    test = DMAX( test, 
 				(fabs(x[i]-xold[i]))/DMAX(fabs(x[i]),1.0) );
-		if (test < tolx) {
+		if (test < GTOLX) {
 		    rc = 100;
+		    /* printf("newt: Abbruch da keine Aenderung in x\n"); */
 		    break;
 		    }
 
-		}
+		}		/* for (its=0;...) */
 
 
 	/* keine Konvergenz nach endlicher Anzahl von Iterationsschritten? */
@@ -3323,6 +2748,16 @@ int newt( x, n, check, vpr, ipr, params, f )
     	x[1] = exp(x[1]);
         if (n>2) x[2] = exp(x[2]) ;
 	
+        /* logarithmischer Fit in allen positiven Parametern */
+        params[0] = exp(params[0]-0.5*params[1]);
+        params[1] = exp(params[1]);
+        params[2] = exp(params[2]);
+        params[3] = exp(params[3]);
+        params[5] = exp(params[5]);
+    
+        params[6] = acos(params[6]);
+        params[7] = acos(params[7]);
+
 	/* Rueckgabe = aktueller Statuswert */
 	return rc;
 
@@ -3343,34 +2778,56 @@ int newt( x, n, check, vpr, ipr, params, f )
  	sowie der freien Parameter (n_e, T_e und ggf. beta) muss 
  	uebereinstimmen.
 
-
+	n_points 	Anzahl der Punkte, die ein Gleichungssystem
+			ergeben, Anzahl der Gleichungen, die simultan
+			geloest werden muessen
+			
+	n_data		Anzahl der (Zeit-)Punkte, zu denen jeweils
+			ein Gleichungssystem geloest werden soll
+			
+			
   	-------------------------------------------------------- 
 
 	M. Weinlich, 19.06.95
 
  	-------------------------------------------------------- */
 
-int mag_solver( data_x, data_y, cos_psi, n_points, n_data, pars, n_pars, 
+
+
+int mag_solver( data_x, data_y, psi, n_points, n_data, pars, n_pars, 
                 ne_result, te_result, beta_result, fmin )
 
 
-    double	*data_x, *data_y, *cos_psi, *fmin;
-    double 	*ne_result, *te_result, *beta_result;
+    double	*data_x, *data_y, *psi;
     int		*n_points, *n_data;
     double	*pars;
     int		*n_pars;
+    double 	*ne_result, *te_result, *beta_result;
+    double	*fmin;
     
     {
-
-
-    double	*ptr_x, *ptr_y, *ptr_ne, *ptr_te, *ptr_beta, *ptr_f, *ptr_cp;
     double	vars[6];	/* Variable, in denen nl. Gl.s. geloest wird */
 
-    int		rc, rc_counter, i, j;
+    int		rc, rc_counter, i, j, k, data_ind;
     int		check;
     double	save_ne, save_te, save_beta;
+    double	i_isat, i_min, a_probe_proj, ne_start, te_start;
+    
+    static double	*nb_const=NULL, *nb_values=NULL, 
+    			*fit_vec, *w_vec;
+    static int 		*do_var, n_max_pars=20;
+    double		fit_epsa, fit_epsr;
+    int			fit_imax;
+    double		fit_ok;
+    int			do_fit, do_nls, n_fit=0, n_nls=0, n_nls_failed=0;
+	
+    static int	mag_infos = 0; 	/* ggf. kein Output von magfit */
+    
+    double		el_t; /* Zeitmessung */
 
-
+/*
+printf("neue Version mag_solver, mag_doppel etc., n_pars = %d \n", *n_pars);
+*/
 
 /*
     printf( "Uebergebene Werte in mag_solver: \n\n");
@@ -3378,10 +2835,13 @@ int mag_solver( data_x, data_y, cos_psi, n_points, n_data, pars, n_pars,
     printf( "n_data = %d \n", *n_data );
     printf( "n_pars = %d \n", *n_pars );
     printf( "x = ");
-    for (i=0; i<10; i++) printf( "%g  ", data_x[i] );
+    for (i=0; i<(*n_data)*(*n_points); i++) printf( "%g  ", data_x[i] );
     printf("\n");
     printf( "y = ");
-    for (i=0; i<10; i++) printf( "%g  ", data_y[i] );
+    for (i=0; i<*(n_data)*(*n_points); i++) printf( "%g  ", data_y[i] );
+    printf("\n");
+    printf("cos(psi) = ");
+    for (i=0; i<*n_data; i++) printf( "%g  ", cos(psi[i]) );
     printf("\n");
     printf( "pars = ");
     for (i=0; i<20; i++) printf( "%g  ", pars[i] );
@@ -3400,86 +2860,173 @@ int mag_solver( data_x, data_y, cos_psi, n_points, n_data, pars, n_pars,
 	return -42;
 	}
 
+    /* Datenfelder, fuer evtl. Fit */
+    if ( nb_const == NULL ) {
+        nb_const  = dvector(0,n_max_pars-1);
+        nb_values = dvector(0,n_max_pars-1);
+        do_var    = ivector(0,n_max_pars-1);
+        for (i=0; i<n_max_pars; i++) {
+            nb_const[i] = nb_values[i] = 0.;
+            do_var[i] = 0;
+            }
+        do_var[0] = do_var[1] = 1;
+        fit_vec   = dvector(0,2);
+        w_vec     = dvector(0,2);
+        w_vec[2] = w_vec[1] = w_vec[0] = 1.;
+        }
+
+    /* wenn Fit, in wievielen Parametern? */
+    if (*n_points > 2) do_var[3] = 1;
+    		else do_var[3] = 0;
+
+    /* Initialisierung und Sicherheitskopie der Startwerte */
+    vars[0] = save_ne   = pars[0];
+    vars[1] = save_te   = pars[1];
+    vars[2] = save_beta = pars[3];
+
+
     /* Eigentlicher nl-Solver wird nun n_data-Mal durchgelaufen und 
        fittet in jedem Durchgang n_points Datenpunkte */
-    ptr_x = data_x;
-    ptr_y = data_y;
-    ptr_cp = cos_psi;
-    ptr_f = fmin;
 
-    ptr_ne   = ne_result;
-    ptr_te   = te_result;
-    ptr_beta = beta_result;
-
-    save_ne   = pars[0];
-    save_te   = pars[1];
-    save_beta = pars[3];
-
-    vars[0] = save_ne; 
-    vars[1] = save_te; 
-    vars[2] = save_beta;
-
-    for ( i=0; i<*n_data; i++ ) {
-
-        rc_counter = -1;
+   for ( i=0; i<*n_data; i++ ) {
 
 	/* Winkel muss jeweils aktualisiert werden */	
-	vars[6] = *ptr_cp;
-	vars[7] = *ptr_cp;
+	pars[6] = pars[7] = psi[i];
+	/* pars[7] = psi[i]; */
+	    
+	/* projezierte Flaeche der Sonde */
+	a_probe_proj = 0.;
+	if ( pars[11] > 1.e-6 ) a_probe_proj += pars[10]*pars[11]*cos(psi[i]);
+	if ( pars[17] > 1.e-6 ) a_probe_proj += pars[10]*pars[17] ;
 
-        do {
+	/* Startpunkt der aktuellen Teilvektoren */    
+	data_ind = i*(*n_points);
+	
+	/* Extremwerte in Strom */
+	i_isat = 0.;
+	for (j=0; j<*n_pars; j++ ) {
+	   i_isat = DMIN( i_isat, data_y[data_ind+j] );
+	   }
+	    
+	/* Startwerte, fuer Deuterium-Plasma */
+	te_start = save_te;
+	ne_start = fabs(i_isat) / a_probe_proj / 
+			sqrt( (2.*c_e*c_e*c_e/c_mp) * save_te );
+/*
+printf("\n");
+printf("%g %g %g\n", pars[10],pars[11],cos(psi[i]));
+printf("ne_start=%g, te_start=%g \n", ne_start, te_start);
+*/
+	
+	/* beta ist eigentlich eine stabile Groesse. Damit sich evtl. Fehler
+	   nicht zusehr fortpflanzen koennen, sollte jedoch immer mit einer
+	   sinnvollen Groesse begonnen werden */
+	if ( save_beta > 20 ) save_beta = 20;
+	
+	/* ist Loesung ueber nl-solver ueberhaupt zu erwarten, oder die liegen
+	   die Punkte mit Sicherheit nicht auf einer Kennlinie? */
+        if (data_y[data_ind]*data_y[data_ind+1] < 0.0) {
+            if ( fabs(data_x[data_ind]) < fabs(data_x[data_ind+1]) ) {
+                do_nls = ( data_y[data_ind+1] < 
+                          (data_y[data_ind]*data_x[data_ind+1]/data_x[data_ind]) );
+                }
+            else {
+                do_nls = ( data_y[data_ind+1] > 
+                          (data_y[data_ind]*data_x[data_ind+1]/data_x[data_ind]) );
+                }
+	    }
+	  
+	/* zu grosse beta-Werte (oder zu hohe Nichtsaettigung im 
+	   Elektronensaettigungsast lassen keine direkte Loesung zu */
+	do_nls = ( do_nls && 
+	           (fabs(data_y[data_ind+(*n_points)-1]/data_y[data_ind])<60));
+	    	   
+	/* default: Fit, wenn nicht noetig, wird Fit explizit abgewaehlt */
+	do_fit = (0 == 0);
+	         
+  	/* erster Loesungs-Versuch */
+  	if (do_nls) {
+  	    n_nls++;
+            vars[0] = ne_start;
+            vars[1] = te_start;
+            vars[2] = save_beta;
+            rc = newt( vars, *n_pars, &check, 
+                          data_x+data_ind, data_y+data_ind, pars, fmin+i);
+	    /* im Fehlerfall: zweiter Versuch mit Fit */
+	    /* Fehler: rc < 0 oder Nebenminimum mit T_e > 1eV */
+            do_fit = ( (rc < 0) || ((check) && (vars[1]>1.)) );  
+            }
+          
+/*        if ( do_fit && do_nls ) {
+           printf( "i=%d, rc=%d \t %f %f %f \t %f %f %f \n", i, rc, 
+           	data_x[data_ind], data_x[data_ind+1], data_x[data_ind+2],  
+           	data_y[data_ind], data_y[data_ind+1], data_y[data_ind+2]);
+           	}  
+*/
+           
+	/* zweiter Versuch mit Fit */
+        if ( do_fit ) { 
 
-	    switch (rc_counter) {
-		case 0 :	vars[0]=save_ne; vars[1]=save_te; 
-				vars[2]=save_beta; break;
-		case 1 :	vars[0]=1.e18; vars[1]=10.; vars[2]=4.; break;
-		case 2 :	vars[0]=1.e20; vars[1]=10.; vars[2]=4.; break;
-		case 3 :	vars[0]=1.e18; vars[1]=30.; vars[2]=4.; break;
-		case 4 :	vars[0]=1.e20; vars[1]=30.; vars[2]=4.; break;
-		default:	;
-		}
+            pars[0] = ne_start * sqrt(te_start/10.);	/* n_e */
+            pars[1] = 10.;				/* T_e */
+            pars[3] = save_beta;			/* beta */
+            pars[6] = pars[7] = psi[i];			/* psi1, psi2 */
+            fit_imax = 100;
+            fit_epsa = 0.;
+            fit_epsr = 1.e-4;
+      
+            rc = magfit( mag_doppel, data_x+data_ind, data_y+data_ind, 
+            		w_vec, fit_vec, n_points, pars, do_var, &n_max_pars,
+            		nb_values, nb_const, fmin+i, 
+			&fit_imax, &fit_epsa, &fit_epsr, &mag_infos);
 
-	    rc = newt( vars , *n_pars, &check, ptr_x, ptr_y, pars, ptr_f);
-
-	    rc_counter++;
+	    /* Loesung wird in vars erwartet */
+	    vars[0] = pars[0];
+	    vars[1] = pars[1];
+	    vars[2] = pars[3];
 
 	    }
 
-	    /* rc    = lokale Fehler in newt und Subroutinen
-	       check = TRUE, wenn lokales Minimum gefunden
-	       fmin  = 0.001 ist etwa Messgenauigkeit */
-            while( ((rc != 0) || (check) || (*ptr_f > 1.e-3) ) && 
-			(rc_counter < 5) );
-	
 
 	/* Hallo, ich lebe noch .... */
-        if (i%1000 == 0) printf(".");
-
-        *ptr_ne++   = vars[0];
-        *ptr_te++   = vars[1];
-        *ptr_beta++ = vars[2];
-
-	if (rc != 0) {
-	    vars[0] = save_ne; 
-	    vars[1] = save_te; 
-	    vars[2] = save_beta;
-	    *ptr_f = -*ptr_f;
-	    }
-
-	ptr_x = ptr_x + *n_points;
-	ptr_y = ptr_y + *n_points;
-	ptr_f++;
-	ptr_cp++;
+        if (i%1000 == 999) printf(".");
 
 
-	}
+	/* Nur wenn obige Schleife mit akzeptablem Ergebnis verlassen wurde,
+	   dann sollen die Ergebnisse uebernommen werden */
+	if (rc < 0) {
+	    /* setzte Ergebinsse < 0, als Zeichen fuer Fehler in Auswertung
+	       Signatur ist eindeutig, da alle Parameter positiv sind */
+            ne_result[i]   = -0.01;
+            te_result[i]   = -0.01;
+            beta_result[i] = -0.01;
+	    fmin[i] *= -1.;
+            }
+        else
+            {
+            /* printf("mag_solver: Ergebnis uebernommen\n"); */
+            ne_result[i]   = vars[0];
+            te_result[i]   = vars[1];
+            beta_result[i] = vars[2];
+            /* Aenderungen in Startwerten sollen etwas gedaempft werden */
+/*            save_te = 0.5*(save_te+vars[1]);*/
+/*            save_beta = 0.5*(save_beta+vars[2]);*/
+            /* einige Statistik */
+            if ((do_fit) && (n_fit%20 == 19)) printf( "+" );
+            if (do_fit) n_fit++;
+            if (do_fit && do_nls) n_nls_failed++;
+	    }  
+   
+	}	/* for */
  
-    printf("\n");
-
+    if (n_fit+n_nls > 100) {
+       printf("\n\nmag_solver: n_fit = %d ,  n_nls = %d,  n_nls_failed = %d\n\n", 
+    		n_fit, n_nls, n_nls_failed);
+       }
+       
     return 0;
 
     }		/* mag_solver */
-
 
 
 
@@ -3495,194 +3042,6 @@ int mag_solver( data_x, data_y, cos_psi, n_points, n_data, pars, n_pars,
 		======================================
 
  	-------------------------------------------------------- */
-
-
-
-
-
-
-
-
-/* 	-------------------------------------------------------- 
-
-			run_triple_fit 
-			==============
-
- 	Interface zu call_triple_fit. Wird von IDL aus aufgerufen und 
-	liest uebergebene Parameter aus und startet eine leicht vereinfachte
-        Version des Fits, um Daten von Mehrfachsonden, z.B. triple- oder
-	penta-probes zu bearbeiten.
-
-
-  	-------------------------------------------------------- 
-
-	M. Weinlich, 01.09.93
-
- 	-------------------------------------------------------- */
-
-int run_triple_fit( argc, argv )
-
-    IDL_INT	argc;
-    void	*argv[];
-
-    {
-
-    /* user defined functions */
-    extern int	magfit();
-
-    static double	**sigma_pars=NULL;
-    static int		old_n_sigma;
-
-    IDL_DOUBLE	*data_x, *data_y, *w, *yfit;
-    IDL_DOUBLE 	*ne_result, *te_result, *beta_result;
-    IDL_INT	*n_points, *n_data;
-    IDL_DOUBLE	*pars;
-    IDL_INT	*do_var;
-    IDL_INT	*n_pars;
-    IDL_DOUBLE	*nb_values, *nb_const;
-    IDL_DOUBLE	*chi_sqr;
-    IDL_INT	*iter_max;
-    IDL_DOUBLE	*eps_abs, *eps_rel;
-
-    double	*ptr_x, *ptr_y, *ptr_ne, *ptr_te, *ptr_beta;
-
-    int		rc, rc_counter, i, j;
-    int		use_iter_max;
-    double	use_eps_abs, use_eps_rel;
-    double	save_ne, save_te;
-
-    void  	*old_fpe_state;
-
-
-    /*   Auslesen der uebergebenen Argumente   */
-    data_x      = (IDL_DOUBLE *) argv[0];
-    data_y      = (IDL_DOUBLE *) argv[1];
-    n_points    = (IDL_INT *) 	 argv[2];
-    n_data      = (IDL_INT *) 	 argv[3];
-    pars        = (IDL_DOUBLE *) argv[4];
-    do_var      = (IDL_INT *)    argv[5];
-    n_pars      = (IDL_INT *) 	 argv[6];
-    ne_result   = (IDL_DOUBLE *) argv[7];
-    te_result   = (IDL_DOUBLE *) argv[8];
-    beta_result = (IDL_DOUBLE *) argv[9];
-    chi_sqr     = (IDL_DOUBLE *) argv[10];
-    iter_max    = (IDL_INT *) 	 argv[11];
-    eps_abs     = (IDL_DOUBLE *) argv[12];
-    eps_rel     = (IDL_DOUBLE *) argv[13];
-
-
-
-    /* Hilfsfeld */
-    if ( sigma_pars == NULL ) {
-        sigma_pars = dmatrix(0, *n_pars-1, 0, *n_pars-1);
-	old_n_sigma = *n_pars;
-	}
-    if ( *n_pars > old_n_sigma ) {
-        printf( "sigam_par geloescht mit %d Elementen\n", old_n_sigma );
-        free_dmatrix( sigma_pars, 0, old_n_sigma-1, 0, old_n_sigma-1);
-        sigma_pars = dmatrix(0, *n_pars-1, 0, *n_pars-1);
-	old_n_sigma = *n_pars;
-        }
-
-    w    = dvector(0, *n_points-1);
-    yfit = dvector(0, *n_points-1);
-
-    nb_values = dvector(0, *n_pars-1);
-    nb_const = dvector(0, *n_pars-1);
-
-    for ( i=0; i<*n_points; i++) {
-	w[i] = 1.;
-	yfit[i] = 0.;
- 	}
-    for ( i=0; i<*n_pars; i++) {
-	nb_values[i] = 0.;
-	nb_const[i] = 0.;
- 	}
-
-    /* Eigentliche Fitroutine wird nun n_data-Mal durchgelaufen und 
-       fittet in jedem Durchgang n_points Datenpunkte */
-    ptr_x = data_x;
-    ptr_y = data_y;
-    ptr_ne = ne_result;
-    ptr_te = te_result;
-    ptr_beta = beta_result;
-
-    save_ne = pars[0];
-    save_te = pars[1];
-
-    /* ignoriere floationg point errors, da diese IDL durcheinander bringen */
-    /* if ( ( signal( SIGFPE, SIG_IGN )) == SIG_ERR ) 
-	fprintf( stderr, "Fehler beim Umbiegen der floating execptions\n"); */
-
-    for ( i=0; i<*n_data; i++ ) {
-
-        rc_counter = 0;
-
-        do {
-
-/* 	printf("rc_counter = %d \n", rc_counter); */
-
-	    switch (rc_counter) {
-		case 1 :	pars[0]=1.e18; pars[1] = 10.; break;
-		case 2 :	pars[0]=1.e20; pars[1] = 10.; break;
-		case 3 :	pars[0]=1.e18; pars[1] = 30.; break;
-		case 4 :	pars[0]=1.e20; pars[1] = 30.; break;
-		default:	;
-		}
-
-            use_iter_max = *iter_max;
- 	    use_eps_abs  = *eps_abs;
-            use_eps_rel  = *eps_rel;
-
-	    rc = magfit(fast_doppel, ptr_x, ptr_y, w, yfit, n_points, 
-			pars, do_var, n_pars, nb_values,  nb_const, sigma_pars, 
-			chi_sqr, &use_iter_max, &use_eps_abs, &use_eps_rel);
-
-	    rc_counter++;
-
-	    }
-            while( (rc != 0) && (rc_counter < 5) );
-	
-/*	if (( *chi_sqr > 1.e-3 ) && (rc != 0)) exit(-1); */
-
-        *ptr_ne++ = pars[0];
-        *ptr_te++ = pars[1];
-        *ptr_beta++ = pars[3];
-
-	if (rc == 0) {
-	    save_ne = pars[0];
-	    save_te = pars[1];
-	    }
- 	else {
-	    *chi_sqr = -*chi_sqr;
-	    pars[0] = save_ne;
-	    pars[1] = save_te;
-	    }
-
-	ptr_x = ptr_x + *n_points;
-	ptr_y = ptr_y + *n_points;
-
-        chi_sqr++;
-
-	}
-
-
-    free_dvector( w, 0, 20 );
-    free_dvector( yfit, 0, 20);
-    free_dvector( nb_values, 0, 20);
-    free_dvector( nb_const, 0, 20);
-
-
-    /* Standard-Behandlung der floationg point errors */
-    /* signal ( SIGFPE, SIG_DFL ); */
- 
-    return (rc);
-
-    }		/* run_triple_fit */
-
-
-
-
 
 
 
@@ -3805,6 +3164,8 @@ void	*argv[];
     
     int 	i, err, rc;
     
+    static int	mag_infos = ( 0 == 1);	/* ggf. keine Infos aus magfit */
+
     /* number of arguments */
     nargs = argc-1;
     
@@ -3837,29 +3198,13 @@ void	*argv[];
 	else {
 	    rc = magfit( mag_doppel, argv[1], argv[2], argv[3], argv[4], 
 	    		 argv[5], argv[6], argv[7], argv[8], argv[9], argv[10],
-	    		 argv[11], argv[12], argv[13], argv[14]);
+	    		 argv[11], argv[12], argv[13], argv[14], &mag_infos);
 	    return idl2mag_err(rc, routine, nargs);
 	    }
-        }
-    else if ( strcmp( routine_lowcase, "fast_doppel") == 0 ) {
-	/* Routine benoetigt insgesamt 14 Uebergabe-Variablen:
-	   x, y, w, yfit, n_x, pars, do_var, n_pars, nb_values,  
-	   nb_const, chi_sqr, iter_max, eps_abs, eps_rel
-	*/
-	if ( nargs != 14 ) {
-	    return idl2mag_err( err_wrong_num_arg, routine, nargs );
-	    }
-	else {	    
-	    rc = magfit( fast_doppel, argv[1], argv[2], argv[3], argv[4], 
-	    		 argv[5], argv[6], argv[7], argv[8], argv[9], argv[10],
-	    		 argv[11], argv[12], argv[13], argv[14]);
-	    return idl2mag_err(rc, routine, nargs);
-	    }
-        }
-        
+        }        
       else if ( strcmp( routine_lowcase, "mag_solver") == 0 ) {
-	/* Routine benoetigt insgesamt 10 Uebergabe-Variablen:
-	   data_x, data_y, cos_psi, n_points, n_data, pars, n_pars, 
+	/* Routine benoetigt insgesamt 11 Uebergabe-Variablen:
+	   data_x, data_y, psi, n_points, n_data, pars, n_pars, 
            ne_res, te_res, beta_res, fmin 
         */
 	if ( nargs != 11 ) {
@@ -3910,12 +3255,15 @@ int main()
 
     /* Local variables */
     int 		iter_max, k;
-    double 	w[200], **sigma_par, chi, fit[200];
+    double 		chi;
     int			do_var[20];
+    int			mag_infos;
     int 		n_x, err;
-    double 	inv[100], vpr[200], ipr[200], save[100], x[3];
+    double		x[3], x_nl[3];
+    double	*vpr,*ipr,*w, *fit, *strom;
+
     int 		used, unit;
-    double 	fixed[13], strom[200], params[20];
+    double 	fixed[13], params[20];
     double 	eps_abs, eps_rel;
 
     int			n_pars;
@@ -3924,7 +3272,8 @@ int main()
     FILE		*demo_file;
 
     int 		c_6 = 6;
-    char		*f_name = "/afs/ipp/u/mnw/idl/single/demo.dat";
+   char		*f_name = "./demo.dat"; 
+/*    char		*f_name = "/afs/ipp/u/mnw/C/marquardt/lsm_sample.dat";*/
     char		*f_mode = "r";
 
     float	temp;
@@ -3944,30 +3293,22 @@ int main()
     double	*vec, *solve;
 
 
-    init_exp_lt();
-
-    goto test_fit; 
-    /* goto test_nl; */
-
-    el_t = ((double) clock()) ;
-    for (i=0; i<100000; i++) temp = exp(i*0.0001 -5.);
-    el_t = ((double) clock()) - el_t;
-    printf("Zeitaufwand exp(x): %g \n", el_t*1.e-6);
-
-    el_t = ((double) clock()) ;
-    for (i=0; i<100000; i++) temp = exp_lt(i*0.0001 -5.);
-    el_t = ((double) clock()) - el_t;
-    printf("Zeitaufwand exp_lt(x): %g \n", el_t*1.e-6);
-
-
+    goto test_fit; /* */
+/*   goto test_nl ; /* */
+/*   goto test_kennlinie; /* */
 
    /* erzeuge Testmatrix */
    n = 3;
-   mat = dmatrix(0,n-1,0,n-1);
+   mat     = dmatrix(0,n-1,0,n-1);
    mat_inv = dmatrix(0,n-1,0,n-1);
-   vec = dvector(0,n-1);
-   solve = dvector(0,n-1);
-
+   vec     = dvector(0,n-1);
+   solve   = dvector(0,n-1);
+                            
+    /* Ausgabe der Startwerte */
+    printf("Manfred's Testprogramm für mag_fit.c\n\n");
+/*    printf("\n\n\n\n\n\n\n\n");
+    printf("Loese lineares Geleichungssystem Ax=b ueber singular value decomposition\n\n");
+*/
     /* Initialisierung */
     mat[0][0] = 1.;
     mat[0][1] = 5.;
@@ -3980,54 +3321,161 @@ int main()
     mat[2][2] = 5.;
 
     vec[0]  = 3.;
-    vec[1]  = -1;
-    vec[2]  = -4;
+    vec[1]  = -1.;
+    vec[2]  = -4.;
 
 
-	/* Ausgabe der Startwerte */
-	printf("\n\n\n\n\n\n\n\n");
-	printf("Loese lineares Geleichungssystem Ax=b ueber singular value decomposition\n\n");
+    printf(" A =");
+    for (i=0; i<n; i++) {
+        for (j=0; j<n; j++) {
+            printf( "\t %g ", mat[i][j]);
+            }
+        printf("\n");
+        }
 
-	printf(" A =");
-	for (i=0; i<n; i++) {
-	    for (j=0; j<n; j++) {
-		printf( "\t %g ", mat[i][j]);
-		}
-	    printf("\n");
-	    }
+    printf("\n b =");
+    for (i=0; i<n; i++ ) printf( "\t %g", vec[i] );
+    printf("\n\n");
 
-	printf("\n b =");
-	for (i=0; i<n; i++ ) printf( "\t %g", vec[i] );
-	printf("\n\n");
-
+    for (i=0;i<n;i++){
+       solve[i] = vec[i];
+       for (j=0;j<n;j++) mat_inv[i][j] = mat[i][j];
+       }
     /* loese das System mat * x = vec */
-    el_t = ((double) clock()) ;
-    for (i=0; i<10000; i++) rc = dsvd_solver( mat, vec, n);
-    el_t = ((double) clock()) - el_t;
-    el_t *= 1.e-6; 
+    rc = dsvd_solver( mat_inv, solve, n, 0);
+
+    printf("Loesung des Systems: \n");
+    printf(" Inv =");
+    for (i=0; i<n; i++) {
+        for (j=0; j<n; j++) {
+            printf( "\t %g ", mat_inv[i][j]);
+            }
+        printf("\n");
+        }
+
+    printf("\n x =");
+    for (i=0; i<n; i++ ) printf( "\t %g", solve[i] );
+    printf("\n\n");
 
 
 
-	/* Loeschen der Felder */
-	rc = dsvd_solver( mat, vec, -n );
-
-	printf("Loesung des Systems: \n");
-	printf(" Inv =");
-	for (i=0; i<n; i++) {
-	    for (j=0; j<n; j++) {
-		printf( "\t %g ", mat[i][j]);
-		}
-	    printf("\n");
-	    }
-
-	printf("\n x =");
-	for (i=0; i<n; i++ ) printf( "\t %g", vec[i] );
-	printf("\n\n");
-
+    printf(" A Inv = " );
+    for (i=0;i<n;i++){
+        for (j=0;j<n;j++) {
+            temp=0.;
+            for (k=0;k<n;k++) temp += mat[i][k]*mat_inv[k][j];
+            printf( "  %g  ", temp);
+            }
+        printf("\n         ");
+        }
     printf("\n");
-    printf("Zeitaufwand = %g sec\n\n", el_t);
 
-if (n>0)  return 0;
+    printf(" Ax   = " );
+    for (i=0;i<n;i++){
+        temp=0.;
+        for (j=0;j<n;j++) temp += mat[i][j]*solve[j];
+        printf( "  %g  ", temp);
+        }
+    printf("\n\n");
+    
+
+    /* Loeschen der Felder */
+    rc = dsvd_solver( mat, vec, -n, 1 );
+
+
+
+    /* auf jeden Fall ist's hier jetzt zu Ende */
+    if (n>0)  return 0;
+
+
+
+
+
+	/*
+		-----------------------------------
+		Test fuer Berechnung der Kennlinie
+		-----------------------------------
+	*/
+
+
+test_kennlinie:
+
+    n_x = 100;
+    vpr = dvector(0,n_x-1);
+    w = dvector(0,n_x-1);
+    fit = dvector(0,n_x-1);
+    strom = dvector(0,n_x-1);
+
+
+    /* 	Vorbelegung der Parameter */
+
+    params[0] = 1e19;			/* n_e */
+    params[1] = 10.;			/* t_e */
+    params[2] = 1.;			/* alpha_1 */
+    params[3] = 4.;			/* beta */
+    params[4] = 0.;			/* delta_V */
+    params[5] = 1;			/* alpha_2 */
+
+    params[6] = 1.553343034;		/* 89. Grad */
+    params[6] = 1.;		
+    params[7] = 1.553343034;		/* 89. Grad */
+
+    params[10] = .005;			/* a_width */
+    params[11] = .04;			/* a_height */
+    params[12] = 2.;			/* a_mass */
+    params[13] = 1.;			/* a_z */
+    params[14] = 2.;			/* a_bt */
+
+    params[17] = -0.1;     		/* nur flush mountet probe */
+
+    
+    /* kein Fit, lediglich Berechnung einer Kennlinie */
+    for (i=0; i<20; i++ ) do_var[i]=0;
+    
+     for (i=0; i < n_x; ++i) {
+        /* Vorgabe der Sondenspannung */
+        vpr[i] = 0.2113*((float)i-(0.5*(float)n_x))*params[1];
+        /* konstante Gewichtung */
+	w[i] = 1.;
+	/* Dummy fuer Strom */
+	strom[i] = 0.;
+    	}
+    	    
+    n_pars = 20;
+
+    nb_values = dvector(0, n_pars-1);
+    nb_const  = dvector(0, n_pars-1);
+    for (i=0; i<n_pars; i++) nb_values[i]=0.0;
+    for (i=0; i<n_pars; i++) nb_const[i]=0.0;
+
+    eps_rel  = 1.e-4;
+    eps_abs  = 0.;
+    iter_max = 200;
+    mag_infos = ( 0 == 0 );
+
+    magfit(mag_doppel, vpr, strom, w, fit, &n_x, params, do_var, &n_pars, 
+		nb_values, nb_const, 
+		&chi, &iter_max, &eps_abs, &eps_rel, &mag_infos); /* */
+
+/*    magfit(fast_doppel, vpr, strom, w, fit, &n_x, params, do_var, &n_pars, 
+		nb_values, nb_const, 
+		&chi, &iter_max, &eps_abs, &eps_rel, &mag_infos); /* */
+
+
+    printf( "\n\n");
+    printf( "     Kennlinie: \n");
+    printf( "-------------------- \n\n\n");
+
+    printf( "  V_sonde   \t  I_sonde \n");
+    for (i=0; i<n_x; i++) printf("%g \t %g \n", vpr[i], fit[i] );
+    printf("\n\n");
+    
+    /* Ende dieses speziellen Tests */
+    return 0;
+
+
+
+
 
 	/*
 		-------------------------
@@ -4038,6 +3486,11 @@ if (n>0)  return 0;
 
 test_fit:
 
+
+    vpr = dvector(0,199);
+    w = dvector(0,199);
+    fit = dvector(0,199);
+    strom = dvector(0,199);
 
     /* 	Einlesen eines Demo-Files */
 
@@ -4080,10 +3533,10 @@ test_fit:
 
     params[0] = 1e18;			/* n_e */
     params[1] = 10.;			/* t_e */
-    params[2] = 1.;
-    params[3] = 1.;
-    params[4] = 0.;
-    params[5] = 1.;
+    params[2] = 1.;			/* alpha_1 */
+    params[3] = 1.;			/* beta */
+    params[4] = 0.;			/* delta_V */
+    params[5] = 1;			/* alpha_2 */
 
     params[6] = 1.5603243;		/* 89.4 Grad */
     params[7] = 1.563815;		/* 89.6 Grad */
@@ -4094,17 +3547,18 @@ test_fit:
     params[13] = 1.;			/* a_z */
     params[14] = 2.;			/* a_bt */
 
+    params[16] = 1;			/* a_tau */
     params[17] = 0.00041887;		/* a_height * cos(psi1) */
 
     for (i=0; i<6; i++ ) do_var[i]=1;
     for (i=6; i<20; i++ ) do_var[i]=0;
     
     /* kein Fit in alpha1, alpha2, psi1, psi2, verwende projizierte Fl"ache */
-/*    do_var[2] = 0.;
-    do_var[5] = 0.;
-    do_var[6] = 0.;
-    do_var[7] = 0.;
-    params[11] = -1.; */
+    do_var[2] = 0; 
+/*    do_var[5] = 0; */
+    do_var[6] = 0;
+    do_var[7] = 0;
+/*    params[11] = -1.; */
  
 
     /* nur flush mountet probe */
@@ -4116,7 +3570,6 @@ test_fit:
     	}
 
     n_pars = 20;
-    sigma_par = dmatrix(0,n_pars-1,0,n_pars-1);
 
     nb_values = dvector(0, n_pars-1);
     nb_const  = dvector(0, n_pars-1);
@@ -4138,27 +3591,26 @@ test_fit:
     el_t = ((double) clock()) ;
 
     /* Fuer Geschwindigkeitsvergleich 50 x Fit */
-    for (i=0; i<50; i++ ) {
+   for (i=0; i<50; i++ ) { 
 
       params[0] = 1.e18 * ( 1. + i*0.02);
       params[1] = 10. * (3. - i*0.05);
-    /* bis hier Einschub fuer Geschwindigkeitsvergliech */
+/* */
+    /* bis hier Einschub fuer Geschwindigkeitsvergleich */
 
     eps_rel  = 1.e-4;
     eps_abs  = 0.;
     iter_max = 200;
+    mag_infos = ( 0 == 0 );
 
-
-/*    magfit(mag_doppel, vpr, strom, w, fit, &n_x, params, do_var, &n_pars, 
+    magfit(mag_doppel, vpr, strom, w, fit, &n_x, params, do_var, &n_pars, 
 		nb_values, nb_const, 
-		&chi, &iter_max, &eps_abs, &eps_rel);
-*/
-    magfit(fast_doppel, vpr, strom, w, fit, &n_x, params, do_var, &n_pars, 
-		nb_values, nb_const, &chi, &iter_max, &eps_abs, &eps_rel);
+		&chi, &iter_max, &eps_abs, &eps_rel, &mag_infos); /* */
+
 
 
     /* Fuer Geschwindigkeitsvergleich 50 x Fit mit vergleichbaren Startwerten */
-    }
+    } /* */
 
 
     el_t = ((double) clock()) - el_t;
@@ -4175,12 +3627,16 @@ test_fit:
     printf( "iter    = %d \n", iter_max );
     printf( "Zeitaufwand: %g sec CPU-Zeit\n", el_t);
 
-    printf( "\n\n \t Parameter \t sigma \n");
+    printf( "\n\n \t Parameter  \n");
     for ( i=0; i<6; i++) {
- 	printf( "\t %g \t %g \n", params[i], sigma_par[i][i] );
+ 	printf( "\t %g  \n", params[i] );
  	}
 
 
+/*    printf( "\n\n V   \t I \t I_fit \n");
+    for (i=0; i<n_x; i++)
+        printf( "%8.3f \t %8.3f \t %8.3f \n", vpr[i], strom[i], fit[i]);
+*/        
     printf("\n\n\n");
 
     return 0;
@@ -4190,27 +3646,45 @@ test_fit:
 
 test_nl:
 
-    x[0] = 1.e19;
+    vpr = dvector(0,10);
+    ipr = dvector(0,10);
+
+    x[0] = 1.67707e+17;
     x[1] = 10.;
     x[2] = 4.;
 
-    vpr[0] = -50.;
-    vpr[1] = 10.;
-    vpr[2] = -10.;
+    for (i=0; i<3; i++) x_nl[i]=x[i];
+    
+    vpr[0] = -38.;
+    vpr[1] =  5;
+    vpr[2] =  30.;
 
-    ipr[0] = -1.;
-    ipr[1] = 1.;
-    ipr[2] = 0.3;
+    ipr[0] = -0.5;
+    ipr[1] =  0.5;
+    ipr[2] =  5.;
 
+    vpr[0] = -70.;
+    vpr[1] =  10.;
+    vpr[2] =  80.;
+
+    ipr[0] = -0.25;
+    ipr[1] =  0.25;
+    ipr[2] =  0.65;
+
+    /* Fit/Loesung in n Parametern */
     n = 2;
 
-    for (i=0; i<20; i++) params[i]=0.;
+    /* Auswertung fuer einen einzigen Zeitpunkt */
+    n_x = 1;
+    
+    n_pars = 20;
+    for (i=0; i<n_pars; i++) params[i]=0.;
     params[2] = 1.;
     params[3] = 4.;
     params[4] = 0.;
     params[5] = 1.;
-    params[6] = 1./30.;		/* cos(psi1) */
-    params[7] = params[6];	/* cos(psi2) */
+    params[6] = 1.5603243;		/* 89.4 Grad */
+    params[7] = 1.563815;		/* 89.6 Grad */
     params[10] = 0.005;
     params[11] = 0.030;
     params[12] = 2.;
@@ -4219,12 +3693,26 @@ test_nl:
     params[16] = 1.;
 
     el_t = ((double) clock()) ;
-    for (i=0;i<1;i++) {
+/*     for (i=0;i<50;i++) {
 	/* printf("i = %d\n",i); */
-	x[0] = 1.e18;
-	x[1] = 1000.;
-	rc = newt( x, n, &check, vpr, ipr, params, &fmin );
-	}
+	/* Loesung ueber Fit */
+	params[0] = 6.72188e17;
+	params[1] = 5.509299;
+        rc = mag_solver( vpr, ipr, &params[6], &n, &n_x, params, &n,
+		x, x+1, x+2,  &fmin);   /* */
+
+/*
+int mag_solver( data_x, data_y, psi, n_points, n_data, pars, n_pars, 
+                ne_result, te_result, beta_result, fmin )
+*/
+	/* Loesung ueber NL-solver */
+	x_nl[0] = 6.72188e19;
+	x_nl[1] = 5.509299;
+	x_nl[2] = 4.;
+	rc = newt( x_nl, n, &check, vpr, ipr, params, &fmin );   /* */
+	
+/* 	} /* */
+ 
     el_t = (((double) clock()) - el_t) * 1.e-6;
 
     printf( "\n\n nach Aufruf von newt: \n\n");
@@ -4234,7 +3722,10 @@ test_nl:
     printf( "ipr = ");
     for (i=0; i<n; i++) printf( " %g ", ipr[i]);
     printf( "\n");
-    printf( "x = ");
+    printf( "x_nl = ");
+    for (i=0; i<n; i++) printf( " %g ", x_nl[i]);
+    printf( "\n");
+    printf( "x    = ");
     for (i=0; i<n; i++) printf( " %g ", x[i]);
     printf( "\n");
     printf( "fmin = %g \n\n", fmin);
