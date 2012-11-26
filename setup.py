@@ -1,4 +1,5 @@
 from distutils.core import setup, Extension
+import numpy as np
 import os
 
 is_pyfile = lambda s: s.endswith('.py') and not s.startswith('_')
@@ -11,6 +12,7 @@ mag_fit = Extension('LP.mag_fit',
 setup(name = 'LP',
       version = '1.0',
       description = 'Langmuir Probe Analysis Package',
+      include_dirs = [np.get_include()],
       py_modules = py_modules,
       ext_modules = [mag_fit])
 
