@@ -10,7 +10,7 @@
 #include <ctype.h>
 #include <time.h>
 
-/* #include </afs/ipp/u/mnw/C/marquardt/mag_fit.h> */
+#include "mag_fit.h"
 
 #define INT32		int
 #define IDL_SHORT	short int

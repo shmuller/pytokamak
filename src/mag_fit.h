@@ -17,7 +17,7 @@ void 	lowcase		(char*);
 
 void 	init_quick_075	(void);
 double quick_075	(double);
-double schicht_power	(double, double, double);
+double schicht_power	(double*, double*, double*);
 
 /* nl-Optimierung nach modifiziertem Levenberg-Marquardt */
 int 	f_deriv		(int(*)(), double*, double*, int, double*, int*, int, double**);
@@ -34,7 +34,7 @@ int 	magfit		(int(*)(), double*, double*, double*, double*, int*, double*, int*,
 int 	mag_solver	(double*, double*, double*, int*, int*, double*, int*, double*, double*, double*, double*);
 
 /* nl-Gleichungssolver, Newton mit variabler Schrittweite */
-double 	calc_fmin	(double*, int, int(*)(), double*, double*, double*, int, double*);
+double 	calc_fmin	(double*, int, int(*)(), double*, double*, double*, double*);
 int 	fdjac		(int, double*, double*, double**, int(*)(), double*, double*);
 int 	lnsrch		(int, double*, double, double*, double*, double*, double*, double, int*,double*, double*, double*, double*);
 int 	newt		(double*, int, int*, double*, double*, double*, double*);
