@@ -13,13 +13,13 @@ amp_LPS['ampR'] = Amp(fixpoints=fixpoints)
 fixpoints = (3.6812, -0.072), (7.0382, 0.170)
 amp_XPR['ampR'] = Amp(fixpoints=fixpoints)
 
-tip1 = TipXPR(number=1, pos='lower left', V_keys='ampV', I_keys='ampI1')
-tip2 = TipXPR(number=2, pos='lower right', V_keys='ampV', I_keys='ampI2')
+tip1 = TipXPR(number=1, pos='lower left', V_keys='ampV1', I_keys='ampI1')
+tip2 = TipXPR(number=2, pos='lower right', V_keys='ampV1', I_keys='ampI2')
 tip3 = TipXPR(number=3, pos='upper', V_keys='ampVF', I_keys=None)
 
 head = Head(tips=(tip1, tip2, tip3), R_keys='ampR')
 
-tip3I = TipXPR(number=3, pos='upper', V_keys='ampV', I_keys='ampI3')
+tip3I = TipXPR(number=3, pos='upper', V_keys='ampV1', I_keys='ampI3')
 headI = Head(tips=(tip1, tip2, tip3I), R_keys='ampR')
 
 

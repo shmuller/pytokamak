@@ -50,7 +50,8 @@ class TipXPR(CylindricalTip):
 
 amp_default_unity = dict(
             ampR  = ampUnity, 
-            ampV  = ampUnity, 
+            ampV1 = ampUnity, 
+            ampV2 = ampUnity,
             ampI1 = ampUnity,
             ampI2 = ampUnity,
             ampI3 = ampUnity,
@@ -58,7 +59,8 @@ amp_default_unity = dict(
 
 amp_default = dict(
             ampR  = None, 
-            ampV  = None, 
+            ampV1 = None, 
+            ampV2 = None,
             ampI1 = ampUnity,
             ampI2 = ampUnity,
             ampI3 = ampUnity,
@@ -66,15 +68,16 @@ amp_default = dict(
 
 amp_XPR = dict(
             ampR = None, 
-            ampV = Amp(fact=100., offs=-69.2227))
+            ampV1 = Amp(fact=100., offs=-69.2227))
 
 amp_LPS = dict(
             ampR = None, 
-            ampV = Amp(fact=100., offs=-183.76))
+            ampV1 = Amp(fact=100., offs=-183.76))
 
 mapping_XPR = dict(
             ampR  = 'S5', 
-            ampV  = 'S1', 
+            ampV1 = 'S1', 
+            ampV2 = 'S3',
             ampI1 = 'S4',
             ampI2 = 'S2',
             ampI3 = 'S6',
@@ -82,7 +85,7 @@ mapping_XPR = dict(
 
 mapping_LPS = dict(
             ampR  = 'VOL3', 
-            ampV  = 'VOL1',
+            ampV1 = 'VOL1',
             ampI1 = 'CUR1',
             ampI2 = 'CUR2',
             ampI3 = 'VOL2',

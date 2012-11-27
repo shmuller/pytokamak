@@ -68,7 +68,7 @@ def prepare(get_case):
     return x, y, idl_params, idl_fixed
 
 
-def fit(get_case):
+def fit(get_case, ax):
     x, y, idl_params, idl_fixed = prepare(get_case)
     yfit = np.zeros_like(y)
 
@@ -76,11 +76,18 @@ def fit(get_case):
 
     print idl_params
 
-    plt.plot(x, y, '-+', x, yfit)
+    ax.plot(x, y, '-+', x, yfit)
 
+fig = plt.figure()
+ax = fig.add_subplot(111)
+ax.set_xlabel('Voltage (V)')
+ax.set_ylabel('Current (A)')
+ax.grid(True)
 
-fit(get_case1)
-fit(get_case2)
+fit(get_case1, ax)
+fit(get_case2, ax)
+
+fig.tight_layout(pad=0.2)
 
 plt.show()
 

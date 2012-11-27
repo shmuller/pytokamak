@@ -349,6 +349,9 @@ class Amp:
     def copy(self):
         return Amp(self.fact, self.offs)
 
+    def __repr__(self):
+        return "Amp instance (fact=%.3f, offs=%.3f)" % (self.fact, self.offs)
+
 
 class Signal:
     def __init__(self, x, t, **kw):
@@ -777,6 +780,8 @@ class Digitizer:
         for node, ax in zip(nodes, fig.axes):
             ax.plot(t, self.x[node])
             ax.set_ylabel(node)
+        fig.canvas.draw()
+        return fig
 
 
 
