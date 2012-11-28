@@ -208,7 +208,6 @@ class IO:
         N = self.get_size(nodes[0])
 
         dtype = [np.float32]*M
-        dtype[nodes.index('t')] = np.float32
         x = np.empty(N, zip(nodes + more_nodes, dtype))
 
         for node in nodes:
@@ -314,7 +313,7 @@ class Amp:
             self.fact, self.offs = fact, offs
 
     def __call__(self, x):
-        return self.fact*x + self.offs
+        return x*self.fact + self.offs   # x*self.fact to use x.__mult__
 
     def apply(self, x):
         x *= self.fact

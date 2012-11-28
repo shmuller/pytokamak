@@ -45,7 +45,7 @@ class IOMdsAUG(IOMds):
 
         if raw:
             mdsfmt = '_s = augsignal(%d,"%s","%%s","AUGD",*,*,*,*,*,"raw")'
-            self.datadeco = '%s; word_unsigned(data(_s))'
+            self.datadeco = '%s; word(data(_s))'
         else:
             mdsfmt = '_s = augsignal(%d,"%s","%%s","AUGD")'
             self.datadeco = '%s; data(_s)'
@@ -92,6 +92,29 @@ class DigitizerXPRRaw(DigitizerXPR):
         DigitizerXPR.__init__(self, shn, sock, raw=True)
 
         self.amp = {node: amp14Bit.copy() for node in self.nodes[:-1]}
+
+
+class DigitizerXPRRawPos(DigitizerXPRRaw):
+    def __init__(self, shn, sock=None):
+        DigitizerXPRRaw.__init__(self, shn, sock)
+        self.nodes += ('PosL', 'PosH')
+        self.more_nodes = ('Pos',)
+
+    def _load_raw_factory(name):
+        def load_raw(self):
+            getattr(DigitizerXPRRaw, name)(self)
+
+            PosL = self.x['PosL'].astype(np.int16).view(np.uint16)
+            PosH = self.x['PosH'].astype(np.int16).view(np.uint16) & 0b0011111111111111
+        
+            Pos  = np.c_[PosL, np.r_[PosH[0], PosH[:-1]]]
+        
+            self.x['Pos'] = Pos.copy().view(np.uint32)[:,0]
+            return self.x
+        return load_raw
+
+    load_raw_mds  = _load_raw_factory('load_raw_mds')
+    load_raw_file = _load_raw_factory('load_raw_file')
 
 
 class DigitizerLPS(Digitizer):
@@ -156,6 +179,13 @@ class DigitizerLPSOld(DigitizerLPS):
         self.dig_xpos.save()
 
 
+DigitizerClasses = dict(
+        LPS = DigitizerLPSRaw,
+        XPR = DigitizerXPRRaw,
+        XPR_pos = DigitizerXPRRawPos,
+        LPS_old = DigitizerLPSOld)
+
+
 class ProbeXPR(Probe):
     def __init__(self, shn, sock=None, dig=None):
         
@@ -164,15 +194,8 @@ class ProbeXPR(Probe):
         self.config = config.campaign.find_shot(shn)
         if dig is None:
             dig = self.config.dig
-        
-        if dig == 'LPS':
-            DigitizerClass = DigitizerLPSRaw
-        elif dig == 'XPR':
-            DigitizerClass = DigitizerXPRRaw
-        elif dig == 'LPS_old':
-            DigitizerClass = DigitizerLPSOld
 
-        digitizer = DigitizerClass(shn, sock)
+        digitizer = DigitizerClasses[dig](shn, sock)
         Probe.__init__(self, digitizer)
 
     def mapsig(self):

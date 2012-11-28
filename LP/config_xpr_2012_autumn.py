@@ -369,37 +369,54 @@ E.rep(28904, 28903, "Everything on 2nd transformer, Kepco -200 V w/ ground conne
 ############################################
 E = campaign.add_experiment(date="20121127")
 
+fact = 4 * 5.54630/27. / 2**16
+offs = -47578968*fact - 0.105
+
+amp_XPR_pos = dict(
+            ampR  = Amp(fact=fact, offs=offs),
+            ampV1 = ampVF,
+            ampV2 = ampVF)
+
+mapping_XPR_pos = dict(
+            ampR  = 'Pos', 
+            ampV1 = 'S1', 
+            ampV2 = 'S3',
+            ampI1 = 'S4',
+            ampI2 = 'S2',
+            ampI3 = 'S6',
+            ampVF = 'S6')
+
+lines_XPR_pos = dict(amp=amp_XPR_pos, mapping=mapping_XPR_pos)
+
+def_XPR_pos = dict(dig='XPR_pos', amp_default=amp_default, lines=dict(XPR=lines_XPR_pos))
+
 # Reversed IpBt
 E.add(28911, "Single/double Kepco on isolated/Mach tip, no plasma",
         head = headI_tip3sep,
-        XPR_amp_ampV1 = ampVF,
-        XPR_amp_ampV2 = ampVF,
         ampI1 = CurrentProbe1[20],
         ampI2 = CurrentProbe2[20],
         ampI3 = CurrentProbe3[20], 
         descr = """\
             All signals are there.""",
-        stars = '', **def_XPR)
+        stars = '', **def_XPR_pos)
 
 E.rep(28912, 28911, "Voltage signals 1 on S1 and S3",
         descr = """\
             No Voltage measurement, no currents on Mach tips.
             Capacitive pickup on isolated tip""",
-        stars = "")
+        stars = '')
 
 E.add(28913, "All tips on double Kepco, V on S1 and S3, multimeter @0.01 Hz: -225 to +57 V",
         times = 1.,
         posit = 0.02,
         head = headI,
-        XPR_amp_ampV1 = ampVF,
-        XPR_amp_ampV2 = ampVF,
         ampI1 = CurrentProbe1[20],
         ampI2 = CurrentProbe2[20],
         ampI3 = CurrentProbe3[20], 
         descr = """\
             All signals on digitizer jumped down by 0.7 V.
             Position signal no longer noisy.""",
-        stars = '*', **def_XPR)
+        stars = '*', **def_XPR_pos)
 
 E.rep(28914, 28913, "Plunge at 5 cm",
         posit = 0.05,
@@ -410,7 +427,7 @@ E.rep(28914, 28913, "Plunge at 5 cm",
 E.rep(28915, 28914, "Zero level test: Lemo2BNC adapter on S3 (ground diff input).",
         descr = """\
             Strong pickup on S3""",
-        stars = '')
+        stars = '**')
 
 E.rep(28916, 28915, "Lemo2BNC adapter on S8. Go to 10 cm",
         posit = 0.1,
@@ -419,9 +436,11 @@ E.rep(28916, 28915, "Lemo2BNC adapter on S8. Go to 10 cm",
         stars = '***')
 
 E.rep(28917, 28916, "Isolated tip at -200 V (1A Kepco)",
+        head = headI_tip3sep,
         descr = """\
-            Good data, but 35 kHz pickup on isolated tip""",
-        stars = '**')
+            Good data, but 35 kHz pickup on isolated tip.
+            Good electron branch on swept Mach tips.""",
+        stars = '***')
 
 E.rep(28918, 28917, "Both Kepco's at -200 V. Plasma died before plunge.",
         descr = """\
@@ -429,13 +448,14 @@ E.rep(28918, 28917, "Both Kepco's at -200 V. Plasma died before plunge.",
         stars = '')
 
 E.rep(28919, 28918, "All tips at -200 V (4A Kepco)",
+        head = headI,
         descr = """\
             35 kHz went away. All signals DC and very good.""",
         stars = '****')
 
 E.rep(28920, 28919, "Mach on DC (4A), isolated on AC (1A), plunge to 15 cm",
-        posit = 0.15,
         head = headI_tip3sep,
+        posit = 0.15,
         descr = """\
             Bad arc.""",
         stars = '*')
@@ -446,7 +466,7 @@ E.rep(28921, 28920, "Plunge to 10 cm. No TS06",
 
 E.rep(28922, 28921, "Repeat",
         descr = """\
-            No arcs. Nice comparison between swept""",
+            No arcs. Nice comparison between swept and DC biased tips.""",
         stars = '***')
 
 E.rep(28923, 28922, "Repeat",
@@ -489,7 +509,7 @@ E.rep(28928, 28927, "32 cm at 4.4 s, shift sweeps positively out of saturation",
             Very nice Mach fluctuation measurements all the way across!
             Too much positive Vbias. Saturation in current leads to asymmetry 
             in Isat phase at very low densities.""",
-        stars = '****')
+        stars = '***')
 
 E.rep(28929, 28928, "Back to 14.5 Vpp, shifted out of saturation. Backwards plunge at 1 s",
         times = (1., 4.4),
