@@ -4,6 +4,8 @@ import scipy.interpolate as interp
 import scipy.optimize as opt
 import scipy.odr as odr
 
+import warnings
+
 import logging
 reload(logging)
 logging.basicConfig(level=logging.WARN)
@@ -807,9 +809,11 @@ class PhysicalResults:
         return self.plot(xkey='R', **kw)
 
 
-class LoadResultsError(Exception):
+class ResultsIOError(Exception):
     pass
 
+class ResultsIOWarning(Warning):
+    pass
 
 class Probe:
     def __init__(self, digitizer=None):
@@ -856,17 +860,15 @@ class Probe:
         is_type = lambda x: x.type == type
         return np.array(filter(is_type, self.S.itervalues()))
 
-    @memoized_property
-    def I(self):
-        return self.get_type('Current')
+    def _shortcut_factory(name):
+        @memoized_property
+        def wrapper(self):
+            return self.get_type(name)
+        return wrapper
 
-    @memoized_property
-    def V(self):
-        return self.get_type('Voltage')
-
-    @memoized_property
-    def R(self):
-        return self.get_type('Position')
+    I = _shortcut_factory('Current')
+    V = _shortcut_factory('Voltage')
+    R = _shortcut_factory('Position')
 
     @memoized_property
     def is_swept(self):
@@ -959,7 +961,7 @@ class Probe:
         if self.PP is None:
             try:
                 self.load()
-            except LoadResultsError:
+            except ResultsIOError:
                 self.analyze()
                 self.save_res()
 
@@ -983,14 +985,17 @@ class Probe:
     def save_res(self):
         IO = IOH5(self.h5name_res)
         d = self.PP.savefields
-        IO.save(d)
+        try:
+            IO.save(d)
+        except IOError:
+            warnings.warn("could not save results", ResultsIOWarning)
 
     def load_res(self):
         IO = IOH5(self.h5name_res)
         try:
             d = IO.load()
         except IOError:
-            raise LoadResultsError("no results available")
+            raise ResultsIOError("no results available")
         self.PP = PiecewisePolynomial(**d)
 
     def load(self, **kw):

@@ -509,8 +509,6 @@ class Signal:
 class PeriodPhaseFinder:
     def __init__(self, x):
         self.x = x
-        self.di = np.zeros(2)
-        self.iE = None
 
     def find_f(self):
         nextpow2 = lambda x: 2**np.ceil(np.log2(x)).astype('i')
@@ -521,50 +519,62 @@ class PeriodPhaseFinder:
         f = np.float(iM)/Nfft
         return f
 
-    def cumdist(self, p):
-        d, i = p[0], p[1]
+    def calc_iE(self, p):
+        d, i = p
         M = self.x.size
-        iE = np.round(np.arange(i,M-1,d/2)).astype('i')
-        
+        return np.round(np.arange(i, M-1, d/2)).astype('i')
+
+    def cumdist(self, p):
+        iE = self.calc_iE(p)
         dx = np.diff(self.x[iE])
         D = -np.sqrt(dx.dot(dx)/dx.size)
-
-        self.iE = iE
         return D
 
-    def guess_d(self, p0):
-        d0, i0 = p0[0], p0[1]
-        N = 200
-        dd = np.linspace(0.99*d0, 1.01*d0, N)
-        DD = np.empty(N)
-        for j in xrange(N):
-            DD[j] = self.cumdist([dd[j],i0])
-        d = dd[DD.argmin()]
-        return d
-
-    def chop_sweeps(self):
+    @memoized_property
+    def guess(self):
         f0 = self.find_f()
         d0 = 1./f0
         x0 = self.x[:np.round(d0)]
         i0 = min(x0.argmin(), x0.argmax())
-        
-        d = self.guess_d([d0,i0])
+        p0 = d0, i0
+        D0 = self.cumdist(p0)
+        return p0, -D0
 
-        p = opt.fmin(self.cumdist, np.array([d,i0]))
+    @memoized_property
+    def guess2(self):
+        d0, i0 = self.guess[0]
+        N = 200
+        dd = np.linspace(0.99*d0, 1.01*d0, N)
+        DD = np.empty(N)
+        for j in xrange(N):
+            DD[j] = self.cumdist((dd[j], i0))
+        j = DD.argmin()
+        p = dd[j], i0
+        D = DD[j]
+        return p, -D
 
-        D = self.cumdist([d0,i0])
-        print D
-        
-        D = self.cumdist([d,i0])
-        print D
+    @memoized_property
+    def res(self):
+        p1 = self.guess2[0]
+        p, D = opt.fmin(self.cumdist, p1, full_output=True)[:2]
+        return p, -D
 
-        D = self.cumdist(p)
-        print D
+    @memoized_property
+    def p(self):
+        return self.res[0]
 
-        return D
+    @memoized_property
+    def D(self):
+        return self.res[1]
 
-    def get_iE(self):
-        return self.iE
+    @memoized_property
+    def iE(self):
+        return self.calc_iE(self.p)
+
+    def print_res(self):
+        print self.guess
+        print self.guess2
+        print self.res
 
 
 class PositionSignal(Signal):
@@ -658,13 +668,12 @@ class VoltageSignal(Signal):
 
     @memoized_property
     def iE(self): 
-        self.PPF.chop_sweeps()
-        return self.PPF.get_iE()
+        return self.PPF.iE
 
     @memoized_property
     def is_swept(self):
         D = self.min_ptp
-        return self.x.ptp() > D
+        return self.x.ptp() > D and self.PPF.D > D
 
     def plot_sweeps(self, ax=None):
         ax = get_axes(ax)
