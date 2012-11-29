@@ -20,6 +20,7 @@ math_sel = tight_figure.MathSelector(usetex=usetex)
 
 tfigure = tight_figure.pickable_linked_lod_tight_figure
 figure = tight_figure.pickable_linked_lod_figure
+#tfigure = tight_figure.pickable_linked_tight_figure
 #figure = tight_figure.pickable_linked_figure
 plot = plt.plot
 ion = plt.ion
@@ -27,8 +28,6 @@ ion = plt.ion
 def get_tfig(*args, **kw):
     kw.setdefault('figure', tfigure)
     return tight_figure.get_fig(*args, **kw)
-
-get_fig = tight_figure.get_fig
 
 def get_fig(*args, **kw):
     kw.setdefault('figure', figure)
@@ -313,7 +312,7 @@ class Amp:
             self.fact, self.offs = fact, offs
 
     def __call__(self, x):
-        return x*self.fact + self.offs   # x*self.fact to use x.__mult__
+        return x*self.fact + self.offs   # try x.__mult__ if x is object
 
     def apply(self, x):
         x *= self.fact
@@ -649,13 +648,23 @@ class VoltageSignal(Signal):
         kw.setdefault('type', 'Voltage')
         kw.setdefault('units', 'V')
 
+        self.min_ptp = kw.pop('min_ptp', 20)
+
         Signal.__init__(self, x, t, **kw)
 
     @memoized_property
-    def iE(self):
-        PPF = PeriodPhaseFinder(self.x)
-        PPF.chop_sweeps()
-        return PPF.get_iE()
+    def PPF(self):
+        return PeriodPhaseFinder(self.x)
+
+    @memoized_property
+    def iE(self): 
+        self.PPF.chop_sweeps()
+        return self.PPF.get_iE()
+
+    @memoized_property
+    def is_swept(self):
+        D = self.min_ptp
+        return self.x.ptp() > D
 
     def plot_sweeps(self, ax=None):
         ax = get_axes(ax)

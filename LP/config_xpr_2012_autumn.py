@@ -406,7 +406,7 @@ E.rep(28912, 28911, "Voltage signals 1 on S1 and S3",
             Capacitive pickup on isolated tip""",
         stars = '')
 
-E.add(28913, "All tips on double Kepco, V on S1 and S3, multimeter @0.01 Hz: -225 to +57 V",
+E.add(28913, "All on swept double Kepco, V on S1 and S3, multimeter @0.01 Hz: -225 to +57 V",
         times = 1.,
         posit = 0.02,
         head = headI,
@@ -432,8 +432,9 @@ E.rep(28915, 28914, "Zero level test: Lemo2BNC adapter on S3 (ground diff input)
 E.rep(28916, 28915, "Lemo2BNC adapter on S8. Go to 10 cm",
         posit = 0.1,
         descr = """\
-            Nice signals. Noise is now on S8, as expected.""",
-        stars = '***')
+            Nice signals. Noise is now on S8, as expected.
+            Nice demonstration that sum of Mach tips is equivalent to isolated tip.""",
+        stars = '****')
 
 E.rep(28917, 28916, "Isolated tip at -200 V (1A Kepco)",
         head = headI_tip3sep,

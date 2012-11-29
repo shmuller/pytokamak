@@ -853,17 +853,42 @@ class Probe:
             self.trim(plunge)
     
     def get_type(self, type):
-        istype = lambda x: x.type == type
-        return filter(istype, self.S.itervalues())
+        is_type = lambda x: x.type == type
+        return np.array(filter(is_type, self.S.itervalues()))
+
+    @memoized_property
+    def I(self):
+        return self.get_type('Current')
+
+    @memoized_property
+    def V(self):
+        return self.get_type('Voltage')
+
+    @memoized_property
+    def R(self):
+        return self.get_type('Position')
+
+    @memoized_property
+    def is_swept(self):
+        is_swept = lambda I: I.V.is_swept
+        return np.array(map(is_swept, self.I))
+
+    @memoized_property
+    def I_swept(self):
+        return self.I[self.is_swept]
 
     def plot_raw(self, fig=None,
-            keys = (('Current',), ('Voltage',), ('Position',))):
+            keys = (('Position',), ('Current',), ('Voltage',))):
         keys = np.array(keys, ndmin=2)
 
-        fig = get_fig(fig, keys.shape, xlab=self.xlab)
+        fig = get_fig(fig, keys.shape, xlab=self.xlab, ylab=keys)
+
+        ax = fig.axes[np.flatnonzero(keys == 'Voltage')]
+        if ax:
+            for I in self.I:
+                I.V.plot(ax)
 
         for key, ax in zip(keys, fig.axes):
-            ax.set_ylabel(key[0])
             for S in self.get_type(key[0]):
                 S.plot(ax)
 
@@ -871,14 +896,14 @@ class Probe:
         return fig
     
     def get_dwell_params(self):
-        R = self.get_type('Position')[0]
+        R = self.R[0]
         iM = R.t_ind[1]
         tM = R.t[iM]
         RM = R.x[iM]
         return tM, RM
 
     def trim(self, plunge='all'):
-        R = self.get_type('Position')[0]
+        R = self.R[0]
         i0, iM, i1 = R.t_ind
 
         if plunge == 'all':
@@ -890,16 +915,16 @@ class Probe:
             S.trim(s)
 
     def smooth_I(self, w=10):
-        for I in self.get_type('Current'):
+        for I in self.I:
             I.smooth(w)
 
     def corr_capa(self):
-        for I in self.get_type('Current'):
+        for I in self.I:
             I.x[:] -= I.I_capa()
 
     def calc_IV_series(self, n=1, **kw):
-        II = self.get_type('Current')
-        V = II[0].V
+        II = self.I
+        V = self.I_swept[0].V
         iE = np.c_[V.iE[:-n], V.iE[n:]]
         return IVSeries(V, II, iE, **kw)
 
@@ -973,14 +998,12 @@ class Probe:
         self.load_res()
 
     def analyze2(self, n=2):
-        V = self.S['V']
-        II = self.get_type('Current')
         self.IV_series2 = self.calc_IV_series(n=2)
         self.PP2 = self.IV_series2.fit()
 
         """
-        V = self.S['V']
         II = self.get_type('Current')
+        V = II[0].V
         PP = self.PP(V.t)
         mask = self.IV_series.mask()
         
@@ -1022,4 +1045,5 @@ class Probe:
 
     def plot_R(self, **kw):
         return self.plot(x='R', **kw)
+
 
