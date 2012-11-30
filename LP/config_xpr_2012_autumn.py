@@ -529,8 +529,25 @@ E.rep(28930, 28929, "Go to 1.9 s",
 
 
 
+############################################
+E = campaign.add_experiment(date="20121130")
 
+E.add(28960, "Go to 10 cm at 0.9 s. Mach on DC, isolated on AC",
+        times = 0.9,
+        posit = 0.1,
+        head = headI_tip3sep,
+        ampI1 = CurrentProbe1[20],
+        ampI2 = CurrentProbe2[20],
+        ampI3 = CurrentProbe3[20], 
+        descr = """\
+            """,
+        stars = '*', **def_XPR_pos)
 
+E.rep(28961, 28960, "",
+        posit = 0.12,
+        descr = """\
+            """,
+        stars = '')
 
 
 
