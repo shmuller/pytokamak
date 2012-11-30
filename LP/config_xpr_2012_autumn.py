@@ -502,7 +502,7 @@ E.rep(28927, 28926, "15 cm at 0.9 s, sweep ampl from 14.5 to 15.5 Vpp",
             OK.""",
         stars = '***')
 
-# Rachael
+# Rachael McDermott
 E.rep(28928, 28927, "32 cm at 4.4 s, shift sweeps positively out of saturation",
         times = 4.4,
         posit = 0.32,
@@ -540,14 +540,87 @@ E.add(28960, "Go to 10 cm at 0.9 s. Mach on DC, isolated on AC",
         ampI2 = CurrentProbe2[20],
         ampI3 = CurrentProbe3[20], 
         descr = """\
-            """,
-        stars = '*', **def_XPR_pos)
+            Worked. Digitizer offset now different again!!!""",
+        stars = '***', **def_XPR_pos)
 
-E.rep(28961, 28960, "",
+E.rep(28961, 28960, "Go to 12 cm",
         posit = 0.12,
         descr = """\
-            """,
+            Worked.""",
+        stars = '***')
+
+E.rep(28962, 28961, "Go to 15 cm",
+        posit = 0.15,
+        descr = """\
+            Arc at maximum position.""",
+        stars = '**')
+
+# Rachael McDermott
+E.rep(28963, 28962, "32 cm at 1.9 and 3.9 s",
+        times = (1.9, 3.9),
+        posit = (0.32, 0.32),
+        descr = """\
+            Arcs on both plunges.""",
+        stars = '**')
+
+E.rep(28964, 28963, "Sweeps also on 4A Kepco.",
+        times = (1.9, 3.9),
+        posit = (0.32, 0.32),
+        descr = """\
+            Only small arcs on both plunges.""",
+        stars = '****')
+
+E.rep(28965, 28964, "4A Kepco -200 V again, plunge at 2 s to 20 cm, expect H mode",
+        times = 2.,
+        posit = 0.20,
+        descr = """\
+            3 MW of ECRH power. Plunge already in H-mode. Lots of arcing.""",
+        stars = '*')
+
+E.rep(28966, 28965, "Move plunge to 1.85 s",
+        times = 1.85,
+        posit = 0.20,
+        descr = """\
+            Good data in L-mode. Arcs at L-H transition on way out.""",
+        stars = '**')
+
+E.rep(28967, 28966, "Repeat",
+        descr = """\
+            Similar to last shot.""",
+        stars = '**')
+
+E.rep(28968, 28967, "Go to 18 cm",
+        posit = 0.18,
+        descr = """\
+            Mach tip hit by beam blip very early.
+            Swept isolated tip seems OK for the whole plunge.""",
+        stars = '**')
+
+# Bt calibration
+E.rep(28973, 28968, "Digitizer offset calibration",
+        times = (),
+        posit = (),
+        descr = """\
+            All Kepcos off,""",
         stars = '')
+
+# Felix Reimold
+E.rep(28974, 28968, "All tips on swept 4A Kepco, 15 cm at 0.6 s, bias 17 Vpp",
+        times = 0.6,
+        posit = 0.15,
+        head = headI,
+        descr = """\
+            Arcs again. Too much positive bias.""",
+        stars = '*')
+
+E.rep(28975, 28974, "Bias 14.5 Vpp, at 0.5 s",
+        times = 0.5,
+        posit = 0.15,
+        descr = """\
+            Finally no arcs, but nothing interesting.""",
+        stars = '**')
+
+
 
 
 
