@@ -6,13 +6,21 @@ from collections import OrderedDict
 
 from probe import PositionSignal, VoltageSignal, CurrentSignal
 
+def ensure_tuple(d, *keys):
+    for k in keys:
+        if not isinstance(d[k], tuple):
+            d[k] = (d[k],)
+    
 class Tip:
-    def __init__(self, area, proj_area, number, pos, V_keys=None, I_keys=None):
+    def __init__(self, area, proj_area, number, pos, 
+            V_keys=None, I_keys=None, name=None):
         self.area = area
         self.proj_area = proj_area
         self.number = number
         self.pos = pos
-        self.keys = dict(V=V_keys, I=I_keys)
+        self.V_keys = V_keys
+        self.I_keys = I_keys
+        self.name = name or 'tip%d' % self.number
 
 
 class CylindricalTip(Tip):
@@ -26,8 +34,38 @@ class CylindricalTip(Tip):
 class Head:
     def __init__(self, tips, R_keys=None):
         self.tips = tips
-        self.keys = dict(R=R_keys)
+        self.R_keys = R_keys
 
+    @staticmethod
+    def _unique(x):
+        s = set(x)
+        s.discard(None)
+        return list(s)
+
+    @property
+    def V_keys(self):
+        return [tip.V_keys for tip in self.tips]
+
+    @property
+    def I_keys(self):
+        return [tip.I_keys for tip in self.tips]
+
+    @property
+    def all_keys(self):
+        return [self.R_keys] + self.V_keys + self.I_keys
+
+    @property
+    def unique_V_keys(self):
+        return self._unique(self.V_keys)
+
+    @property
+    def unique_I_keys(self):
+        return self._unique(self.I_keys)
+
+    @property
+    def unique_keys(self):
+        return [self.R_keys] + self.unique_V_keys + self.unique_I_keys
+        
     def get_tip_number_by_position(self, pos):
         for tip in self.tips:
             if tip.pos == pos:
@@ -58,7 +96,8 @@ class Shot:
         for attr in self.attrs:
             setattr(self, attr, kw.pop(attr, None))
 
-        self._ensure_tuple(('times', 'posit'))
+        ensure_tuple(self.__dict__, 'times', 'posit')
+        #self._ensure_tuple(('times', 'posit'))
 
         self.amp_default = self.amp_default.copy()
         for k in set(self.amp_default.keys()) & set(kw.keys()):
@@ -83,23 +122,25 @@ class Shot:
         else:
             return self.lines[line][what][key]
 
-    def _ensure_tuple(self, attrs):
-        for attr in attrs:
-            v = getattr(self, attr)
-            if not isinstance(v, (tuple, list)):
-                setattr(self, attr, (v,))
+    #def _ensure_tuple(self, attrs):
+    #    for attr in attrs:
+    #        v = getattr(self, attr)
+    #        if not isinstance(v, (tuple, list)):
+    #            setattr(self, attr, (v,))
 
     def all_keys(self):
-        keys = [self.head.keys['R']]
-        for tip in self.head.tips:
-            keys.extend([tip.keys['V'], tip.keys['I']])
-        return keys
+        return self.head.all_keys
+        #keys = [self.head.R_keys]
+        #for tip in self.head.tips:
+        #    keys.extend([tip.V_keys, tip.I_keys])
+        #return keys
 
     def unique_keys(self):
-        unique_keys = np.unique(self.all_keys())
-        if unique_keys[0] is None:
-            unique_keys = unique_keys[1:]
-        return list(unique_keys)
+        return self.head.unique_keys
+        #unique_keys = np.unique(self.all_keys())
+        #if unique_keys[0] is None:
+        #    unique_keys = unique_keys[1:]
+        #return list(unique_keys)
 
     def __repr__(self):
         return "%d %-5s: %s" % (self.shn, self.stars, self.comment)
@@ -112,11 +153,11 @@ class Shot:
                 for k in self.unique_keys()}
 
         t = x['t']
-        R = self.unique_sigs[self.head.keys['R']]
+        R = self.unique_sigs[self.head.R_keys]
         S = OrderedDict(R=PositionSignal(R, t, name='R'))
 
         for tip in self.head.tips:
-            i, keyV, keyI = tip.number, tip.keys['V'], tip.keys['I']
+            i, keyV, keyI = tip.number, tip.V_keys, tip.I_keys
             if keyV is None:
                 V = None
             else:
@@ -129,13 +170,30 @@ class Shot:
 
         return S
 
+    def mapsig2(self, x, line):
+        self.unique_sigs = {k: x[self.get(line, 'mapping', k)].astype('d') 
+                for k in self.unique_keys()}
+
+        t = x['t']
+        R = self.unique_sigs[self.head.R_keys]
+
+        names = ['R'] + [tip.name for tip in self.head.tips]
+        S = np.empty(1, zip(names, [object]*len(names))).view(np.recarray)
+
+        S.R = PositionSignal(R, t, name='R')
+        for tip in self.head.tips:
+            name, keyV, keyI = tip.name, tip.V_keys, tip.I_keys
+            
+            V = keyV or VoltageSignal(self.unique_sigs[keyV], t, number=i, name='V%d' % i)
+            S[name] = V
+
     def calib(self, S, line):
         for k in self.unique_sigs.iterkeys():
             amp = self.get(line, 'amp', k)
             amp.apply(self.unique_sigs[k])
 
 
-class ShotContainer:
+class Container:
     def __init__(self):
         self.x = OrderedDict()
 
@@ -164,12 +222,14 @@ class ShotContainer:
             return np.empty((0,), x.dtype)
 
     def collect_as_list(self, attr, cnd=lambda v: True): 
-        return np.concatenate([v.collect_as_list(attr, cnd) if isinstance(v, ShotContainer)
+        return np.concatenate([v.collect_as_list(attr, cnd) if isinstance(v, Container)
             else self._item(v, attr, cnd) for v in self.x.itervalues()])
 
     def collect_as_dict(self, attr):
         return {k: getattr(v, attr) for k, v in self.x.iteritems()}
 
+
+class ShotContainer(Container):
     @property
     def shots(self):
         return self.collect_as_list('shn')
