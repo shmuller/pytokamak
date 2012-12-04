@@ -622,5 +622,52 @@ E.rep(28975, 28974, "Bias 14.5 Vpp, at 0.5 s",
 
 
 
+############################################
+E = campaign.add_experiment(date="20121204")
+
+# Rev IpBt
+E.add(28983, "Bias Voltage off, offset calibration",
+        head = headI,
+        ampI1 = CurrentProbe1[20],
+        ampI2 = CurrentProbe2[20],
+        ampI3 = CurrentProbe3[20], 
+        descr = "",
+        stars = '', **def_XPR_pos)
+
+# Steffen Potzel
+E.rep(28986, 28983, "all tips on 4A Kepco, sweep 14.5 Vpp, at 1.5 and 2.5 s",
+        times = (1.0, 1.5),
+        posit = (0.34, 0.34),
+        descr = """\
+            Accidentally programmed 1.0 and 1.5 s. Plunges too close together, VPE.
+            Data OK on 1st plunge, but not enough electron current.""",
+        stars = '***')
+
+# Gregor Birkenmeier
+E.rep(28987, 28986, "sweep 15.5 Vpp, at 1.0 and 3.0 s",
+        times = (1.0, 2.0),
+        posit = (0.2, 0.2),
+        descr = """\
+            2nd plunge was at 2.0 s. Good data on first plunge. Single tip
+            emitting at end of first plunge, strong emission/arc on second.""",
+        stars = '***')
+
+E.rep(28988, 28987, "Single tip on 1A Kepco (save Mach signals)",
+        times = (1.0, 3.0),
+        posit = (0.2, 0.12),
+        head = headI_tip3sep,
+        descr = """\
+            Caught L-H transition on 2nd plunge!""",
+        stars = '****')
+
+# Steffen Potzel
+E.rep(28989, 28988, "All the way through at 1.0 and 2.5 s",
+        times = (1.0, 2.5),
+        posit = (0.34, 0.34),
+        descr = """\
+            Great data on both plunges!""",
+        stars = '*****')
+
+
 
 

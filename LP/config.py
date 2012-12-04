@@ -35,6 +35,7 @@ class Head:
     def __init__(self, tips, R_keys=None):
         self.tips = tips
         self.R_keys = R_keys
+        self.unique_sigs = None
 
     @staticmethod
     def _unique(x):
@@ -66,6 +67,42 @@ class Head:
     def unique_keys(self):
         return [self.R_keys] + self.unique_V_keys + self.unique_I_keys
         
+    @property
+    def unique_types(self):
+        return [PositionSignal] \
+             + [VoltageSignal]*len(self.unique_V_keys) \
+             + [CurrentSignal]*len(self.unique_I_keys)
+
+    @property
+    def unique_keys_types(self):
+        return zip(self.unique_keys, self.unique_types)
+
+    def unique_signals(self, get_x, t):
+        return {k: S(get_x(k), t) for k, S in self.unique_keys_types}
+
+    """
+    def signals(self, get_x, t):
+        unique_sigs = self.unique_signals(get_x, t)
+
+        S = OrderedDict(R=)
+
+        for tip in self.tips:
+            V = tip.V_keys or get_x(V)
+            x 
+
+            V = V or VoltageSignal(get_x(V), t)
+            I = I or CurrentSignal(get_x(I), t, V=V)
+                
+
+            if keyI is None:
+                S[V.name] = V
+            else:
+                I = self.unique_sigs[keyI]
+                I.name = 'I%d' % i
+                I.V = V
+                S[I.name] = I
+    """
+
     def get_tip_number_by_position(self, pos):
         for tip in self.tips:
             if tip.pos == pos:
@@ -97,7 +134,6 @@ class Shot:
             setattr(self, attr, kw.pop(attr, None))
 
         ensure_tuple(self.__dict__, 'times', 'posit')
-        #self._ensure_tuple(('times', 'posit'))
 
         self.amp_default = self.amp_default.copy()
         for k in set(self.amp_default.keys()) & set(kw.keys()):
@@ -122,26 +158,6 @@ class Shot:
         else:
             return self.lines[line][what][key]
 
-    #def _ensure_tuple(self, attrs):
-    #    for attr in attrs:
-    #        v = getattr(self, attr)
-    #        if not isinstance(v, (tuple, list)):
-    #            setattr(self, attr, (v,))
-
-    def all_keys(self):
-        return self.head.all_keys
-        #keys = [self.head.R_keys]
-        #for tip in self.head.tips:
-        #    keys.extend([tip.V_keys, tip.I_keys])
-        #return keys
-
-    def unique_keys(self):
-        return self.head.unique_keys
-        #unique_keys = np.unique(self.all_keys())
-        #if unique_keys[0] is None:
-        #    unique_keys = unique_keys[1:]
-        #return list(unique_keys)
-
     def __repr__(self):
         return "%d %-5s: %s" % (self.shn, self.stars, self.comment)
 
@@ -149,8 +165,10 @@ class Shot:
         print self.descr
 
     def mapsig(self, x, line):
-        self.unique_sigs = {k: x[self.get(line, 'mapping', k)].astype('d') 
-                for k in self.unique_keys()}
+        def get_x(key):
+            return x[self.get(line, 'mapping', key)].astype('d')
+
+        self.unique_sigs = {k: get_x(k) for k in self.head.unique_keys}
 
         t = x['t']
         R = self.unique_sigs[self.head.R_keys]
@@ -171,21 +189,30 @@ class Shot:
         return S
 
     def mapsig2(self, x, line):
-        self.unique_sigs = {k: x[self.get(line, 'mapping', k)].astype('d') 
-                for k in self.unique_keys()}
+        def get_x(key):
+            return x[self.get(line, 'mapping', key)].astype('d')
 
         t = x['t']
-        R = self.unique_sigs[self.head.R_keys]
+        self.unique_sigs = self.head.unique_signals(get_x, t)
 
-        names = ['R'] + [tip.name for tip in self.head.tips]
-        S = np.empty(1, zip(names, [object]*len(names))).view(np.recarray)
+        S = OrderedDict(R=self.unique_sigs[self.head.R_keys])
 
-        S.R = PositionSignal(R, t, name='R')
         for tip in self.head.tips:
-            name, keyV, keyI = tip.name, tip.V_keys, tip.I_keys
-            
-            V = keyV or VoltageSignal(self.unique_sigs[keyV], t, number=i, name='V%d' % i)
-            S[name] = V
+            i, keyV, keyI = tip.number, tip.V_keys, tip.I_keys
+            if keyV is None:
+                V = None
+            else:
+                V = self.unique_sigs[keyV]
+                V.name = 'V%d' % i
+            if keyI is None:
+                S[V.name] = V
+            else:
+                I = self.unique_sigs[keyI]
+                I.name = 'I%d' % i
+                I.V = V
+                S[I.name] = I
+
+        return S
 
     def calib(self, S, line):
         for k in self.unique_sigs.iterkeys():
