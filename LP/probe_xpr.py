@@ -205,18 +205,7 @@ class ProbeXPR(Probe):
         self.S = self.config.mapsig(x, self.digitizer.name)
 
     def calib(self):
-        S = self.S
-        self.config.calib(S, self.digitizer.name)
-
-        s = slice(5000)
-        for I in self.get_type('Current'):
-            I.norm_to_region(s)
-
-        for V in self.get_type('Voltage'):
-            V.norm_to_region(s)
-
-        S['Rs'] = S['R'].copy().mediansmooth(100)
-        S['It'] = S['I1'] + S['I2']
+        self.config.calib(self.digitizer.name)
 
     def get_meas(self, Isat, Vf, Te, meas):
         head = self.config.head

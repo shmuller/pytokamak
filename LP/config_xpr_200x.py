@@ -11,7 +11,7 @@ tip1 = TipXPR(number=1, pos='lower left', V_keys='ampV1', I_keys='ampI2')
 tip2 = TipXPR(number=2, pos='lower right', V_keys='ampV1', I_keys='ampI3')
 tip3 = TipXPR(number=3, pos='upper', V_keys='ampVF', I_keys='ampI1')
 
-headI = Head(tips=(tip1, tip2, tip3), R_keys='ampR')
+headI = HeadXPR(tips=(tip1, tip2, tip3), R_keys='ampR')
 
 amp_LPS_old = dict(ampR = Amp(fact=0.004, offs=-2745*0.004))
 

@@ -18,11 +18,11 @@ tip1 = TipXPR(number=1, pos='lower left', V_keys='ampV1', I_keys='ampI3')
 tip2 = TipXPR(number=2, pos='lower right', V_keys='ampV1', I_keys='ampI1')
 tip3 = TipXPR(number=3, pos='upper', V_keys='ampV1', I_keys='ampI2')
 
-headI = Head(tips=(tip1, tip2, tip3), R_keys='ampR')
+headI = HeadXPR(tips=(tip1, tip2, tip3), R_keys='ampR')
 
 tip3sep = TipXPR(number=3, pos='upper', V_keys='ampV2', I_keys='ampI2')
 
-headI_tip3sep = Head(tips=(tip1, tip2, tip3sep), R_keys='ampR')
+headI_tip3sep = HeadXPR(tips=(tip1, tip2, tip3sep), R_keys='ampR')
 
 
 ############################################
@@ -667,6 +667,38 @@ E.rep(28989, 28988, "All the way through at 1.0 and 2.5 s",
         descr = """\
             Great data on both plunges!""",
         stars = '*****')
+
+
+############################################
+E = campaign.add_experiment(date="20121205")
+
+# ICRF wall conditioning
+E.add(28998, "Two plunges at 1.0 and 2.5 s to 20 cm",
+        times = (1.0, 2.5),
+        posit = (0.2, 0.2),
+        head = headI_tip3sep,
+        ampI1 = CurrentProbe1[20],
+        ampI2 = CurrentProbe2[20],
+        ampI3 = CurrentProbe3[20], 
+        descr = "Plunged, but no signals.",
+        stars = '', **def_XPR_pos)
+
+E.rep(28999, 28998, "Repeat",
+        descr = "No data again.",
+        stars = '')
+
+E.rep(29002, 28999, "Repeat",
+        descr = "Measured something, but bias voltage affected by RF",
+        stars = '')
+
+E.rep(29003, 29002, "Repeat",
+        descr = "Bias Voltage now strongly affected by RF.",
+        stars = '')
+
+E.rep(29005, 29003, "No plunge, check that Kepcos are still working.",
+        descr = "OK.",
+        stars = '')
+
 
 
 

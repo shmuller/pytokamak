@@ -48,6 +48,18 @@ class TipXPR(CylindricalTip):
         CylindricalTip.__init__(self, 0.0005, 0.003, *args, **kw)
 
 
+class HeadXPR(Head):
+    def calib(self, get_amp):
+        Head.calib(self, get_amp)
+
+        s = slice(5000)
+        self.norm_to_region(s)
+        
+        S = self.S
+        S['Rs'] = S['R'].copy().mediansmooth(100)
+        S['tip1+tip2'] = S['tip1'] + S['tip2']
+
+
 amp_default_unity = dict(
             ampR  = ampUnity, 
             ampV1 = ampUnity, 

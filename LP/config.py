@@ -67,41 +67,35 @@ class Head:
     def unique_keys(self):
         return [self.R_keys] + self.unique_V_keys + self.unique_I_keys
         
-    @property
-    def unique_types(self):
-        return [PositionSignal] \
-             + [VoltageSignal]*len(self.unique_V_keys) \
-             + [CurrentSignal]*len(self.unique_I_keys)
+    def unique_signals(self, get_x):
+        return {k: get_x(k) for k in self.unique_keys}
 
-    @property
-    def unique_keys_types(self):
-        return zip(self.unique_keys, self.unique_types)
+    def mapsig(self, get_x, t):
+        self.unique_sigs = self.unique_signals(get_x)
 
-    def unique_signals(self, get_x, t):
-        return {k: S(get_x(k), t) for k, S in self.unique_keys_types}
-
-    """
-    def signals(self, get_x, t):
-        unique_sigs = self.unique_signals(get_x, t)
-
-        S = OrderedDict(R=)
+        R = self.unique_sigs[self.R_keys]
+        self.S = OrderedDict(R=PositionSignal(R, t, name='R'))
 
         for tip in self.tips:
-            V = tip.V_keys or get_x(V)
-            x 
+            i, V_keys, I_keys = tip.number, tip.V_keys, tip.I_keys
 
-            V = V or VoltageSignal(get_x(V), t)
-            I = I or CurrentSignal(get_x(I), t, V=V)
-                
+            x_V = V_keys and self.unique_sigs[V_keys]
+            x_I = I_keys and self.unique_sigs[I_keys]
 
-            if keyI is None:
-                S[V.name] = V
-            else:
-                I = self.unique_sigs[keyI]
-                I.name = 'I%d' % i
-                I.V = V
-                S[I.name] = I
-    """
+            V = VoltageSignal(x_V, t, number=i, name='V%d' % i)
+            I = CurrentSignal(x_I, t, V=V, number=i, name='I%d' % i)
+            self.S[tip.name] = I
+        
+        return self.S
+
+    def calib(self, get_amp):
+        for k in self.unique_sigs.iterkeys():
+            amp = get_amp(k)
+            amp.apply(self.unique_sigs[k])
+
+    def norm_to_region(self, s):
+        for tip in self.tips:
+            self.S[tip.name].norm_to_region(s)
 
     def get_tip_number_by_position(self, pos):
         for tip in self.tips:
@@ -164,7 +158,7 @@ class Shot:
     def print_descr(self):
         print self.descr
 
-    def mapsig(self, x, line):
+    def mapsig_old(self, x, line):
         def get_x(key):
             return x[self.get(line, 'mapping', key)].astype('d')
 
@@ -188,37 +182,18 @@ class Shot:
 
         return S
 
-    def mapsig2(self, x, line):
+    def mapsig(self, x, line):
         def get_x(key):
             return x[self.get(line, 'mapping', key)].astype('d')
 
-        t = x['t']
-        self.unique_sigs = self.head.unique_signals(get_x, t)
+        return self.head.mapsig(get_x, x['t'])
 
-        S = OrderedDict(R=self.unique_sigs[self.head.R_keys])
+    def calib(self, line):
+        def get_amp(key):
+            return self.get(line, 'amp', key)
 
-        for tip in self.head.tips:
-            i, keyV, keyI = tip.number, tip.V_keys, tip.I_keys
-            if keyV is None:
-                V = None
-            else:
-                V = self.unique_sigs[keyV]
-                V.name = 'V%d' % i
-            if keyI is None:
-                S[V.name] = V
-            else:
-                I = self.unique_sigs[keyI]
-                I.name = 'I%d' % i
-                I.V = V
-                S[I.name] = I
-
-        return S
-
-    def calib(self, S, line):
-        for k in self.unique_sigs.iterkeys():
-            amp = self.get(line, 'amp', k)
-            amp.apply(self.unique_sigs[k])
-
+        self.head.calib(get_amp)
+        
 
 class Container:
     def __init__(self):
