@@ -427,7 +427,7 @@ class IVSeries:
 
     def _plot_range(self, II):
         I_range = np.array([I.plot_range() for I in II])
-        return I_range[:,0].min(), I_range[:,1].max()
+        return np.nanmin(I_range[:,0]), np.nanmax(I_range[:,1])
 
     def _slice(self, j):
         return slice(self.iE[j,0], self.iE[j,1]+1)

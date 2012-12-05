@@ -421,7 +421,7 @@ class Signal:
         return self
 
     def range(self):
-        return self.x.min(), self.x.max()
+        return np.nanmin(self.x), np.nanmax(self.x)
 
     def plot_range(self):
         x = np.sort(self.x)

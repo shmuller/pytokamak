@@ -76,11 +76,19 @@ class Head:
         R = self.unique_sigs[self.R_keys]
         self.S = OrderedDict(R=PositionSignal(R, t, name='R'))
 
-        for tip in self.tips:
-            i, V_keys, I_keys = tip.number, tip.V_keys, tip.I_keys
+        nans = np.zeros_like(t)
+        nans.fill(np.nan)
 
-            x_V = V_keys and self.unique_sigs[V_keys]
-            x_I = I_keys and self.unique_sigs[I_keys]
+        def get_sig(key):
+            try:
+                return self.unique_sigs[key]
+            except KeyError:
+                return nans
+
+        for tip in self.tips:
+            i = tip.number
+            x_V = get_sig(tip.V_keys)
+            x_I = get_sig(tip.I_keys)
 
             V = VoltageSignal(x_V, t, number=i, name='V%d' % i)
             I = CurrentSignal(x_I, t, V=V, number=i, name='I%d' % i)
@@ -95,7 +103,12 @@ class Head:
 
     def norm_to_region(self, s):
         for tip in self.tips:
-            self.S[tip.name].norm_to_region(s)
+            S = self.S[tip.name]
+            S.norm_to_region(s)
+
+            # I_keys is None: floating potential
+            if tip.I_keys is None:
+                S.V.norm_to_region(s)
 
     def get_tip_number_by_position(self, pos):
         for tip in self.tips:
@@ -236,21 +249,16 @@ class ShotContainer(Container):
     def shots(self):
         return self.collect_as_list('shn')
 
-    @property
-    def times(self):
-        return self.collect_as_dict('times')
+    def _collect_as_dict_factory(attr):
+        @property
+        def wrapper(self):
+            return self.collect_as_dict(attr)
+        return wrapper
 
-    @property
-    def posit(self):
-        return self.collect_as_dict('posit')
-
-    @property
-    def descr(self):
-        return self.collect_as_dict('descr')
-
-    @property
-    def stars(self):
-        return self.collect_as_dict('stars')
+    times = _collect_as_dict_factory('times')
+    posit = _collect_as_dict_factory('posit')
+    descr = _collect_as_dict_factory('descr')
+    stars = _collect_as_dict_factory('stars')
 
     def shots_with_min_stars(self, min_stars='***'):
         cnd = lambda v: v.stars >= min_stars
