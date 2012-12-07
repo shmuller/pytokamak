@@ -94,6 +94,9 @@ class PiecewiseLinear:
         return ax.plot(x, y)
 
 
+class FitterError(Exception):
+    pass
+
 class Fitter:
     def __init__(self, x, y, engine='fmin'):
         self.x, self.y = x, y
@@ -169,7 +172,7 @@ class Fitter:
 
     def fit(self, P0=None):
         if not self.is_OK():
-            raise RuntimeError("Cannot fit data that failed is_OK() check")
+            raise FitterError("Cannot fit data that failed is_OK() check")
         
         if P0 is None:
             P0 = self.get_guess()
@@ -358,7 +361,7 @@ class IVChar:
             out = np.empty(3)
         try:
             out[:] = self.fitter_IV.fit()
-        except RuntimeError:
+        except FitterError:
             out[:] = np.nan
         return out
     
@@ -605,6 +608,25 @@ class IVSeries2:
         ax = get_axes()
         ax.plot(t, I, t, Ifit, t, Ifit2)
         return p
+
+
+class IVSeriesSimple:
+    def __init__(self, S):
+        self.S = S
+
+    def fit(self):
+        iE = self.S.V.iE
+        N = len(iE)-1
+        out = np.empty((N, 3))
+        out.fill(np.nan)
+        for i in xrange(N):
+            Si = self.S[iE[i]:iE[i+1]]
+            fitter_IV = FitterIV(Si.V.x, Si.x)
+            try:
+                out[i] = fitter_IV.fit()
+            except FitterError:
+                pass
+        return PiecewisePolynomial(out[None], self.S.t, i0=iE)
 
 
 class PhysicalResults:

@@ -132,6 +132,43 @@ class PiecewisePolynomial:
     def savefields(self):
         return DictView(self.__dict__, ('c', 'x', 'i0'))
 
+    @memoized_property
+    def pascal(self):
+        n = self.c.shape[0]
+        p = np.zeros((n,n), np.int)
+        p[:,0] = 1
+        for i in xrange(1, n):
+            for j in xrange(1, i+1):
+                p[i,j] = p[i-1,j-1] + p[i-1,j]
+        return p
+
+    def X(self, x):
+        n = self.c.shape[0]
+        
+        def diag_ind(k):
+            if k >= 0:
+                i = k
+                f = n*(n-k)
+            else:
+                i = (-k) * n
+                f = n*n
+            return np.arange(i, f, n+1)
+
+        X = np.zeros((n,n))
+        y = 1.
+        for k in xrange(n):
+            X.flat[diag_ind(-k)] = y
+            y *= x
+        return X
+
+    def add_nodes(self, x):
+        self.x = np.r_[self.x[0], x, self.x[1]]
+        self.i0 = np.arange(self.x.size)
+        
+        A = self.pascal*self.X(x)
+        c = np.dot(self.c[::-1,0], A)
+        self.c = np.c_[self.c, c[::-1, None]]
+
     def _mask(self, w):
         ind0, ind1 = np.searchsorted(self.i0, w)
         return np.concatenate(map(np.arange, ind0, ind1))
