@@ -161,13 +161,27 @@ class PiecewisePolynomial:
             y *= x
         return X
 
+    def calc_c(self, dX, c, out):
+        out[::-1] = np.dot(c[::-1], self.pascal*self.X(dX))
+
     def add_nodes(self, x):
-        self.x = np.r_[self.x[0], x, self.x[1]]
-        self.i0 = np.arange(self.x.size)
+        M = self.x.size
+        X = np.r_[self.x, x]
+        self.x, perm = np.unique(X, return_index=True)
+        ind = perm[perm >= M]
         
-        A = self.pascal*self.X(x)
-        c = np.dot(self.c[::-1,0], A)
-        self.c = np.c_[self.c, c[::-1, None]]
+        n, m = self.c.shape[0], X.size - M
+        self.c = np.c_[self.c, np.zeros((n,m+1))]
+
+        ind2 = np.searchsorted(X[:M], X[ind]) - 1
+
+        for i, j in zip(ind, ind2):
+            self.calc_c(X[i] - X[j], self.c[:,j], self.c[:,i])
+        
+        self.c = self.c[:,perm][:,:-1]
+
+        self.N = self.x.size
+        self.i0 = np.arange(self.N)
 
     def _mask(self, w):
         ind0, ind1 = np.searchsorted(self.i0, w)
