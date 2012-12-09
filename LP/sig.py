@@ -164,7 +164,7 @@ class PiecewisePolynomial:
     def calc_c(self, dX, c, out):
         out[::-1] = np.dot(c[::-1], self.pascal*self.X(dX))
 
-    def add_nodes(self, x):
+    def add_nodes_old(self, x):
         M = self.x.size
         X = np.r_[self.x, x]
         self.x, perm = np.unique(X, return_index=True)
@@ -179,6 +179,25 @@ class PiecewisePolynomial:
             self.calc_c(X[i] - X[j], self.c[:,j], self.c[:,i])
         
         self.c = self.c[:,perm][:,:-1]
+
+        self.N = self.x.size
+        self.i0 = np.arange(self.N)
+
+    def add_nodes(self, x):
+        M = self.x.size
+        X = np.r_[self.x, x]
+        self.x, perm = np.unique(X, return_index=True)
+        
+        ind = np.flatnonzero(perm >= M)
+        
+        n, m = self.c.shape[0], X.size - M
+        nans = np.zeros((n,m+1))
+        nans.fill(np.nan)
+        self.c = np.c_[self.c, nans][:,perm][:,:-1]
+
+        for i in ind[(0 < ind) & (ind < self.c.shape[1])]:
+            dX = self.x[i] - self.x[i-1]
+            self.calc_c(dX, self.c[:,i-1], self.c[:,i])
 
         self.N = self.x.size
         self.i0 = np.arange(self.N)
