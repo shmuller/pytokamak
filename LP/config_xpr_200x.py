@@ -29,7 +29,47 @@ def_LPS_old = dict(dig='LPS_old', amp_default=amp_default_unity, lines=dict(LPS=
 
 
 ############################################
-E = campaign.add_experiment(date="20090101")
+E = campaign.add_experiment(date="20050621")
+
+E.add(20326, "Standard Ohmic, Maximos fitting demo",
+        head = headI,
+        descr = """\
+            Nice shot. Sinusoidal sweep. Isat slanting visible.""",
+        stars = '****', **def_LPS_old)
+
+E.rep(20335, 20326, "LSN with upshifted X-point", 
+        times = 2.5,
+        posit = 0.31,
+        descr = "Locked mode. Some sort of transition visible", 
+        stars = '**')
+
+E.rep(20336, 20335, "Repeat", 
+        descr = "Similar to last shot, maybe a bit better.", 
+        stars = '***')
+
+E.rep(20337, 20336, "Repeat", 
+        descr = "Large oscillations, poor fits.", 
+        stars = '**')
+
+E.rep(20339, 20337, "Modify strike point position", 
+        descr = "H-mode, arcs.", 
+        stars = '**')
+
+E.rep(20341, 20339, "Repeat with interrupted DC biasing", 
+        descr = "H-mode with ELMs. Arcs during ELMs and on the way out.", 
+        stars = '**')
+
+E.rep(20342, 20341, "Repeat", 
+        descr = "Again pretty bad.", 
+        stars = '**')
+
+E.rep(20343, 20342, "Repeat", 
+        descr = "Again similar.", 
+        stars = '**')
+
+
+############################################
+E = campaign.add_experiment(date="20060407")
 
 E.add(21288, "Standard Ohmic", 
         times = 2.1, 
@@ -52,20 +92,37 @@ E.rep(21306, 21305, "Higher density",
         descr = "Higher density, Mach ~ 1.5 on HFS",
         stars = '*****')
 
-E.rep(21320, 21306, "Felix shot 1", 
+
+############################################
+E = campaign.add_experiment(date="20060411")
+
+E.add(21320, "", 
+        times = 2.2,
+        posit = 0.31,
+        head = headI,
         descr = """\
-            Data quality not great. Mach signals get very high, while 
+            Data quality OK. Mach signals get very high, while 
             single tip signal is very low.""",
+        stars = '***', **def_LPS_old)
+
+E.rep(21321, 21320, "Higher density", 
+        descr = "",
         stars = '***')
 
-E.rep(21325, 21320, "Felix shot 2", 
+E.rep(21322, 21321, "", 
+        descr = "Some sort of transition on way out.",
+        stars = '**')
+
+E.rep(21325, 21322, "", 
+        descr = "Signals saturated on way out.",
+        stars = '**')
+
+E.rep(21326, 21325, "", 
         descr = "Similar to last shot.",
         stars = '***')
 
-E.rep(21326, 21325, "Felix shot 3", 
-        descr = "Similar to last two shots.",
-        stars = '***')
-
+E.rep(21327, 21326, "No plunge", 
+        stars = '')
 
 
 
