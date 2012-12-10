@@ -86,6 +86,78 @@ class DictView(MutableMapping):
         self.valid_keys.remove(key)
 
 
+class NodeInterpolator:
+    def __init__(self, n):
+        self.n = n
+
+    @memoized_property
+    def pascal(self):
+        n = self.n
+        p = np.zeros((n,n), np.int)
+        p[:,0] = 1
+        for i in xrange(1, n):
+            for j in xrange(1, i+1):
+                p[i,j] = p[i-1,j-1] + p[i-1,j]
+        return p
+
+    def powers(self, x):
+        n = self.n
+        
+        def diag_ind(k):
+            if k >= 0:
+                i = k
+                f = n*(n-k)
+            else:
+                i = (-k) * n
+                f = n*n
+            return np.arange(i, f, n+1)
+
+        X = np.zeros((n,n))
+        y = 1.
+        for k in xrange(n):
+            X.flat[diag_ind(-k)] = y
+            y *= x
+        return X
+
+    def calc_c(self, dX, c, out):
+        out[::-1] = np.dot(c[::-1], self.pascal*self.powers(dX))
+
+    def add_nodes_old(self, c, x, xi):
+        M = x.size
+        X = np.r_[x, xi]
+        x, perm = np.unique(X, return_index=True)
+        ind = perm[perm >= M]
+        
+        n, m = c.shape[0], X.size - M
+        c = np.c_[c, np.zeros((n,m+1))]
+
+        ind2 = np.searchsorted(X[:M], X[ind]) - 1
+
+        for i, j in zip(ind, ind2):
+            self.calc_c(X[i] - X[j], c[:,j], c[:,i])
+        
+        c = c[:,perm][:,:-1]
+        return c, x
+
+    def add_nodes(self, c, x, xi):
+        M = x.size
+        X = np.r_[x, xi]
+        x, perm = np.unique(X, return_index=True)
+        
+        ind = np.flatnonzero(perm >= M)
+        
+        n, m = c.shape[0], X.size - M
+        nans = np.zeros((n,m+1))
+        nans.fill(np.nan)
+        c = np.c_[c, nans][:,perm][:,:-1]
+
+        for i in ind[(0 < ind) & (ind < c.shape[1])]:
+            dX = x[i] - x[i-1]
+            self.calc_c(dX, c[:,i-1], c[:,i])
+
+        return c, x
+
+
 class PiecewisePolynomial:
     def __init__(self, c, x, **kw):
         self.c, self.x, self.kw = c, x, kw
@@ -99,6 +171,8 @@ class PiecewisePolynomial:
 
         self.N = self.i0.size
         self.shape = self.c.shape[2:]
+
+        self.NI = NodeInterpolator(self.c.shape[0])
 
     def __getitem__(self, index):
         if not isinstance(index, tuple): index = (index,)
@@ -132,75 +206,16 @@ class PiecewisePolynomial:
     def savefields(self):
         return DictView(self.__dict__, ('c', 'x', 'i0'))
 
-    @memoized_property
-    def pascal(self):
-        n = self.c.shape[0]
-        p = np.zeros((n,n), np.int)
-        p[:,0] = 1
-        for i in xrange(1, n):
-            for j in xrange(1, i+1):
-                p[i,j] = p[i-1,j-1] + p[i-1,j]
-        return p
+    def _add_nodes_factory(fun):
+        def add_nodes(self, xi):
+            self.c, self.x = getattr(self.NI, fun)(self.c, self.x, xi)
 
-    def X(self, x):
-        n = self.c.shape[0]
-        
-        def diag_ind(k):
-            if k >= 0:
-                i = k
-                f = n*(n-k)
-            else:
-                i = (-k) * n
-                f = n*n
-            return np.arange(i, f, n+1)
+            self.N = self.x.size
+            self.i0 = np.arange(self.N)
+        return add_nodes
 
-        X = np.zeros((n,n))
-        y = 1.
-        for k in xrange(n):
-            X.flat[diag_ind(-k)] = y
-            y *= x
-        return X
-
-    def calc_c(self, dX, c, out):
-        out[::-1] = np.dot(c[::-1], self.pascal*self.X(dX))
-
-    def add_nodes_old(self, x):
-        M = self.x.size
-        X = np.r_[self.x, x]
-        self.x, perm = np.unique(X, return_index=True)
-        ind = perm[perm >= M]
-        
-        n, m = self.c.shape[0], X.size - M
-        self.c = np.c_[self.c, np.zeros((n,m+1))]
-
-        ind2 = np.searchsorted(X[:M], X[ind]) - 1
-
-        for i, j in zip(ind, ind2):
-            self.calc_c(X[i] - X[j], self.c[:,j], self.c[:,i])
-        
-        self.c = self.c[:,perm][:,:-1]
-
-        self.N = self.x.size
-        self.i0 = np.arange(self.N)
-
-    def add_nodes(self, x):
-        M = self.x.size
-        X = np.r_[self.x, x]
-        self.x, perm = np.unique(X, return_index=True)
-        
-        ind = np.flatnonzero(perm >= M)
-        
-        n, m = self.c.shape[0], X.size - M
-        nans = np.zeros((n,m+1))
-        nans.fill(np.nan)
-        self.c = np.c_[self.c, nans][:,perm][:,:-1]
-
-        for i in ind[(0 < ind) & (ind < self.c.shape[1])]:
-            dX = self.x[i] - self.x[i-1]
-            self.calc_c(dX, self.c[:,i-1], self.c[:,i])
-
-        self.N = self.x.size
-        self.i0 = np.arange(self.N)
+    add_nodes     = _add_nodes_factory('add_nodes')
+    add_nodes_old = _add_nodes_factory('add_nodes_old')
 
     def _mask(self, w):
         ind0, ind1 = np.searchsorted(self.i0, w)
