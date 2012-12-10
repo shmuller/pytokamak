@@ -4,13 +4,8 @@ import textwrap
 
 from collections import OrderedDict
 
-from probe import PositionSignal, VoltageSignal, CurrentSignal
+from sig import ensure_tuple, PositionSignal, VoltageSignal, CurrentSignal
 
-def ensure_tuple(d, *keys):
-    for k in keys:
-        if not isinstance(d[k], tuple):
-            d[k] = (d[k],)
-    
 class Tip:
     def __init__(self, area, proj_area, number, pos, 
             V_keys=None, I_keys=None, name=None):

@@ -44,6 +44,11 @@ from cookb_signalsmooth import smooth
 
 from collections import MutableMapping, Iterable
 
+def ensure_tuple(d, *keys):
+    for k in keys:
+        if not isinstance(d[k], tuple):
+            d[k] = (d[k],)
+
 
 class memoized_property(object):
     """A read-only @property that is only evaluated once."""
@@ -151,9 +156,9 @@ class NodeInterpolator:
         nans.fill(np.nan)
         c = np.c_[c, nans][:,perm][:,:-1]
 
+        dX = x[1:] - x[:-1]
         for i in ind[(0 < ind) & (ind < c.shape[1])]:
-            dX = x[i] - x[i-1]
-            self.calc_c(dX, c[:,i-1], c[:,i])
+            self.calc_c(dX[i-1], c[:,i-1], c[:,i])
 
         return c, x
 
@@ -175,9 +180,10 @@ class PiecewisePolynomial:
         self.NI = NodeInterpolator(self.c.shape[0])
 
     def __getitem__(self, index):
-        if not isinstance(index, tuple): index = (index,)
+        if not isinstance(index, tuple): 
+            index = (index,)
         index = (slice(None), slice(None)) + index
-        return PiecewisePolynomial(self.c[index], self.x, **self.kw)
+        return self.__class__(self.c[index], self.x, **self.kw)
 
     def __call__(self, X, side='right'):
         xi = self.x[self.i0]
@@ -200,7 +206,7 @@ class PiecewisePolynomial:
 
     @memoized_property
     def T(self):
-        return PiecewisePolynomial(self.c.swapaxes(2,3), self.x, **self.kw)
+        return self.__class__(self.c.swapaxes(2,3), self.x, **self.kw)
 
     @memoized_property
     def savefields(self):
@@ -208,10 +214,8 @@ class PiecewisePolynomial:
 
     def _add_nodes_factory(fun):
         def add_nodes(self, xi):
-            self.c, self.x = getattr(self.NI, fun)(self.c, self.x, xi)
-
-            self.N = self.x.size
-            self.i0 = np.arange(self.N)
+            c, x = getattr(self.NI, fun)(self.c, self.x, xi)
+            return self.__class__(c, x, **self.kw)
         return add_nodes
 
     add_nodes     = _add_nodes_factory('add_nodes')

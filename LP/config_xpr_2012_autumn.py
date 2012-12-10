@@ -24,6 +24,27 @@ tip3sep = TipXPR(number=3, pos='upper', V_keys='ampV2', I_keys='ampI2')
 
 headI_tip3sep = HeadXPR(tips=(tip1, tip2, tip3sep), R_keys='ampR')
 
+fact = 4 * 5.54630/27. / 2**16
+offs = -47578968*fact - 0.105
+
+amp_XPR_pos = dict(
+            ampR  = Amp(fact=fact, offs=offs),
+            ampV1 = Amp(fact=100., offs=-68.48),
+            ampV2 = Amp(fact=100., offs=-68.13))
+
+mapping_XPR_pos = dict(
+            ampR  = 'Pos', 
+            ampV1 = 'S1', 
+            ampV2 = 'S3',
+            ampI1 = 'S4',
+            ampI2 = 'S2',
+            ampI3 = 'S6',
+            ampVF = 'S6')
+
+lines_XPR_pos = dict(amp=amp_XPR_pos, mapping=mapping_XPR_pos)
+
+def_XPR_pos = dict(dig='XPR_pos', amp_default=amp_default, lines=dict(XPR=lines_XPR_pos))
+
 
 ############################################
 E = campaign.add_experiment(date="20121011")
@@ -275,24 +296,24 @@ E.rep(28875, 28874, "Isolated tip at -200 V from 2nd Kepco",
         descr = "No plunge")
 
 E.rep(28876, 28875, "Repeat, this time with plunge",
-        descr = "Isat on isolated tip worked!")
+        descr = "Isat on single tip worked!")
 
 E.rep(28877, 28876, "Now Mach tips on VDC, sweep on upper tip",
-        descr = "Isat on isolated tip worked!")
+        descr = "Isat on single tip worked!")
 
-E.rep(28878, 28877, "Kepco of isolated tip also on VDC - HST test, no plasma")
+E.rep(28878, 28877, "Kepco of single tip also on VDC - HST test, no plasma")
 
-E.rep(28879, 28878, "5x9V batteries on isolated tip! - HST test, no plasma")
+E.rep(28879, 28878, "5x9V batteries on single tip! - HST test, no plasma")
 
-E.rep(28880, 28879, "5x9V batteries on isolated tip! Plasma", 
+E.rep(28880, 28879, "5x9V batteries on single tip! Plasma", 
         descr = "Strong variations on battery voltage measurement!")
 
-E.rep(28883, 28880, "5x9V batteries on isolated tip, no connection to probe", 
+E.rep(28883, 28880, "5x9V batteries on single tip, no connection to probe", 
         descr = """\
             Voltage divided by 200, as expected, not 100. Some current measured
             on floating tip.""")
 
-E.rep(28884, 28883, "Repeat, with isolated tip short circuited", 
+E.rep(28884, 28883, "Repeat, with single tip short circuited", 
         descr = "Same current as on last shot")
 
 E.rep(28885, 28880, "Repeat of 28880, with 10 s acquisition", 
@@ -369,30 +390,11 @@ E.rep(28904, 28903, "Everything on 2nd transformer, Kepco -200 V w/ ground conne
 ############################################
 E = campaign.add_experiment(date="20121127")
 
-fact = 4 * 5.54630/27. / 2**16
-offs = -47578968*fact - 0.105
-
-amp_XPR_pos = dict(
-            ampR  = Amp(fact=fact, offs=offs),
-            ampV1 = ampVF,
-            ampV2 = ampVF)
-
-mapping_XPR_pos = dict(
-            ampR  = 'Pos', 
-            ampV1 = 'S1', 
-            ampV2 = 'S3',
-            ampI1 = 'S4',
-            ampI2 = 'S2',
-            ampI3 = 'S6',
-            ampVF = 'S6')
-
-lines_XPR_pos = dict(amp=amp_XPR_pos, mapping=mapping_XPR_pos)
-
-def_XPR_pos = dict(dig='XPR_pos', amp_default=amp_default, lines=dict(XPR=lines_XPR_pos))
-
 # Reversed IpBt
-E.add(28911, "Single/double Kepco on isolated/Mach tip, no plasma",
+E.add(28911, "Single/double Kepco on single/Mach tip, no plasma",
         head = headI_tip3sep,
+        ampV1 = ampVF,
+        ampV2 = ampVF,
         ampI1 = CurrentProbe1[20],
         ampI2 = CurrentProbe2[20],
         ampI3 = CurrentProbe3[20], 
@@ -403,13 +405,15 @@ E.add(28911, "Single/double Kepco on isolated/Mach tip, no plasma",
 E.rep(28912, 28911, "Voltage signals 1 on S1 and S3",
         descr = """\
             No Voltage measurement, no currents on Mach tips.
-            Capacitive pickup on isolated tip""",
+            Capacitive pickup on single tip""",
         stars = '')
 
 E.add(28913, "All on swept double Kepco, V on S1 and S3, multimeter @0.01 Hz: -225 to +57 V",
         times = 1.,
         posit = 0.02,
         head = headI,
+        ampV1 = ampVF,
+        ampV2 = ampVF,
         ampI1 = CurrentProbe1[20],
         ampI2 = CurrentProbe2[20],
         ampI3 = CurrentProbe3[20], 
@@ -433,19 +437,19 @@ E.rep(28916, 28915, "Lemo2BNC adapter on S8. Go to 10 cm",
         posit = 0.1,
         descr = """\
             Nice signals. Noise is now on S8, as expected.
-            Nice demonstration that sum of Mach tips is equivalent to isolated tip.""",
+            Nice demonstration that sum of Mach tips is equivalent to single tip.""",
         stars = '****')
 
 E.rep(28917, 28916, "Isolated tip at -200 V (1A Kepco)",
         head = headI_tip3sep,
         descr = """\
-            Good data, but 35 kHz pickup on isolated tip.
+            Good data, but 35 kHz pickup on single tip.
             Good electron branch on swept Mach tips.""",
         stars = '***')
 
 E.rep(28918, 28917, "Both Kepco's at -200 V. Plasma died before plunge.",
         descr = """\
-            Again 35 kHz on isolated tip.""",
+            Again 35 kHz on single tip.""",
         stars = '')
 
 E.rep(28919, 28918, "All tips at -200 V (4A Kepco)",
@@ -454,7 +458,7 @@ E.rep(28919, 28918, "All tips at -200 V (4A Kepco)",
             35 kHz went away. All signals DC and very good.""",
         stars = '****')
 
-E.rep(28920, 28919, "Mach on DC (4A), isolated on AC (1A), plunge to 15 cm",
+E.rep(28920, 28919, "Mach on DC (4A), single on AC (1A), plunge to 15 cm",
         head = headI_tip3sep,
         posit = 0.15,
         descr = """\
@@ -532,7 +536,7 @@ E.rep(28930, 28929, "Go to 1.9 s",
 ############################################
 E = campaign.add_experiment(date="20121130")
 
-E.add(28960, "Go to 10 cm at 0.9 s. Mach on DC, isolated on AC",
+E.add(28960, "Go to 10 cm at 0.9 s. Mach on DC, single on AC",
         times = 0.9,
         posit = 0.1,
         head = headI_tip3sep,
@@ -593,7 +597,7 @@ E.rep(28968, 28967, "Go to 18 cm",
         posit = 0.18,
         descr = """\
             Mach tip hit by beam blip very early.
-            Swept isolated tip seems OK for the whole plunge.""",
+            Swept single tip seems OK for the whole plunge.""",
         stars = '**')
 
 # Bt calibration

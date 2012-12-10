@@ -48,9 +48,26 @@ E.rep(21305, 21303, "Plunge again",
         descr = "Exactly the same as last shot",
         stars = '*****')
 
-E.rep(21306, 21305, "Plunge again",
+E.rep(21306, 21305, "Higher density",
         descr = "Higher density, Mach ~ 1.5 on HFS",
         stars = '*****')
+
+E.rep(21320, 21306, "Felix shot 1", 
+        descr = """\
+            Data quality not great. Mach signals get very high, while 
+            single tip signal is very low.""",
+        stars = '***')
+
+E.rep(21325, 21320, "Felix shot 2", 
+        descr = "Similar to last shot.",
+        stars = '***')
+
+E.rep(21326, 21325, "Felix shot 3", 
+        descr = "Similar to last two shots.",
+        stars = '***')
+
+
+
 
 
 
