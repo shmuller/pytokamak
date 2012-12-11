@@ -128,18 +128,51 @@ class NodeInterpolator:
         out[::-1] = np.dot(c[::-1], self.pascal*self.powers(dX))
 
     def add_nodes_old(self, c, x, xi):
-        M = x.size
         X = np.r_[x, xi]
         x, perm = np.unique(X, return_index=True)
-        ind = perm[perm >= M]
-        
-        n, m = c.shape[0], X.size - M
-        c = np.c_[c, np.zeros((n,m+1))]
+                
+        d, n = c.shape[:2]
+        nans = np.zeros((d, perm.size - n))
+        nans.fill(np.nan)
+        c = np.c_[c, nans]
 
-        ind2 = np.searchsorted(X[:M], X[ind]) - 1
+        ind = perm[perm >= n+1]
+        ind2 = np.searchsorted(X[:n+1], X[ind]) - 1
 
         for i, j in zip(ind, ind2):
             self.calc_c(X[i] - X[j], c[:,j], c[:,i])
+        
+        c = c[:,perm][:,:-1]
+        return c, x
+
+    def calc_c_vect(self, dX, c, out):
+        d = c.shape[0]
+        for k in xrange(d):
+            pascal = self.pascal[:,d-1-k]
+            o = out[k]
+            for m in xrange(k+1):
+                o *= dX
+                o += pascal[d-1-m]*c[m]
+
+    def add_nodes_new(self, c, x, xi):
+        X = np.r_[x, xi]
+        x, perm = np.unique(X, return_index=True)
+
+        d, n = c.shape[:2]
+        nans = np.zeros((d, perm.size - n))
+        nans.fill(np.nan)
+        c = np.c_[c, nans]
+
+        ind = perm[perm >= n+1]
+        ind2 = np.searchsorted(X[:n+1], X[ind]) - 1
+
+        dX = X[ind] - X[ind2]
+        c2 = c[:,ind2]
+        out = np.zeros_like(c2)
+
+        self.calc_c_vect(dX, c2, out)
+
+        c[:,ind] = out
         
         c = c[:,perm][:,:-1]
         return c, x
@@ -230,6 +263,7 @@ class PiecewisePolynomial:
 
     add_nodes     = _add_nodes_factory('add_nodes')
     add_nodes_old = _add_nodes_factory('add_nodes_old')
+    add_nodes_new = _add_nodes_factory('add_nodes_new')
 
     def add_indices(self, ii):
         c, self.kw['i0'] = self.NI.add_indices(self.c, self.x, self.i0, ii)
