@@ -144,23 +144,33 @@ class NodeInterpolator:
         c = c[:,perm][:,:-1]
         return c, x
 
-    def add_nodes(self, c, x, xi):
-        M = x.size
-        X = np.r_[x, xi]
-        x, perm = np.unique(X, return_index=True)
-        
-        ind = np.flatnonzero(perm >= M)
-        
-        n, m = c.shape[0], X.size - M
-        nans = np.zeros((n,m+1))
+    def update_c(self, c, dX, perm):
+        d, n = c.shape[:2]
+    
+        nans = np.zeros((d, perm.size - n))
         nans.fill(np.nan)
         c = np.c_[c, nans][:,perm][:,:-1]
 
-        dX = x[1:] - x[:-1]
+        ind = np.flatnonzero(perm >= n+1)
         for i in ind[(0 < ind) & (ind < c.shape[1])]:
             self.calc_c(dX[i-1], c[:,i-1], c[:,i])
+        return c
 
+    def add_nodes(self, c, x, xi):
+        X = np.r_[x, xi]
+        x, perm = np.unique(X, return_index=True)
+        
+        dX = x[1:] - x[:-1]
+        c = self.update_c(c, dX, perm)
         return c, x
+
+    def add_indices(self, c, x, i0, ii):
+        I = np.r_[i0, ii]
+        i0, perm = np.unique(I, return_index=True)
+
+        dX = x[i0[1:]] - x[i0[:-1]]
+        c = self.update_c(c, dX, perm)
+        return c, i0
 
 
 class PiecewisePolynomial:
@@ -220,6 +230,10 @@ class PiecewisePolynomial:
 
     add_nodes     = _add_nodes_factory('add_nodes')
     add_nodes_old = _add_nodes_factory('add_nodes_old')
+
+    def add_indices(self, ii):
+        c, self.kw['i0'] = self.NI.add_indices(self.c, self.x, self.i0, ii)
+        return self.__class__(c, self.x, **self.kw)
 
     def _mask(self, w):
         ind0, ind1 = np.searchsorted(self.i0, w)
