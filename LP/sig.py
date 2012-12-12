@@ -105,46 +105,6 @@ class NodeInterpolator:
                 p[i,j] = p[i-1,j-1] + p[i-1,j]
         return p
 
-    def powers(self, x):
-        n = self.n
-        
-        def diag_ind(k):
-            if k >= 0:
-                i = k
-                f = n*(n-k)
-            else:
-                i = (-k) * n
-                f = n*n
-            return np.arange(i, f, n+1)
-
-        X = np.zeros((n,n))
-        y = 1.
-        for k in xrange(n):
-            X.flat[diag_ind(-k)] = y
-            y *= x
-        return X
-
-    def calc_c(self, dX, c, out):
-        out[::-1] = np.dot(c[::-1], self.pascal*self.powers(dX))
-
-    def add_nodes_old(self, c, x, xi):
-        X = np.r_[x, xi]
-        x, perm = np.unique(X, return_index=True)
-                
-        d, n = c.shape[:2]
-        nans = np.zeros((d, perm.size - n))
-        nans.fill(np.nan)
-        c = np.c_[c, nans]
-
-        ind = perm[perm >= n+1]
-        ind2 = np.searchsorted(X[:n+1], X[ind]) - 1
-
-        for i, j in zip(ind, ind2):
-            self.calc_c(X[i] - X[j], c[:,j], c[:,i])
-        
-        c = c[:,perm][:,:-1]
-        return c, x
-
     def calc_c_vect(self, dX, c, out):
         d = c.shape[0]
         for k in xrange(d):
@@ -154,7 +114,7 @@ class NodeInterpolator:
                 o *= dX
                 o += pascal[d-1-m]*c[m]
 
-    def add_nodes_new(self, c, x, xi):
+    def add_nodes(self, c, x, xi, xmap=None):
         X = np.r_[x, xi]
         x, perm = np.unique(X, return_index=True)
 
@@ -170,7 +130,11 @@ class NodeInterpolator:
         # check
         assert all(ind2 == np.searchsorted(X[:n+1], X[ind]) - 1)
 
-        dX = X[ind] - X[ind2]
+        if xmap is None:
+            dX = X[ind] - X[ind2]
+        else:
+            dX = xmap[X[ind]] - xmap[X[ind2]]
+
         c2 = c[:,ind2]
         out = np.zeros_like(c2)
 
@@ -181,47 +145,8 @@ class NodeInterpolator:
         c = c[:,perm][:,:-1]
         return c, x
 
-    def add_nodes_new2(self, c, x, xi):
-        xi = np.setdiff1d(np.unique(xi), x, assume_unique=True)
-        ind = np.searchsorted(x, xi) - 1
-
-        dX = xi - x[ind]
-        c2 = c[:,ind]
-        out = np.zeros_like(c2)
-
-        self.calc_c_vect(dX, c2, out)
-
-        x = np.insert(x, ind+1, xi)
-        c = np.insert(c, ind+1, out, axis=1)
-        return c, x
-
-    def update_c(self, c, dX, perm):
-        d, n = c.shape[:2]
-    
-        nans = np.zeros((d, perm.size - n))
-        nans.fill(np.nan)
-        c = np.c_[c, nans][:,perm][:,:-1]
-
-        ind = np.flatnonzero(perm >= n+1)
-        for i in ind[(0 < ind) & (ind < c.shape[1])]:
-            self.calc_c(dX[i-1], c[:,i-1], c[:,i])
-        return c
-
-    def add_nodes(self, c, x, xi):
-        X = np.r_[x, xi]
-        x, perm = np.unique(X, return_index=True)
-        
-        dX = x[1:] - x[:-1]
-        c = self.update_c(c, dX, perm)
-        return c, x
-
     def add_indices(self, c, x, i0, ii):
-        I = np.r_[i0, ii]
-        i0, perm = np.unique(I, return_index=True)
-
-        dX = x[i0[1:]] - x[i0[:-1]]
-        c = self.update_c(c, dX, perm)
-        return c, i0
+        return self.add_nodes(c, i0, ii, xmap=x)
 
 
 class PiecewisePolynomial:
@@ -273,16 +198,9 @@ class PiecewisePolynomial:
     def savefields(self):
         return DictView(self.__dict__, ('c', 'x', 'i0'))
 
-    def _add_nodes_factory(fun):
-        def add_nodes(self, xi):
-            c, x = getattr(self.NI, fun)(self.c, self.x, xi)
-            return self.__class__(c, x, **self.kw)
-        return add_nodes
-
-    add_nodes     = _add_nodes_factory('add_nodes')
-    add_nodes_old = _add_nodes_factory('add_nodes_old')
-    add_nodes_new = _add_nodes_factory('add_nodes_new')
-    add_nodes_new2 = _add_nodes_factory('add_nodes_new2')
+    def add_nodes(self, xi):
+        c, x = self.NI.add_nodes(self.c, self.x, xi)
+        return self.__class__(c, x, **self.kw)
 
     def add_indices(self, ii):
         c, self.kw['i0'] = self.NI.add_indices(self.c, self.x, self.i0, ii)
