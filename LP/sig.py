@@ -161,10 +161,14 @@ class NodeInterpolator:
         d, n = c.shape[:2]
         nans = np.zeros((d, perm.size - n))
         nans.fill(np.nan)
-        c = np.c_[c, nans]
+        c = np.concatenate((c, nans), axis=1)
 
-        ind = perm[perm >= n+1]
-        ind2 = np.searchsorted(X[:n+1], X[ind]) - 1
+        ind2 = np.flatnonzero(perm >= n+1)
+        ind  = perm[ind2]        
+        ind2 -= np.arange(1, ind2.size+1)
+
+        # check
+        assert all(ind2 == np.searchsorted(X[:n+1], X[ind]) - 1)
 
         dX = X[ind] - X[ind2]
         c2 = c[:,ind2]
@@ -175,6 +179,20 @@ class NodeInterpolator:
         c[:,ind] = out
         
         c = c[:,perm][:,:-1]
+        return c, x
+
+    def add_nodes_new2(self, c, x, xi):
+        xi = np.setdiff1d(np.unique(xi), x, assume_unique=True)
+        ind = np.searchsorted(x, xi) - 1
+
+        dX = xi - x[ind]
+        c2 = c[:,ind]
+        out = np.zeros_like(c2)
+
+        self.calc_c_vect(dX, c2, out)
+
+        x = np.insert(x, ind+1, xi)
+        c = np.insert(c, ind+1, out, axis=1)
         return c, x
 
     def update_c(self, c, dX, perm):
@@ -264,6 +282,7 @@ class PiecewisePolynomial:
     add_nodes     = _add_nodes_factory('add_nodes')
     add_nodes_old = _add_nodes_factory('add_nodes_old')
     add_nodes_new = _add_nodes_factory('add_nodes_new')
+    add_nodes_new2 = _add_nodes_factory('add_nodes_new2')
 
     def add_indices(self, ii):
         c, self.kw['i0'] = self.NI.add_indices(self.c, self.x, self.i0, ii)
