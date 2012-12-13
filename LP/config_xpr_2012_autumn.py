@@ -705,5 +705,75 @@ E.rep(29005, 29003, "No plunge, check that Kepcos are still working.",
 
 
 
+############################################
+E = campaign.add_experiment(date="20121213")
 
+E.add(29065, "Offset calibration",
+        head = headI_tip3sep,
+        ampI1 = CurrentProbe1[20],
+        ampI2 = CurrentProbe2[20],
+        ampI3 = CurrentProbe3[20], 
+        descr = """\
+            Calibration probably not useful, since fuse blew
+            when trying to switch on Kepcos.""",
+        stars = '', **def_XPR_pos)
+
+# Vladimir Bobkov
+E.rep(29068, 29065, "Test probe",
+        times = (1.6, 3.9),
+        posit = (0.17, 0.17),
+        descr = """\
+            Mach OK, single tip Voltage drop on first plunge. 
+            Density pretty high.""",
+        stars = '***')
+
+E.rep(29069, 29068, "Sweep amplitude to 13.5 Vpp, same offset",
+        descr = """\
+            Plasma died before 2nd plunge. First plunge similar.""",
+        stars = '***')
+
+E.rep(29070, 29069, "Repeat",
+        descr = """\
+            Similar. Too high density for 1A Kepco.""",
+        stars = '***')
+
+# Fast ions
+E.rep(29071, 29070, "DAQ to 7 s, 14.5 Vpp, Kepcos off, no plunge",
+        descr = "Repeat offset calibration",
+        stars = '')
+
+E.rep(29072, 29071, "Kepcos on, no plunge",
+        descr = "",
+        stars = '')
+
+# Stefan Muller
+E.rep(29073, 29072, "3 plunges, sweeps, 14.5 Vpp, max neg offset",
+        times = (1.25, 2.80, 4.35),
+        posit = (0.34, 0.34, 0.34),
+        descr = "",
+        stars = '')
+
+E.rep(29074, 29073, "No NBI, less density, plunge to 20 cm",
+        times = (1.25, 2.80, 4.35),
+        posit = (0.2, 0.2, 0.2),
+        descr = "No L-H transitions",
+        stars = '')
+
+E.rep(29075, 29074, "Blips back in, bit higher density",
+        times = (1.45, 3.00, 4.55),
+        posit = (0.25, 0.25, 0.25),
+        descr = "",
+        stars = '')
+
+E.rep(29076, 29075, "Mach tips -200 V, single tip swept 500 Hz, 13.5 Vpp",
+        times = (2.1, 3.6, 4.4),
+        posit = (0.34, 0.34, 0.34),
+        descr = "",
+        stars = '')
+
+E.rep(29077, 29076, "Change timing, plunge to 20 cm",
+        times = (1.3, 2.2, 3.8),
+        posit = (0.2, 0.2, 0.2),
+        descr = "",
+        stars = '')
 

@@ -97,22 +97,30 @@ class NodeInterpolator:
 
     @memoized_property
     def pascal(self):
+        '''Pascal's triangle'''
         n = self.n
         p = np.zeros((n,n), np.int)
         p[:,0] = 1
+        oldrow = p[0]
         for i in xrange(1, n):
+            row = p[i]
             for j in xrange(1, i+1):
-                p[i,j] = p[i-1,j-1] + p[i-1,j]
+                row[j] = oldrow[j-1] + oldrow[j]
+            oldrow = row
         return p
 
+    @memoized_property
+    def turned_pascal(self):
+        return self.pascal[::-1,::-1].T.copy()
+
     def calc_c_vect(self, dX, c, out):
-        d = c.shape[0]
-        for k in xrange(d):
-            pascal = self.pascal[:,d-1-k]
+        '''Vectorized polynomial evaluation'''
+        for k in xrange(c.shape[0]):
+            pascal = self.turned_pascal[k]
             o = out[k]
             for m in xrange(k+1):
                 o *= dX
-                o += pascal[d-1-m]*c[m]
+                o += pascal[m]*c[m]
 
     def add_nodes(self, c, x, xi, xmap=None):
         X = np.r_[x, xi]
@@ -123,24 +131,24 @@ class NodeInterpolator:
         nans.fill(np.nan)
         c = np.concatenate((c, nans), axis=1)
 
-        ind2 = np.flatnonzero(perm >= n+1)
-        ind  = perm[ind2]        
-        ind2 -= np.arange(1, ind2.size+1)
+        iins = np.flatnonzero(perm >= n+1)
+        imap = perm[iins]        
+        iins -= np.arange(1, iins.size+1)
 
         # check
-        assert all(ind2 == np.searchsorted(X[:n+1], X[ind]) - 1)
+        assert all(iins == np.searchsorted(X[:n+1], X[imap]) - 1)
 
         if xmap is None:
-            dX = X[ind] - X[ind2]
+            dX = X[imap] - X[iins]
         else:
-            dX = xmap[X[ind]] - xmap[X[ind2]]
+            dX = xmap[X[imap]] - xmap[X[iins]]
 
-        c2 = c[:,ind2]
+        c2 = c[:,iins]
         out = np.zeros_like(c2)
 
         self.calc_c_vect(dX, c2, out)
 
-        c[:,ind] = out
+        c[:,imap] = out
         
         c = c[:,perm][:,:-1]
         return c, x
