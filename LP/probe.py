@@ -348,7 +348,15 @@ class FitterIV(Fitter):
 
         self.X, self.Y = save
         self.set_unnorm()
+        self.check_Te()
         return self.p
+
+    def check_Te(self):
+        n, Vf, Te = self.p
+        if n < 0.:
+            raise FitterError("Negative n")
+        if Te < 0. or Te > 0.5*self.dV:
+            raise FitterError("Unrealistic Te")
 
 
 class IVChar:
@@ -614,19 +622,34 @@ class IVSeriesSimple:
     def __init__(self, S):
         self.S = S
 
-    def fit(self):
+    def fit(self, n=1):
         iE = self.S.V.iE
-        N = len(iE)-1
+        i0, i1 = iE[:-n], iE[n:]
+        N = len(i0)
         out = np.empty((N, 3))
         out.fill(np.nan)
-        for i in xrange(N):
-            Si = self.S[iE[i]:iE[i+1]]
+        for j in xrange(N):
+            Si = self.S[i0[j]:i1[j]]
             fitter_IV = FitterIV(Si.V.x, Si.x)
             try:
-                out[i] = fitter_IV.fit()
+                out[j] = fitter_IV.fit()
             except FitterError:
                 pass
-        return PiecewisePolynomial(out[None], self.S.t, i0=iE)
+        self.PP = PiecewisePolynomial(out[None], self.S.t, i0=i0, i1=i1)
+        return self.PP
+
+    def get_Sfit(self):
+        t, V = self.S.t, self.S.V
+        p = self.PP(t).T
+        Ifit = FitterIV.fitfun(p, V.x)
+        Ifit_masked = ma.masked_array(Ifit, V.x > p[1] + p[2])
+        return CurrentSignal(Ifit_masked, t, V=V)
+
+    def plot(self, ax=None):
+        ax = get_axes(ax)
+        self.S.plot(ax=ax)
+        self.get_Sfit().plot(ax=ax)
+        return ax
 
 
 class PhysicalResults:
@@ -830,6 +853,12 @@ class PhysicalResults:
     def plot_R(self, **kw):
         return self.plot(xkey='R', **kw)
 
+    def plot_R_in(self, **kw):
+        return self.plot_R(inout='in', **kw)
+
+    def plot_R_out(self, **kw):
+        return self.plot_R(inout='out', **kw)
+
 
 class ResultsIOError(Exception):
     pass
@@ -962,6 +991,16 @@ class Probe:
     def analyze(self):
         self.PP = self.IV_series.PP
 
+    def calc_IV_series_simple(self):
+        return map(IVSeriesSimple, self.I_swept)
+
+    @memoized_property
+    def IV_series_simple(self):
+        return self.calc_IV_series_simple()
+
+    def analyze_simple(self):
+        self.PP_simple = [IV.fit() for IV in self.IV_series_simple]
+    
     def PP_fluct(self, Vmax=-150):
         self.analyze()
         II_diff = self.IV_series.II_diff

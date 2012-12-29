@@ -750,30 +750,47 @@ E.rep(29072, 29071, "Kepcos on, no plunge",
 E.rep(29073, 29072, "3 plunges, sweeps, 14.5 Vpp, max neg offset",
         times = (1.25, 2.80, 4.35),
         posit = (0.34, 0.34, 0.34),
-        descr = "",
-        stars = '')
+        descr = """\
+            Plunge 0:
+            """,
+        stars = '***')
 
 E.rep(29074, 29073, "No NBI, less density, plunge to 20 cm",
         times = (1.25, 2.80, 4.35),
         posit = (0.2, 0.2, 0.2),
         descr = "No L-H transitions",
-        stars = '')
+        stars = '***')
 
 E.rep(29075, 29074, "Blips back in, bit higher density",
         times = (1.45, 3.00, 4.55),
         posit = (0.25, 0.25, 0.25),
-        descr = "",
-        stars = '')
+        descr = """\
+            Plunge 0: Mach OK on way in, emission on way out.
+            Plunge 1: Mach OK, similar data on way in and out.
+            Plunge 2: Mach OK, LFS flows higher on way out.
+            """,
+        stars = '***')
 
 E.rep(29076, 29075, "Mach tips -200 V, single tip swept 500 Hz, 13.5 Vpp",
         times = (2.1, 3.6, 4.4),
         posit = (0.34, 0.34, 0.34),
-        descr = "",
-        stars = '')
+        descr = """\
+            Plunge 0: 2.5 kHz oscillation, also in PF region.
+            Plunge 1: 2.5 kHz, goes away at 3.6975 s, broadband in PF.
+            Plunge 2: quiescent until PF region, jump at 4.486 s.
+            """,
+        stars = '****')
 
 E.rep(29077, 29076, "Change timing, plunge to 20 cm",
         times = (1.3, 2.2, 3.8),
         posit = (0.2, 0.2, 0.2),
-        descr = "",
-        stars = '')
+        descr = """\
+            Plunge 0: 3 kHz until 1.403 s, Mach probe arcs at 1.4571 s.
+            Plunge 1: Fluctuations look more ELM-like, arcs at 2.3103 s.
+            Plunge 2: Similar to plunge 1, arcs at 3.9165 s. After arc
+                      transition to quiescent mode at 4.014 s.
+            """,
+        stars = '****')
+
+
 
