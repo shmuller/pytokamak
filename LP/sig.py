@@ -171,6 +171,7 @@ class PiecewisePolynomial:
         self.N = self.i0.size
         self.shape = self.c.shape[2:]
 
+        self.xi = self.x[self.i0]
         self.NI = NodeInterpolator(self.c.shape[0])
 
     def __getitem__(self, index):
@@ -180,22 +181,28 @@ class PiecewisePolynomial:
         return self.__class__(self.c[index], self.x, **self.kw)
 
     def __call__(self, X, side='right'):
-        xi = self.x[self.i0]
-        ind = np.searchsorted(xi, X, side) - 1
+        ind, outl, outr = self._findind(X, side)
+        Y = self._polyval(X, ind)
+
+        if self.fill is not None:
+            Y[outl | outr] = self.fill
+        return Y
+
+    def _findind(self, X, side):
+        ind = np.searchsorted(self.xi, X, side) - 1
         outl, outr = ind < 0, ind > self.N-2
         ind[outl], ind[outr] = 0, self.N-2
-        
-        dX = X - xi[ind]
+        return ind, outl, outr
+
+    def _polyval(self, X, ind):
+        dX = X - self.xi[ind]
 
         #Y = reduce(lambda Y, c: Y*dX + c[ind], self.c)
         
         c = self.c
-        Y = c[0,ind].copy()
+        Y = c[0, ind].copy()
         for a in c[1:]:
             Y = Y*dX + a[ind]
-
-        if self.fill is not None:
-            Y[outl | outr] = self.fill
         return Y
 
     @memoized_property
@@ -224,12 +231,26 @@ class PiecewisePolynomial:
 
     def eval(self, w=None):
         try:
-            i0 = self.i0[self._mask(w)]
+            ind = self._mask(w)[:-1]
+            il, ir = self.i0[ind], self.i0[ind + 1]
         except:
-            i0 = self.i0   
+            ind = np.arange(self.N-1)
+            il, ir = self.i0[:-1], self.i0[1:]
 
-        il, ir = i0[:-1], i0[1:]
-        yl, yr = self(self.x[il], 'right'), self(self.x[ir], 'left')
+        yl = self.c[-1, ind]
+        yr = self._polyval(self.xi[ind + 1], ind)
+
+        ### check
+        yl_old = self(self.x[il], 'right')
+        yr_old = self(self.x[ir], 'left')
+
+        def compare(a, b):
+            d = a.view(np.float64) - b.view(np.float64)
+            return not np.any(np.nan_to_num(d))
+
+        assert compare(yl, yl_old)
+        assert compare(yr, yr_old)
+        ###
 
         shape = (il.size + ir.size,)
         i = self.cat((il[:,None], ir[:,None]), 1).reshape(shape)

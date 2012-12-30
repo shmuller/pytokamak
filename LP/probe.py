@@ -64,36 +64,6 @@ class MouseMotionObserverViewer:
         self.observer_canvas.mpl_disconnect(self.cid)
 
 
-class PiecewiseLinear:
-    def __init__(self, y, x):
-        self.y, self.x = y, x
-        self.N = self.x.shape[0]
-        self.shape = self.y.shape[2:]
-
-    def __getitem__(self, index):
-        if not isinstance(index, tuple): index = (index,)
-        index = (slice(None), slice(None)) + index
-        return PiecewiseLinear(self.y[index], self.x)
-
-    def plot(self, ax=None):
-        shape = (self.N*2,)
-        x = self.x.reshape(shape)
-        y = self.y.reshape(shape + self.shape)
-        ax = get_axes(ax)
-        return ax.plot(x, y)
-
-    def plot2(self, ax=None):
-        shape = (self.N, 1)
-        nanx = np.empty(shape) + np.nan
-        nany = np.empty(shape + self.shape) + np.nan
-
-        shape = (self.N*3,)
-        x = np.concatenate((self.x, nanx), 1).reshape(shape)
-        y = np.concatenate((self.y, nany), 1).reshape(shape + self.shape)
-        ax = get_axes(ax)
-        return ax.plot(x, y)
-
-
 class FitterError(Exception):
     pass
 
