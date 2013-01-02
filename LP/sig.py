@@ -9,6 +9,7 @@ from pdb import set_trace
 
 import scipy.optimize as opt
 
+import matplotlib as mpl
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 
@@ -229,44 +230,51 @@ class PiecewisePolynomial:
     def cat(a, axis=0):
         return a[0].__array_wrap__(ma.concatenate(a, axis))
 
-    def eval(self, w=None):
+    def eval(self, w=None, ext=False, pad=False):
         try:
             ind = self._mask(w)[:-1]
-            il, ir = self.i0[ind], self.i0[ind + 1]
+            indl, indr = ind, ind + 1
         except:
-            ind = np.arange(self.N-1)
-            il, ir = self.i0[:-1], self.i0[1:]
+            indl, indr = slice(self.N - 1), slice(1, self.N)
 
-        yl = self.c[-1, ind]
-        yr = self._polyval(self.xi[ind + 1], ind)
+        il = self.i0[indl]
+        yl = self.c[-1, indl]
 
-        ### check
-        yl_old = self(self.x[il], 'right')
-        yr_old = self(self.x[ir], 'left')
+        if ext:
+            ir = self.i1[indl]
+            xr = self.x[ir]
+        else:
+            ir = self.i0[indr]
+            xr = self.xi[indr]
 
-        def compare(a, b):
-            d = a.view(np.float64) - b.view(np.float64)
-            return not np.any(np.nan_to_num(d))
+        yr = self._polyval(xr, indl)
 
-        assert compare(yl, yl_old)
-        assert compare(yr, yr_old)
-        ###
+        dim = (0, 1)[pad]
+        ipad = np.zeros((ir.shape[0], dim), np.int_)
+        ypad = np.empty((yr.shape[0], dim) + self.shape)
+        ypad.fill(np.nan)
 
-        shape = (il.size + ir.size,)
-        i = self.cat((il[:,None], ir[:,None]), 1).reshape(shape)
-        y = self.cat((yl[:,None], yr[:,None]), 1).reshape(shape + self.shape)
+        shape = (il.size + ir.size + ipad.size,)
+        i = self.cat((il[:,None], ir[:,None], ipad), 1).reshape(shape)
+        y = self.cat((yl[:,None], yr[:,None], ypad), 1).reshape(shape + self.shape)
         return i, y
 
-    def plot(self, ax=None, x=None, w=None):
+    def plot(self, ax=None, x=None, w=None, ext=False, pad=False):
         if x is None:
             x = self.x
 
-        i, y = self.eval(w=w)
+        i, y = self.eval(w=w, ext=ext, pad=pad)
         x = x[i]
                 
         ax = get_axes(ax)
-        ax.plot(x, y)
+        lw = mpl.rcParams['lines.linewidth']
+        if pad: lw += 1
+
+        lines = ax.plot(x, y, linewidth=lw)
         return ax
+
+    def plot_ext(self, *args, **kw):
+        return self.plot(*args, ext=True, pad=True, **kw)
 
 
 class IOH5:
