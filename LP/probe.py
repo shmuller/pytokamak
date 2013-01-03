@@ -93,7 +93,8 @@ class Fitter:
         return self.p, self.p0
 
     def set_guess(self):
-        self.P0 = 0.
+        if self.P0 is None:
+            self.P0 = 0.
         return self.P0
 
     @staticmethod
@@ -146,7 +147,8 @@ class Fitter:
         
         if P0 is None:
             P0 = self.get_guess()
-        self.P = self.engine(self.fitfun, P0, self.X, self.Y)
+        X, Y = self.get_norm()
+        self.P = self.engine(self.fitfun, P0, X, Y)
         self.set_unnorm()
 
         return self.p
@@ -525,21 +527,23 @@ class IVSeriesViewer:
 
 
 class FitterIV2(Fitter):
-    def __init__(self, V, I, mask, p0, **kw):
-        self.V, self.I = V[mask], I[mask]
-        self.Vm, self.VM = self.V.min(), self.V.max()
-        self.Im, self.IM = self.I.min(), self.I.max()
-        self.dV = self.VM - self.Vm
-        self.dI = self.IM - self.Im
+    def __init__(self, V, I, t, P0):
+        Fitter.__init__(self, V, I)
 
-    def set_norm(self):
-        self.X = (self.V.astype('d') - self.Vm)/self.dV
-        self.Y = (self.I.astype('d') - self.Im)/self.dI*2 - 1
-        return self.X, self.Y
+        a = (t - t[0]) / (t[-1] - t[0])
 
-    def set_unnorm(self):
-        self.p = FitterIV.LP_unnormalize(self.P , self.Vm, self.VM, self.Im, self.IM)
-        return self.p
+        def fitfun(p, V):
+            Is = p[0] + a*(p[3]-p[0])
+            Vf = p[1] + a*(p[4]-p[1])
+            Te = p[2] + a*(p[5]-p[2])
+            return Is*(1.-np.exp((V-Vf)/Te))
+
+        self.fitfun = fitfun        
+        self.P0 = P0
+
+    def set_OK(self):
+        self.OK = np.isfinite(self.P0).all()
+        return self.OK
 
 
 class IVSeries2:
@@ -607,6 +611,31 @@ class IVSeriesSimple:
                 pass
         self.PP = PiecewisePolynomial(out[None], self.S.t, i0=i0, i1=i1)
         return self.PP
+
+    def fit2(self, n=1):
+        Sfit = self.get_Sfit()
+        mask = ~Sfit.x.mask
+
+        iE = self.S.V.iE
+        i0, i1 = iE[:-n], iE[n:]
+
+        N = len(i0)
+        out = np.empty((N, 6))
+        out.fill(np.nan)
+
+        p = np.concatenate((self.PP.c[0,:N], self.PP.c[0,n-1:]), axis=1)
+        
+        for j in xrange(N):
+            s = slice(i0[j], i1[j])
+            Si = self.S[s]
+            #Si = Si[mask[s]]
+            fitter_IV = FitterIV2(Si.V.x, Si.x, Si.t, p[j])
+            try:
+                out[j] = fitter_IV.fit()
+            except FitterError:
+                pass
+        self.PP2 = PiecewisePolynomial(out[None], self.S.t, i0=i0, i1=i1)
+        return self.PP2
 
     def get_Sfit(self):
         t, V = self.S.t, self.S.V

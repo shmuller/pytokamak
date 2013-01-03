@@ -805,7 +805,8 @@ class CurrentSignal(Signal):
 
     def __getitem__(self, index):
         s = Signal.__getitem__(self, index)
-        s.V = s.V[index]
+        if self.V is not None:
+            s.V = self.V[index]
         return s
 
     def __add__(self, other):
