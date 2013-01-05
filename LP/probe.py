@@ -15,6 +15,8 @@ from pdb import set_trace
 
 from sig import *
 
+import LP.fitfun
+
 class ArrayView(np.ndarray):
     def __new__(subtype, x, fields):
         dtype = {f: x.dtype.fields[f] for f in fields}
@@ -76,6 +78,16 @@ class Fitter:
         self.P = self.P0 = None
         self.p = self.p0 = None
 
+        if hasattr(self, 'fitfun_diff'):
+            self.f = self.fitfun_diff
+            self.wrap_fmin = self.wrap_fmin_diff
+        elif hasattr(self, 'fitfun_fast'):
+            self.f = self.fitfun_fast
+            self.wrap_fmin = self.wrap_fmin_prealloc
+        else:
+            self.f = self.fitfun
+            self.wrap_fmin = self.wrap_fmin_noprealloc
+
         self.engines = dict(fmin=self.wrap_fmin, odr=self.wrap_odr)
         self.set_engine(engine)
 
@@ -103,12 +115,27 @@ class Fitter:
 
     # static
     @staticmethod
-    def wrap_fmin(fun, p0, x, y):
+    def wrap_fmin_noprealloc(fun, p0, x, y):
         def dy2(p):
             dy = fun(p, x) - y
             return dy.dot(dy)/dy.size
 
         return opt.fmin(dy2, p0, disp=False)
+
+    @staticmethod
+    def wrap_fmin_prealloc(fun, p0, x, y):
+        out = np.empty_like(x)
+
+        def dy2(p):
+            fun(p, x, out)
+            dy = out - y
+            return dy.dot(dy)/dy.size
+
+        return opt.fmin(dy2, p0, disp=False)
+
+    @staticmethod
+    def wrap_fmin_diff(fun, p0, x, y):
+        return opt.fmin(fun, p0, args=(x, y), disp=False)
 
     @staticmethod
     def wrap_odr(fun, p0, x, y):
@@ -148,7 +175,7 @@ class Fitter:
         if P0 is None:
             P0 = self.get_guess()
         X, Y = self.get_norm()
-        self.P = self.engine(self.fitfun, P0, X, Y)
+        self.P = self.engine(self.f, P0, X, Y)
         self.set_unnorm()
 
         return self.p
@@ -302,7 +329,11 @@ class FitterIV(Fitter):
 
     @staticmethod
     def fitfun(P, X):
-        return P[0]*(1.-np.exp((X-P[1])/P[2]))
+        iP2 = 1./P[2]
+        return P[0]*(1.-np.exp((X-P[1])*iP2))
+
+    #fitfun_fast = LP.fitfun.exp3
+    fitfun_diff = LP.fitfun.exp3_diff
 
     def fit(self):
         Fitter.fit(self)
@@ -528,8 +559,6 @@ class IVSeriesViewer:
 
 class FitterIV2(Fitter):
     def __init__(self, V, I, t, P0):
-        Fitter.__init__(self, V, I)
-
         a = (t - t[0]) / (t[-1] - t[0])
 
         def fitfun(p, V):
@@ -538,7 +567,10 @@ class FitterIV2(Fitter):
             Te = p[2] + a*(p[5]-p[2])
             return Is*(1.-np.exp((V-Vf)/Te))
 
-        self.fitfun = fitfun        
+        self.fitfun = fitfun
+
+        Fitter.__init__(self, V, I)
+
         self.P0 = P0
 
     def set_OK(self):
@@ -612,7 +644,7 @@ class IVSeriesSimple:
         self.PP = PiecewisePolynomial(out[None], self.S.t, i0=i0, i1=i1)
         return self.PP
 
-    def fit2(self, n=1):
+    def fit2(self, n=5):
         Sfit = self.get_Sfit()
         mask = ~Sfit.x.mask
 
