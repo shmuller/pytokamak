@@ -70,8 +70,8 @@ class FitterError(Exception):
     pass
 
 class Fitter:
-    def __init__(self, x, y, engine='fmin'):
-        self.x, self.y = x, y
+    def __init__(self, x, y, args=(), engine='fmin'):
+        self.x, self.y, self.args = x, y, args
 
         self.OK = None
         self.X = self.Y = None
@@ -115,27 +115,27 @@ class Fitter:
 
     # static
     @staticmethod
-    def wrap_fmin_noprealloc(fun, p0, x, y):
+    def wrap_fmin_noprealloc(fun, p0, x, y, *args):
         def dy2(p):
-            dy = fun(p, x) - y
+            dy = fun(p, x, *args) - y
             return dy.dot(dy)/dy.size
 
         return opt.fmin(dy2, p0, disp=False)
 
     @staticmethod
-    def wrap_fmin_prealloc(fun, p0, x, y):
+    def wrap_fmin_prealloc(fun, p0, x, y, *args):
         out = np.empty_like(x)
 
         def dy2(p):
-            fun(p, x, out)
+            fun(p, x, out, *args)
             dy = out - y
             return dy.dot(dy)/dy.size
 
         return opt.fmin(dy2, p0, disp=False)
 
     @staticmethod
-    def wrap_fmin_diff(fun, p0, x, y):
-        return opt.fmin(fun, p0, args=(x, y), disp=False)
+    def wrap_fmin_diff(fun, p0, *args):
+        return opt.fmin(fun, p0, args=args, disp=False)
 
     @staticmethod
     def wrap_odr(fun, p0, x, y):
@@ -175,22 +175,22 @@ class Fitter:
         if P0 is None:
             P0 = self.get_guess()
         X, Y = self.get_norm()
-        self.P = self.engine(self.f, P0, X, Y)
+        self.P = self.engine(self.f, P0, X, Y, *self.args)
         self.set_unnorm()
 
         return self.p
 
     def eval_guess_norm(self, X):
-        return self.fitfun(self.P0, X)
+        return self.fitfun(self.P0, X, *self.args)
 
     def eval_guess(self, x):
-        return self.fitfun(self.p0, x)
+        return self.fitfun(self.p0, x, *self.args)
 
     def eval_norm(self, X):
-        return self.fitfun(self.P, X)
+        return self.fitfun(self.P, X, *self.args)
 
     def eval(self, x):
-        return self.fitfun(self.p, x)
+        return self.fitfun(self.p, x, *self.args)
 
     def get_XY(self):
         if self.is_OK(): 
@@ -558,20 +558,17 @@ class IVSeriesViewer:
 
 
 class FitterIV2(Fitter):
-    def __init__(self, V, I, t, P0):
-        a = (t - t[0]) / (t[-1] - t[0])
-
-        def fitfun(p, V):
-            Is = p[0] + a*(p[3]-p[0])
-            Vf = p[1] + a*(p[4]-p[1])
-            Te = p[2] + a*(p[5]-p[2])
-            return Is*(1.-np.exp((V-Vf)/Te))
-
-        self.fitfun = fitfun
-
-        Fitter.__init__(self, V, I)
+    def __init__(self, V, I, a, P0):
+        Fitter.__init__(self, V, I, args=(a,))
 
         self.P0 = P0
+
+    @staticmethod
+    def fitfun(p, V, a):
+        Is = p[0] + a*(p[3]-p[0])
+        Vf = p[1] + a*(p[4]-p[1])
+        Te = p[2] + a*(p[5]-p[2])
+        return Is*(1.-np.exp((V-Vf)/Te))
 
     def set_OK(self):
         self.OK = np.isfinite(self.P0).all()
@@ -661,7 +658,11 @@ class IVSeriesSimple:
             s = slice(i0[j], i1[j])
             Si = self.S[s]
             #Si = Si[mask[s]]
-            fitter_IV = FitterIV2(Si.V.x, Si.x, Si.t, p[j])
+
+            t = Si.t
+            a = (t - t[0]) / (t[-1] - t[0])
+
+            fitter_IV = FitterIV2(Si.V.x, Si.x, a, p[j])
             try:
                 out[j] = fitter_IV.fit()
             except FitterError:
