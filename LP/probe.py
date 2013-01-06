@@ -332,7 +332,7 @@ class FitterIV(Fitter):
         return P[0]*(1.-np.exp((X-P[1])*iP2))
 
     #fitfun_fast = LP.fitfun.IV3
-    fitfun_diff = LP.fitfun.IV3_diff
+    #fitfun_diff = LP.fitfun.IV3_diff
 
     def fit(self):
         Fitter.fit(self)
