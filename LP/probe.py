@@ -332,7 +332,7 @@ class FitterIV(Fitter):
         return P[0]*(1.-np.exp((X-P[1])*iP2))
 
     #fitfun_fast = LP.fitfun.IV3
-    #fitfun_diff = LP.fitfun.IV3_diff
+    fitfun_diff = LP.fitfun.IV3_diff
 
     def fit(self):
         Fitter.fit(self)
@@ -649,11 +649,15 @@ class IVSeriesSimple:
         N = len(i0)
         out = np.empty((N, 3))
         out.fill(np.nan)
+        self.mask = np.zeros(self.S.size, bool)
+
         for j in xrange(N):
-            Si = self.S[i0[j]:i1[j]]
-            fitter_IV = FitterIV(Si.V.x, Si.x)
+            s = slice(i0[j], i1[j])
+            S = self.S[s]
+            fitter_IV = FitterIV(S.V.x, S.x)
             try:
                 out[j] = fitter_IV.fit()
+                self.mask[s][fitter_IV.get_ind()] = True
             except FitterError:
                 pass
         self.PP = PiecewisePolynomial(out[None], self.S.t, i0=i0, i1=i1)
@@ -661,7 +665,7 @@ class IVSeriesSimple:
 
     def fit2(self, n=5):
         Sfit = self.get_Sfit()
-        mask = ~Sfit.x.mask
+        #mask = ~Sfit.x.mask
 
         iE = self.S.V.iE
         i0, i1 = iE[:-n], iE[n:]
@@ -677,13 +681,16 @@ class IVSeriesSimple:
 
         for j in xrange(N):
             s = slice(i0[j], i1[j])
-            Si = self.S[s]
-            #Si = Si[mask[s]]
+            mask = self.mask[s]
+            if not np.any(mask):
+                continue
 
-            t = Si.t
-            a = (t - t0[j]) / dt[j]
+            S = self.S[s]
+            S = S[mask]
 
-            fitter_IV = FitterIV2(Si.V.x, Si.x, a, p[j])
+            a = (S.t - t0[j]) / dt[j]
+
+            fitter_IV = FitterIV2(S.V.x, S.x, a, p[j])
             try:
                 out[j] = fitter_IV.fit()
             except FitterError:

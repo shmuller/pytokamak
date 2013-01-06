@@ -170,6 +170,7 @@ class PiecewisePolynomial:
 
         self.N = self.i0.size
         self.shape = self.c.shape[2:]
+        self.bcast = (-1,) + (1,)*len(self.shape)
 
         self.xi = self.x[self.i0]
         self.NI = NodeInterpolator(self.c.shape[0])
@@ -195,7 +196,7 @@ class PiecewisePolynomial:
         return ind, outl, outr
 
     def _polyval(self, X, ind):
-        dX = X - self.xi[ind]
+        dX = (X - self.xi[ind]).reshape(self.bcast)
 
         #Y = reduce(lambda Y, c: Y*dX + c[ind], self.c)
         
