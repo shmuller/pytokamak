@@ -105,8 +105,7 @@ class Fitter:
         return self.p, self.p0
 
     def set_guess(self):
-        if self.P0 is None:
-            self.P0 = 0.
+        self.P0 = 0.
         return self.P0
 
     @staticmethod
@@ -558,23 +557,40 @@ class IVSeriesViewer:
 
 
 class FitterIV2(Fitter):
-    def __init__(self, V, I, a, P0):
+    def __init__(self, V, I, a, p0):
         Fitter.__init__(self, V, I, args=(a,))
 
-        self.P0 = P0
+        self.dV = dV = V.ptp()
+        self.dI = dI = I.ptp()
+        self.fact = np.array((dI, dV, dV, dI, dV, dV))
+
+        self.p0 = p0
+
+    def set_OK(self):
+        self.OK = np.isfinite(self.p0).all()
+        return self.OK
+
+    def set_norm(self):
+        self.X = self.x / self.dV
+        self.Y = self.y / self.dI
+        return self.X, self.Y
+
+    def set_unnorm(self):
+        self.p = self.P * self.fact
+        return self.p, self.p0
+
+    def set_guess(self):
+        self.P0 = self.p0 / self.fact
+        return self.P0
 
     @staticmethod
     def fitfun(p, V, a):
-        Is = p[0] + a*(p[3]-p[0])
-        Vf = p[1] + a*(p[4]-p[1])
-        Te = p[2] + a*(p[5]-p[2])
+        Is = p[3] + a*(p[0]-p[3])
+        Vf = p[4] + a*(p[1]-p[4])
+        Te = p[5] + a*(p[2]-p[5])
         return Is*(1.-np.exp((V-Vf)/Te))
 
     fitfun_diff = LP.fitfun.IV6_diff
-
-    def set_OK(self):
-        self.OK = np.isfinite(self.P0).all()
-        return self.OK
 
 
 class IVSeries2:
@@ -654,22 +670,30 @@ class IVSeriesSimple:
         out = np.empty((N, 6))
         out.fill(np.nan)
 
-        p = np.concatenate((self.PP.c[0,:N], self.PP.c[0,n-1:]), axis=1)
+        p = np.concatenate((self.PP.c[0,n-1:], self.PP.c[0,:N]), axis=1)
         
+        t0, t1 = self.S.t[i0], self.S.t[i1]
+        dt = t1 - t0
+
         for j in xrange(N):
             s = slice(i0[j], i1[j])
             Si = self.S[s]
             #Si = Si[mask[s]]
 
             t = Si.t
-            a = (t - t[0]) / (t[-1] - t[0])
+            a = (t - t0[j]) / dt[j]
 
             fitter_IV = FitterIV2(Si.V.x, Si.x, a, p[j])
             try:
                 out[j] = fitter_IV.fit()
             except FitterError:
                 pass
-        self.PP2 = PiecewisePolynomial(out[None], self.S.t, i0=i0, i1=i1)
+
+        c = np.swapaxes(out.reshape((N, 2, 3)), 0, 1).copy()
+        c[0] -= c[1]
+        c[0] /= dt[:, None]
+
+        self.PP2 = PiecewisePolynomial(c, self.S.t, i0=i0, i1=i1)
         return self.PP2
 
     def get_Sfit(self):

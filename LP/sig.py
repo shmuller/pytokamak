@@ -9,7 +9,6 @@ from pdb import set_trace
 
 import scipy.optimize as opt
 
-import matplotlib as mpl
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 
@@ -251,15 +250,15 @@ class PiecewisePolynomial:
 
         dim = (0, 1)[pad]
         ipad = np.zeros((ir.shape[0], dim), np.int_)
-        ypad = np.empty((yr.shape[0], dim) + self.shape)
-        ypad.fill(np.nan)
+        ypad = np.empty((yr.shape[0], dim) + self.shape, yr.dtype)
+        ypad.view('d').fill(np.nan)
 
         shape = (il.size + ir.size + ipad.size,)
         i = self.cat((il[:,None], ir[:,None], ipad), 1).reshape(shape)
         y = self.cat((yl[:,None], yr[:,None], ypad), 1).reshape(shape + self.shape)
         return i, y
 
-    def plot(self, ax=None, x=None, w=None, ext=False, pad=False):
+    def plot(self, ax=None, x=None, w=None, ext=False, pad=False, **kw):
         if x is None:
             x = self.x
 
@@ -267,10 +266,7 @@ class PiecewisePolynomial:
         x = x[i]
                 
         ax = get_axes(ax)
-        lw = mpl.rcParams['lines.linewidth']
-        if pad: lw += 1
-
-        lines = ax.plot(x, y, linewidth=lw)
+        lines = ax.plot(x, y, **kw)
         return ax
 
     def plot_ext(self, *args, **kw):

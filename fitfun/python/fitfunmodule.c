@@ -44,8 +44,8 @@ void IV6(data *D)
 {
     int i;
     double *P = D->P, *x = D->x, *y = D->y, *a = D->a;
-    double P0 = P[0], P1 = P[1], P2 = P[2];
-    double dP0 = P[3]-P0, dP1 = P[4]-P1, dP2 = P[5]-P2;
+    double P0 = P[3], P1 = P[4], P2 = P[5];
+    double dP0 = P[0]-P0, dP1 = P[1]-P1, dP2 = P[2]-P2;
     double ai, P0i, P1i, P2i;
 
     for (i=D->n; i--; ) {
@@ -61,8 +61,8 @@ double IV6_diff(data *D)
 {
     int i;
     double *P = D->P, *x = D->x, *y = D->y, *a = D->a;
-    double P0 = P[0], P1 = P[1], P2 = P[2];
-    double dP0 = P[3]-P0, dP1 = P[4]-P1, dP2 = P[5]-P2;
+    double P0 = P[3], P1 = P[4], P2 = P[5];
+    double dP0 = P[0]-P0, dP1 = P[1]-P1, dP2 = P[2]-P2;
     double ai, P0i, P1i, P2i;
     double dy2 = 0., dy;
 
