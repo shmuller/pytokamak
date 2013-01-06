@@ -194,7 +194,7 @@ class Shot:
         def get_x(key):
             return x[self.get(line, 'mapping', key)].astype('d')
 
-        return self.head.mapsig(get_x, x['t'])
+        return self.head.mapsig(get_x, x['t'].astype('d'))
 
     def calib(self, line):
         def get_amp(key):

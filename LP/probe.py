@@ -332,8 +332,8 @@ class FitterIV(Fitter):
         iP2 = 1./P[2]
         return P[0]*(1.-np.exp((X-P[1])*iP2))
 
-    #fitfun_fast = LP.fitfun.exp3
-    fitfun_diff = LP.fitfun.exp3_diff
+    #fitfun_fast = LP.fitfun.IV3
+    fitfun_diff = LP.fitfun.IV3_diff
 
     def fit(self):
         Fitter.fit(self)
@@ -569,6 +569,8 @@ class FitterIV2(Fitter):
         Vf = p[1] + a*(p[4]-p[1])
         Te = p[2] + a*(p[5]-p[2])
         return Is*(1.-np.exp((V-Vf)/Te))
+
+    fitfun_diff = LP.fitfun.IV6_diff
 
     def set_OK(self):
         self.OK = np.isfinite(self.P0).all()
