@@ -165,6 +165,7 @@ class PiecewisePolynomial:
             self.c = np.concatenate([c[None] for c in self.c], axis=0)
 
         self.fill = kw.get('fill', None)
+        self.shift = kw.get('shift', 0)
         self.i0 = kw.get('i0', np.arange(x.size))
         self.i1 = kw.get('i1', None)
 
@@ -181,16 +182,18 @@ class PiecewisePolynomial:
         index = (slice(None), slice(None)) + index
         return self.__class__(self.c[index], self.x, **self.kw)
 
-    def __call__(self, X, side='right'):
-        ind, outl, outr = self._findind(X, side)
+    def __call__(self, X, **kw):
+        ind, outl, outr = self._findind(X, **kw)
         Y = self._polyval(X, ind)
 
         if self.fill is not None:
             Y[outl | outr] = self.fill
         return Y
 
-    def _findind(self, X, side):
-        ind = np.searchsorted(self.xi, X, side) - 1
+    def _findind(self, X, side='right', shift=None):
+        if shift is None:
+            shift = self.shift
+        ind = np.searchsorted(self.xi, X, side) - 1 + shift
         outl, outr = ind < 0, ind > self.N-2
         ind[outl], ind[outr] = 0, self.N-2
         return ind, outl, outr
@@ -230,7 +233,10 @@ class PiecewisePolynomial:
     def cat(a, axis=0):
         return a[0].__array_wrap__(ma.concatenate(a, axis))
 
-    def eval(self, w=None, ext=False, pad=False):
+    def eval(self, w=None, ext=False, pad=False, shift=None):
+        if shift is None:
+            shift = self.shift
+
         try:
             ind = self._mask(w)[:-1]
             indl, indr = ind, ind + 1
@@ -608,9 +614,9 @@ class Signal:
     def local_argmax(self, *args):
         return self.apply_argfun(np.argmax, *args)
 
-    def plot(self, ax=None):
+    def plot(self, ax=None, **kw):
         ax = get_axes(ax)
-        ax.plot(self.t, self.x.T)
+        ax.plot(self.t, self.x.T, **kw)
         return ax
 
 
@@ -751,9 +757,9 @@ class PositionSignal(Signal):
     def get_mask(self, **kw):
         return np.concatenate(self.regions(fun=np.arange, **kw))
 
-    def plot_plunges(self, ax=None):
+    def plot_plunges(self, ax=None, **kw):
         ax = get_axes(ax)
-        Signal.plot(self, ax)
+        Signal.plot(self, ax, **kw)
         i0, iM, i1 = self.t_ind
         ax.plot(self.t[i0], self.x[i0], 'r*')
         ax.plot(self.t[i1], self.x[i1], 'g*')
@@ -783,9 +789,9 @@ class VoltageSignal(Signal):
         D = self.min_ptp
         return self.x.ptp() > D and self.PPF.D > D
 
-    def plot_sweeps(self, ax=None):
+    def plot_sweeps(self, ax=None, **kw):
         ax = get_axes(ax)
-        Signal.plot(self, ax)
+        Signal.plot(self, ax, **kw)
         ax.plot(self.t[self.iE], self.x[self.iE], 'r+')
         return ax
 

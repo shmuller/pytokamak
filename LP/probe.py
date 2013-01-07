@@ -237,7 +237,7 @@ class Fitter:
 
 
 class FitterIV(Fitter):
-    def __init__(self, V, I, mask=None, cut_at_min=True, **kw):
+    def __init__(self, V, I, mask=None, **kw):
         self.mask_ind = np.arange(V.size)
         if mask is not None:
             self.mask_ind = self.mask_ind[mask]
@@ -246,16 +246,18 @@ class FitterIV(Fitter):
         self.ind = self.mask_ind[self.sort_ind]
 
         self.V, self.I = V[self.ind], I[self.ind]
-
+        
         self.im = self.I.argmin()
         self.Vm, self.VM = self.V[0], self.V[-1]
         self.Im, self.IM = self.I[self.im], np.median(self.I[:self.I.size/2])
         self.dV = self.VM - self.Vm
         self.dI = self.IM - self.Im
 
-        self.cut_at_min = cut_at_min
         self.M = self.V.size
 
+        self.cut_at_min = kw.pop('cut_at_min', True)
+        self.red_fact = kw.pop('red_fact', 0.95)
+        
         Fitter.__init__(self, self.V, self.I, **kw)
 
     def get_ind(self):
@@ -339,7 +341,7 @@ class FitterIV(Fitter):
         save = self.X, self.Y
         Y0 = 0.
         while True:
-            self.M *= 0.95
+            self.M *= self.red_fact
             self.X, self.Y = self.X[:self.M], self.Y[:self.M]
             P_old = self.P
             Fitter.fit(self, P0=self.P)
@@ -657,27 +659,29 @@ class IVSeriesSimple:
         N = len(i0)
         out = np.empty((N, nvars))
         out.fill(np.nan)
-        return sl, sr, i0, i1, N, out
 
-    def fit(self, n=1, incr=1):
-        sl, sr, i0, i1, N, out = self._prepare(n, incr, 3)
+        shift = -(n // (2*incr))
+        return sl, sr, i0, i1, N, out, shift
+
+    def fit(self, n=1, incr=1, **kw):
+        sl, sr, i0, i1, N, out, shift = self._prepare(n, incr, 3)
         
         self.mask = np.zeros(self.S.size, bool)
 
         for j in xrange(N):
             s = slice(i0[j], i1[j])
             S = self.S[s]
-            fitter_IV = FitterIV(S.V.x, S.x)
+            fitter_IV = FitterIV(S.V.x, S.x, **kw)
             try:
                 out[j] = fitter_IV.fit()
                 self.mask[s][fitter_IV.get_ind()] = True
             except FitterError:
                 pass
-        self.PP = PiecewisePolynomial(out[None], self.S.t, i0=i0, i1=i1)
+        self.PP = PiecewisePolynomial(out[None], self.S.t, i0=i0, i1=i1, shift=shift)
         return self.PP
 
-    def fit2(self, n=5, incr=1):
-        sl, sr, i0, i1, N, out = self._prepare(n, incr, 6)
+    def fit2(self, n=5, incr=1, **kw):
+        sl, sr, i0, i1, N, out, shift = self._prepare(n, incr, 6)
 
         c = self.PP.c[0]
         p_knots = np.concatenate((c[:1], 0.5*(c[:-1] + c[1:]), c[-1:]), axis=0)
@@ -701,7 +705,7 @@ class IVSeriesSimple:
 
             a = (S.t - t0[j]) / dt[j]
 
-            fitter_IV = FitterIV2(S.V.x, S.x, a, p[j])
+            fitter_IV = FitterIV2(S.V.x, S.x, a, p[j], **kw)
             try:
                 out[j] = fitter_IV.fit()
             except FitterError:
@@ -711,7 +715,7 @@ class IVSeriesSimple:
         c[0] -= c[1]
         c[0] /= dt[:, None]
 
-        self.PP2 = PiecewisePolynomial(c, self.S.t, i0=i0, i1=i1)
+        self.PP2 = PiecewisePolynomial(c, self.S.t, i0=i0, i1=i1, shift=shift)
         return self.PP2
 
     def get_Sfit(self, PP='PP'):
@@ -729,7 +733,7 @@ class IVSeriesSimple:
         ax = get_axes(ax)
         self.S.plot(ax=ax)
         self.get_Sfit().plot(ax=ax)
-        self.get_Sfit2().plot(ax=ax)
+        self.get_Sfit2().plot(ax=ax, linewidth=2)
         return ax
 
 
