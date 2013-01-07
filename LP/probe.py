@@ -643,12 +643,25 @@ class IVSeriesSimple:
     def __init__(self, S):
         self.S = S
 
-    def fit(self, n=1):
+    @staticmethod
+    def _slices(N, n, incr):
+        sl = slice(0, N - n, incr)
+        sr = slice(n, N, incr)
+        return sl, sr
+
+    def _prepare(self, n, incr, nvars):
         iE = self.S.V.iE
-        i0, i1 = iE[:-n], iE[n:]
+        sl, sr = self._slices(len(iE), n, incr)
+        i0, i1 = iE[sl], iE[sr]
+        
         N = len(i0)
-        out = np.empty((N, 3))
+        out = np.empty((N, nvars))
         out.fill(np.nan)
+        return sl, sr, i0, i1, N, out
+
+    def fit(self, n=1, incr=1):
+        sl, sr, i0, i1, N, out = self._prepare(n, incr, 3)
+        
         self.mask = np.zeros(self.S.size, bool)
 
         for j in xrange(N):
@@ -663,21 +676,19 @@ class IVSeriesSimple:
         self.PP = PiecewisePolynomial(out[None], self.S.t, i0=i0, i1=i1)
         return self.PP
 
-    def fit2(self, n=5):
-        Sfit = self.get_Sfit()
-        #mask = ~Sfit.x.mask
+    def fit2(self, n=5, incr=1):
+        sl, sr, i0, i1, N, out = self._prepare(n, incr, 6)
 
-        iE = self.S.V.iE
-        i0, i1 = iE[:-n], iE[n:]
+        c = self.PP.c[0]
+        p_knots = np.concatenate((c[:1], 0.5*(c[:-1] + c[1:]), c[-1:]), axis=0)
 
-        N = len(i0)
-        out = np.empty((N, 6))
-        out.fill(np.nan)
-
-        p = np.concatenate((self.PP.c[0,n-1:], self.PP.c[0,:N]), axis=1)
+        p = np.concatenate((p_knots[sr], p_knots[sl]), axis=1)
         
         t0, t1 = self.S.t[i0], self.S.t[i1]
         dt = t1 - t0
+
+        #Sfit = self.get_Sfit()
+        #mask = ~Sfit.x.mask
 
         for j in xrange(N):
             s = slice(i0[j], i1[j])
@@ -703,17 +714,22 @@ class IVSeriesSimple:
         self.PP2 = PiecewisePolynomial(c, self.S.t, i0=i0, i1=i1)
         return self.PP2
 
-    def get_Sfit(self):
+    def get_Sfit(self, PP='PP'):
         t, V = self.S.t, self.S.V
-        p = self.PP(t).T
+        p = getattr(self, PP)(t).T
         Ifit = FitterIV.fitfun(p, V.x)
-        Ifit_masked = ma.masked_array(Ifit, V.x > p[1] + p[2])
+        #mask = V.x > p[1] + p[2]
+        Ifit_masked = ma.masked_array(Ifit, ~self.mask)
         return CurrentSignal(Ifit_masked, t, V=V)
+
+    def get_Sfit2(self):
+        return self.get_Sfit(PP='PP2')
 
     def plot(self, ax=None):
         ax = get_axes(ax)
         self.S.plot(ax=ax)
         self.get_Sfit().plot(ax=ax)
+        self.get_Sfit2().plot(ax=ax)
         return ax
 
 
