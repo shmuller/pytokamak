@@ -167,9 +167,14 @@ class PiecewisePolynomial:
         self.fill = kw.get('fill', None)
         self.shift = kw.get('shift', 0)
         self.i0 = kw.get('i0', np.arange(x.size))
-        self.i1 = kw.get('i1', None)
 
-        self.N = self.i0.size
+        self.i1 = kw.get('i1', None)
+        if self.i1 is not None:
+            if self.i1.size != self.i0.size:
+                raise Exception("i1 and i0 must have same size")
+            self.i0 = np.concatenate((self.i0, self.i1[-1:]))
+
+        self.N = self.c.shape[1]
         self.shape = self.c.shape[2:]
         self.bcast = (-1,) + (1,)*len(self.shape)
 
@@ -195,7 +200,7 @@ class PiecewisePolynomial:
             ind = np.arange(*ind.indices(ind.stop))
         ind += shift
         indm = max(0, shift)
-        indM = min(0, shift) + self.N-2
+        indM = min(0, shift) + self.N - 1
 
         outl, outr = ind < indm, ind > indM
         ind[outl], ind[outr] = indm, indM
@@ -261,7 +266,7 @@ class PiecewisePolynomial:
             ind = self._mask(w)[:-1]
             indl, indr = ind, ind + 1
         except:
-            indl, indr = slice(0, self.N - 1), slice(1, self.N)
+            indl, indr = slice(0, self.N), slice(1, self.N + 1)
 
         il = self.i0[indl]
         if shift == 0:
