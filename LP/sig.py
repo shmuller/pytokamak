@@ -190,13 +190,22 @@ class PiecewisePolynomial:
             Y[outl | outr] = self.fill
         return Y
 
+    def _shiftind(self, ind, shift):
+        if isinstance(ind, slice):
+            ind = np.arange(*ind.indices(ind.stop))
+        ind += shift
+        indm = max(0, shift)
+        indM = min(0, shift) + self.N-2
+
+        outl, outr = ind < indm, ind > indM
+        ind[outl], ind[outr] = indm, indM
+        return ind, outl, outr
+
     def _findind(self, X, side='right', shift=None):
         if shift is None:
             shift = self.shift
-        ind = np.searchsorted(self.xi, X, side) - 1 + shift
-        outl, outr = ind < 0, ind > self.N-2
-        ind[outl], ind[outr] = 0, self.N-2
-        return ind, outl, outr
+        ind = np.searchsorted(self.xi, X, side) - 1
+        return self._shiftind(ind, shift)
 
     def _polyval(self, X, ind):
         dX = (X - self.xi[ind]).reshape(self.bcast)
@@ -233,28 +242,7 @@ class PiecewisePolynomial:
     def cat(a, axis=0):
         return a[0].__array_wrap__(ma.concatenate(a, axis))
 
-    def eval(self, w=None, ext=False, pad=False, shift=None):
-        if shift is None:
-            shift = self.shift
-
-        try:
-            ind = self._mask(w)[:-1]
-            indl, indr = ind, ind + 1
-        except:
-            indl, indr = slice(self.N - 1), slice(1, self.N)
-
-        il = self.i0[indl]
-        yl = self.c[-1, indl]
-
-        if ext:
-            ir = self.i1[indl]
-            xr = self.x[ir]
-        else:
-            ir = self.i0[indr]
-            xr = self.xi[indr]
-
-        yr = self._polyval(xr, indl)
-
+    def _eval_prepare_output(self, il, yl, ir, yr, pad):
         dim = (0, 1)[pad]
         ipad = np.zeros((ir.shape[0], dim), np.int_)
         ypad = np.empty((yr.shape[0], dim) + self.shape, yr.dtype)
@@ -265,11 +253,40 @@ class PiecewisePolynomial:
         y = self.cat((yl[:,None], yr[:,None], ypad), 1).reshape(shape + self.shape)
         return i, y
 
-    def plot(self, ax=None, x=None, w=None, ext=False, pad=False, **kw):
+    def eval(self, w=None, ext=False, pad=False, shift=None):
+        if shift is None:
+            shift = self.shift
+
+        try:
+            ind = self._mask(w)[:-1]
+            indl, indr = ind, ind + 1
+        except:
+            indl, indr = slice(0, self.N - 1), slice(1, self.N)
+
+        il = self.i0[indl]
+        if shift == 0:
+            indl_shift = indl
+            yl = self.c[-1, indl_shift]
+        else:
+            indl_shift, outl, outr = self._shiftind(indl, shift)
+            xl = self.xi[indl]
+            yl = self._polyval(xl, indl_shift)
+
+        if ext:
+            ir = self.i1[indl]
+            xr = self.x[ir]
+        else:
+            ir = self.i0[indr]
+            xr = self.xi[indr]
+
+        yr = self._polyval(xr, indl_shift)
+        return self._eval_prepare_output(il, yl, ir, yr, pad)
+
+    def plot(self, ax=None, x=None, w=None, ext=False, pad=False, shift=None, **kw):
         if x is None:
             x = self.x
 
-        i, y = self.eval(w=w, ext=ext, pad=pad)
+        i, y = self.eval(w=w, ext=ext, pad=pad, shift=shift)
         x = x[i]
                 
         ax = get_axes(ax)
