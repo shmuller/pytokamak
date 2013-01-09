@@ -595,6 +595,24 @@ class FitterIV2(Fitter):
     fitfun_diff = LP.fitfun.IV6_diff
 
 
+class FitterIV3(FitterIV2):
+    def __init__(self, *args):
+        FitterIV2.__init__(self, *args)
+
+        self.perm = np.array((0,1,2,3))
+        self.iperm = np.array((0,1,2,3,1,2))
+        self.fact = self.fact[self.perm]
+
+    def set_unnorm(self):
+        self.p = (self.P * self.fact)[self.iperm]
+        return self.p, self.p0
+
+    def set_guess(self):
+        self.P0 = self.p0[self.perm] / self.fact
+
+    fitfun_diff = LP.fitfun.IV4_diff
+
+
 class IVSeries2:
     def __init__(self, V, II, PP, mask, iE=None, **kw):
         self.V, self.II, self.PP, self.mask, self.iE = V, II, PP, mask, iE
@@ -680,43 +698,49 @@ class IVSeriesSimple:
         self.PP = PiecewisePolynomial(out[None], self.S.t, i0=i0, i1=i1, shift=shift)
         return self.PP
 
-    def fit2(self, n=5, incr=1, **kw):
+    def _fit_linear(self, FitterIVClass, n=5, incr=1, **kw):
         sl, sr, i0, i1, N, out, shift = self._prepare(n, incr, 6)
 
         c = self.PP.c[0]
         p_knots = np.concatenate((c[:1], 0.5*(c[:-1] + c[1:]), c[-1:]), axis=0)
 
-        p = np.concatenate((p_knots[sr], p_knots[sl]), axis=1)
+        p = np.concatenate((p_knots[sl], p_knots[sr]), axis=1)
         
         t0, t1 = self.S.t[i0], self.S.t[i1]
         dt = t1 - t0
 
         #Sfit = self.get_Sfit()
         #mask = ~Sfit.x.mask
+        mask = self.mask
 
         for j in xrange(N):
             s = slice(i0[j], i1[j])
-            mask = self.mask[s]
-            if not np.any(mask):
+            m = mask[s]
+            if not np.any(m):
                 continue
 
             S = self.S[s]
-            S = S[mask]
+            S = S[m]
 
             a = (S.t - t0[j]) / dt[j]
 
-            fitter_IV = FitterIV2(S.V.x, S.x, a, p[j], **kw)
+            fitter_IV = FitterIVClass(S.V.x, S.x, a, p[j], **kw)
             try:
                 out[j] = fitter_IV.fit()
             except FitterError:
                 pass
 
-        c = np.swapaxes(out.reshape((N, 2, 3)), 0, 1).copy()
+        c = np.swapaxes(out.reshape((-1, 2, 3)), 0, 1)[::-1].copy()
         c[0] -= c[1]
         c[0] /= dt[:, None]
 
-        self.PP2 = PiecewisePolynomial(c, self.S.t, i0=i0, i1=i1, shift=shift)
-        return self.PP2
+        return PiecewisePolynomial(c, self.S.t, i0=i0, i1=i1, shift=shift)
+
+    def fit2(self, **kw):
+        self.PP2 = self._fit_linear(FitterIV2, **kw)
+
+    def fit3(self, **kw):
+        self.PP3 = self._fit_linear(FitterIV3, **kw)
 
     def get_Sfit(self, PP='PP'):
         t, V = self.S.t, self.S.V
@@ -726,14 +750,11 @@ class IVSeriesSimple:
         Ifit_masked = ma.masked_array(Ifit, ~self.mask)
         return CurrentSignal(Ifit_masked, t, V=V)
 
-    def get_Sfit2(self):
-        return self.get_Sfit(PP='PP2')
-
-    def plot(self, ax=None):
+    def plot(self, ax=None, PP2='PP2'):
         ax = get_axes(ax)
         self.S.plot(ax=ax)
         self.get_Sfit().plot(ax=ax)
-        self.get_Sfit2().plot(ax=ax, linewidth=2)
+        self.get_Sfit(PP=PP2).plot(ax=ax, linewidth=2)
         return ax
 
 
