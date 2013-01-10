@@ -111,7 +111,7 @@ double IV6_diff(data *D)
 
 
 
-void parse_args(PyObject *args, data *D)
+static PyObject* parse_args(PyObject *args, data *D)
 {
     PyObject *obj;
 	
@@ -124,26 +124,28 @@ void parse_args(PyObject *args, data *D)
 
     obj = PyTuple_GET_ITEM(args, 2);
     D->y = PyArray_DATA(obj);
+    return obj;
 }
 
-void parse_args_a(PyObject *args, data *D)
+static PyObject* parse_args_a(PyObject *args, data *D)
 {
     PyObject *obj;
 
-    parse_args(args, D);
-
     obj = PyTuple_GET_ITEM(args, 3);
     D->a = PyArray_DATA(obj);
+
+    return parse_args(args, D);
 }
 
 
 
-#define meth_template_NONE(fun, parser)                       \
+#define meth_template_passthru(fun, parser)                   \
 static PyObject* meth_##fun(PyObject *self, PyObject *args) { \
     data D;                                                   \
-    parser(args, &D);                                         \
+    PyObject *obj = parser(args, &D);                         \
     fun(&D);                                                  \
-    Py_RETURN_NONE;                                           \
+    Py_INCREF(obj);                                           \
+    return obj;                                               \
 }
 
 #define meth_template_double(fun, parser)                     \
@@ -154,13 +156,13 @@ static PyObject* meth_##fun(PyObject *self, PyObject *args) { \
     return Py_BuildValue("d", d);                             \
 }
 
-meth_template_NONE(IV3, parse_args)
+meth_template_passthru(IV3, parse_args)
 meth_template_double(IV3_diff, parse_args)
 
-meth_template_NONE(IV4, parse_args_a)
+meth_template_passthru(IV4, parse_args_a)
 meth_template_double(IV4_diff, parse_args_a)
 
-meth_template_NONE(IV6, parse_args_a)
+meth_template_passthru(IV6, parse_args_a)
 meth_template_double(IV6_diff, parse_args_a)
 
 

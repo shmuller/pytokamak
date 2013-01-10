@@ -70,25 +70,15 @@ class FitterError(Exception):
     pass
 
 class Fitter:
-    def __init__(self, x, y, args=(), engine='fmin'):
+    def __init__(self, x, y, args=(), engine='leastsq', use_diff=True, use_fast=True):
         self.x, self.y, self.args = x, y, args
+        self.use_diff, self.use_fast = use_diff, use_fast
 
         self.OK = None
         self.X = self.Y = None
         self.P = self.P0 = None
         self.p = self.p0 = None
 
-        if hasattr(self, 'fitfun_diff'):
-            self.f = self.fitfun_diff
-            self.wrap_fmin = self.wrap_fmin_diff
-        elif hasattr(self, 'fitfun_fast'):
-            self.f = self.fitfun_fast
-            self.wrap_fmin = self.wrap_fmin_prealloc
-        else:
-            self.f = self.fitfun
-            self.wrap_fmin = self.wrap_fmin_noprealloc
-
-        self.engines = dict(fmin=self.wrap_fmin, odr=self.wrap_odr)
         self.set_engine(engine)
 
     # overload
@@ -113,36 +103,72 @@ class Fitter:
         pass
 
     # static
-    @staticmethod
-    def wrap_fmin_noprealloc(fun, p0, x, y, *args):
+    def wrap_fmin(fun, x, y, *args):
         def dy2(p):
             dy = fun(p, x, *args) - y
             return dy.dot(dy)/dy.size
+        return dy2
 
-        return opt.fmin(dy2, p0, disp=False)
+    def call_fmin(f, p0):
+        return opt.fmin(f, p0, disp=False)
 
-    @staticmethod
-    def wrap_fmin_prealloc(fun, p0, x, y, *args):
-        out = np.empty_like(x)
-
-        def dy2(p):
-            fun(p, x, out, *args)
-            dy = out - y
-            return dy.dot(dy)/dy.size
-
-        return opt.fmin(dy2, p0, disp=False)
-
-    @staticmethod
-    def wrap_fmin_diff(fun, p0, *args):
-        return opt.fmin(fun, p0, args=args, disp=False)
-
-    @staticmethod
-    def wrap_odr(fun, p0, x, y):
-        mod = odr.Model(fun)
+    def wrap_odr(fun, x, y, *args):
+        mod = odr.Model(fun, extra_args=args)
         dat = odr.Data(x, y)
-        o = odr.ODR(dat, mod, p0)
+        
+        def wrapper(p):
+            return odr.ODR(dat, mod, p)
+        return wrapper
+
+    def call_odr(f, p0):
+        o = f(p0)
         out = o.run()
         return out.beta
+
+    def wrap_leastsq(fun, x, y, *args):
+        def dy(p):
+            return fun(p, x, *args) - y
+        return dy
+
+    def call_leastsq(f, p0):
+        return opt.leastsq(f, p0)[0]
+
+    engines = dict(fmin=dict(wrap=wrap_fmin, call=call_fmin),
+                   odr=dict(wrap=wrap_odr, call=call_odr),
+                   leastsq=dict(wrap=wrap_leastsq, call=call_leastsq))
+
+    @staticmethod
+    def engine_factory(fun, wrap_fun, wrap_call):
+        def wrapper(p0, x, y, *args):
+            f = wrap_fun(fun, x, y, *args)
+            return wrap_call(f, p0)
+        return wrapper
+
+    @staticmethod
+    def prealloc(wrap_fun):
+        def wrapper(fun, x, y, *args):
+            out = np.empty_like(x)
+            return wrap_fun(fun, x, y, out, *args)
+        return wrapper
+
+    @staticmethod
+    def wrap_none(fun, x, y, *args):
+        def wrapper(p):
+            return fun(p, x, y, *args)
+        return wrapper
+
+    def set_engine(self, engine):
+        e = self.engines[engine]
+
+        if engine == 'fmin' and self.use_diff and hasattr(self, 'fitfun_diff'):
+            self.engine = self.engine_factory(
+                    self.fitfun_diff, self.wrap_none, e['call'])
+        elif self.use_fast and hasattr(self, 'fitfun_fast'):
+            self.engine = self.engine_factory(
+                    self.fitfun_fast, self.prealloc(e['wrap']), e['call'])
+        else:
+            self.engine = self.engine_factory(
+                    self.fitfun, e['wrap'], e['call'])
 
     def is_OK(self):
         if self.OK is None:
@@ -164,9 +190,6 @@ class Fitter:
             self.set_guess()
         return self.P0
     
-    def set_engine(self, engine):
-        self.engine = self.engines[engine]
-
     def fit(self, P0=None):
         if not self.is_OK():
             raise FitterError("Cannot fit data that failed is_OK() check")
@@ -174,7 +197,7 @@ class Fitter:
         if P0 is None:
             P0 = self.get_guess()
         X, Y = self.get_norm()
-        self.P = self.engine(self.f, P0, X, Y, *self.args)
+        self.P = self.engine(P0, X, Y, *self.args)
         self.set_unnorm()
 
         return self.p
@@ -333,7 +356,7 @@ class FitterIV(Fitter):
         iP2 = 1./P[2]
         return P[0]*(1.-np.exp((X-P[1])*iP2))
 
-    #fitfun_fast = LP.fitfun.IV3
+    fitfun_fast = LP.fitfun.IV3
     fitfun_diff = LP.fitfun.IV3_diff
 
     def fit(self):
@@ -559,8 +582,8 @@ class IVSeriesViewer:
 
 
 class FitterIV2(Fitter):
-    def __init__(self, V, I, a, p0):
-        Fitter.__init__(self, V, I, args=(a,))
+    def __init__(self, V, I, a, p0, **kw):
+        Fitter.__init__(self, V, I, args=(a,), **kw)
 
         self.dV = dV = V.ptp()
         self.dI = dI = I.ptp()
@@ -587,17 +610,18 @@ class FitterIV2(Fitter):
 
     @staticmethod
     def fitfun(p, V, a):
-        Is = p[3] + a*(p[0]-p[3])
-        Vf = p[4] + a*(p[1]-p[4])
-        Te = p[5] + a*(p[2]-p[5])
+        Is = p[0] + a*(p[3]-p[0])
+        Vf = p[1] + a*(p[4]-p[1])
+        Te = p[2] + a*(p[5]-p[2])
         return Is*(1.-np.exp((V-Vf)/Te))
 
+    fitfun_fast = LP.fitfun.IV6
     fitfun_diff = LP.fitfun.IV6_diff
 
 
 class FitterIV3(FitterIV2):
-    def __init__(self, *args):
-        FitterIV2.__init__(self, *args)
+    def __init__(self, *args, **kw):
+        FitterIV2.__init__(self, *args, **kw)
 
         self.perm = np.array((0,1,2,3))
         self.iperm = np.array((0,1,2,3,1,2))
@@ -610,6 +634,7 @@ class FitterIV3(FitterIV2):
     def set_guess(self):
         self.P0 = self.p0[self.perm] / self.fact
 
+    fitfun_fast = LP.fitfun.IV4
     fitfun_diff = LP.fitfun.IV4_diff
 
 
@@ -750,10 +775,10 @@ class IVSeriesSimple:
         Ifit_masked = ma.masked_array(Ifit, ~self.mask)
         return CurrentSignal(Ifit_masked, t, V=V)
 
-    def plot(self, ax=None, PP2='PP2'):
+    def plot(self, ax=None, PP='PP', PP2='PP2'):
         ax = get_axes(ax)
         self.S.plot(ax=ax)
-        self.get_Sfit().plot(ax=ax)
+        self.get_Sfit(PP=PP).plot(ax=ax)
         self.get_Sfit(PP=PP2).plot(ax=ax, linewidth=2)
         return ax
 
