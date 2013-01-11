@@ -10,7 +10,8 @@ mag_fit = Extension('LP.mag_fit',
                      sources = ['mag_fit/python/mag_fitmodule.c', 'mag_fit/mag_fit.c'])
 
 fitfun = Extension('LP.fitfun',
-                    sources = ['fitfun/python/fitfunmodule.c'])
+                    sources = ['fitfun/python/fitfunmodule.c'],
+                    libraries = ['minpack'])
 
 setup(name = 'LP',
       version = '1.0',

@@ -70,9 +70,10 @@ class FitterError(Exception):
     pass
 
 class Fitter:
-    def __init__(self, x, y, args=(), engine='leastsq', use_diff=True, use_fast=True):
+    def __init__(self, x, y, args=(), engine='leastsq', 
+            use_rms=True, use_diff=True, use_fast=True):
         self.x, self.y, self.args = x, y, args
-        self.use_diff, self.use_fast = use_diff, use_fast
+        self.use_rms, self.use_diff, self.use_fast = use_rms, use_diff, use_fast
 
         self.OK = None
         self.X = self.Y = None
@@ -157,12 +158,22 @@ class Fitter:
             return fun(p, x, y, *args)
         return wrapper
 
+    @staticmethod
+    def wrap_diff(fun, x, y, *args):
+        out = np.empty_like(x)
+        def wrapper(p):
+            return fun(p, x, out, y, *args).copy()
+        return wrapper
+
     def set_engine(self, engine):
         e = self.engines[engine]
 
-        if engine == 'fmin' and self.use_diff and hasattr(self, 'fitfun_diff'):
+        if engine == 'fmin' and self.use_rms and hasattr(self, 'fitfun_rms'):
             self.engine = self.engine_factory(
-                    self.fitfun_diff, self.wrap_none, e['call'])
+                    self.fitfun_rms, self.wrap_none, e['call'])
+        elif engine == 'leastsq' and self.use_diff and hasattr(self, 'fitfun_diff'):
+            self.engine = self.engine_factory(
+                    self.fitfun_diff, self.wrap_diff, e['call'])
         elif self.use_fast and hasattr(self, 'fitfun_fast'):
             self.engine = self.engine_factory(
                     self.fitfun_fast, self.prealloc(e['wrap']), e['call'])
@@ -358,6 +369,7 @@ class FitterIV(Fitter):
 
     fitfun_fast = LP.fitfun.IV3
     fitfun_diff = LP.fitfun.IV3_diff
+    fitfun_rms = LP.fitfun.IV3_rms
 
     def fit(self):
         Fitter.fit(self)
@@ -617,6 +629,7 @@ class FitterIV2(Fitter):
 
     fitfun_fast = LP.fitfun.IV6
     fitfun_diff = LP.fitfun.IV6_diff
+    fitfun_rms = LP.fitfun.IV6_rms
 
 
 class FitterIV3(FitterIV2):
@@ -636,6 +649,7 @@ class FitterIV3(FitterIV2):
 
     fitfun_fast = LP.fitfun.IV4
     fitfun_diff = LP.fitfun.IV4_diff
+    fitfun_rms = LP.fitfun.IV4_rms
 
 
 class IVSeries2:
