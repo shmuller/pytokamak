@@ -181,15 +181,6 @@ static PyObject* parse_args_ydata(PyObject *args, data *D)
     obj = PyTuple_GET_ITEM(args, 3);
     D->ydata = PyArray_DATA(obj);
 
-    /*
-    int i, m = PyArray_DIM(obj, 0);
-    double *ydata = D->ydata;
-
-    printf("m = %d\n", m);
-    for (i=0; i < m; ++i)
-        printf("%f\n", *ydata++);
-    */
-
     return parse_args(args, D);
 }
 
@@ -234,6 +225,13 @@ meth_template_passthru(IV6_diff, parse_args_ydata_a)
 meth_template_double(IV6_rms, parse_args_a)
 
 
+static PyObject* meth_IV3_fit(PyObject *self, PyObject *args) {
+    data D;
+    parse_args_ydata(args, &D);
+    leastsq(IV3_diff, &D);
+    Py_RETURN_NONE;
+}
+
 static PyMethodDef methods[] = {
     {"IV3", meth_IV3, METH_VARARGS, "IV curve with 3 parameters"},
     {"IV3_diff", meth_IV3_diff, METH_VARARGS, "Difference to IV curve with 3 parameters"},
@@ -244,6 +242,7 @@ static PyMethodDef methods[] = {
     {"IV6", meth_IV6, METH_VARARGS, "IV curve with 6 parameters"},
     {"IV6_diff", meth_IV6_diff, METH_VARARGS, "Difference to IV curve with 6 parameters"},
     {"IV6_rms", meth_IV6_rms, METH_VARARGS, "rms for IV curve with 6 parameters"},
+    {"IV3_fit", meth_IV3_fit, METH_VARARGS, "Fit IV curve with 3 parameters"},
     {NULL, NULL, 0, NULL}
 };
  
