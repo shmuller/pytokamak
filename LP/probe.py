@@ -80,7 +80,13 @@ class Fitter:
         self.P = self.P0 = None
         self.p = self.p0 = None
 
-        self.set_engine(engine)
+        if engine == 'custom' and hasattr(self, 'custom_engine'):
+            def wrap_custom(p0, x, y, *args):
+                out = np.empty_like(x)
+                return self.custom_engine(p0.copy(), x, out, y, *args)
+            self.engine = wrap_custom
+        else:
+            self.set_engine(engine)
 
     # overload
     def set_OK(self):
@@ -367,6 +373,7 @@ class FitterIV(Fitter):
         iP2 = 1./P[2]
         return P[0]*(1.-np.exp((X-P[1])*iP2))
 
+    custom_engine = LP.fitfun.IV3_fit
     fitfun_fast = LP.fitfun.IV3
     fitfun_diff = LP.fitfun.IV3_diff
     fitfun_rms = LP.fitfun.IV3_rms
@@ -627,6 +634,7 @@ class FitterIV2(Fitter):
         Te = p[2] + a*(p[5]-p[2])
         return Is*(1.-np.exp((V-Vf)/Te))
 
+    custom_engine = LP.fitfun.IV6_fit
     fitfun_fast = LP.fitfun.IV6
     fitfun_diff = LP.fitfun.IV6_diff
     fitfun_rms = LP.fitfun.IV6_rms
@@ -647,6 +655,7 @@ class FitterIV3(FitterIV2):
     def set_guess(self):
         self.P0 = self.p0[self.perm] / self.fact
 
+    custom_engine = LP.fitfun.IV4_fit
     fitfun_fast = LP.fitfun.IV4
     fitfun_diff = LP.fitfun.IV4_diff
     fitfun_rms = LP.fitfun.IV4_rms
