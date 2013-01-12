@@ -70,7 +70,7 @@ class FitterError(Exception):
     pass
 
 class Fitter:
-    def __init__(self, x, y, args=(), engine='leastsq', 
+    def __init__(self, x, y, args=(), engine='custom', 
             use_rms=True, use_diff=True, use_fast=True):
         self.x, self.y, self.args = x, y, args
         self.use_rms, self.use_diff, self.use_fast = use_rms, use_diff, use_fast
