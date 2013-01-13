@@ -91,19 +91,15 @@ class Fitter:
     # overload
     def set_OK(self):
         self.OK = True
-        return self.OK
 
     def set_norm(self):
         self.X, self.Y = self.x, self.y
-        return self.X, self.Y
 
     def set_unnorm(self):
         self.p, self.p0 = self.P, self.P0
-        return self.p, self.p0
 
     def set_guess(self):
         self.P0 = 0.
-        return self.P0
 
     @staticmethod
     def fitfun(P, X):
@@ -317,19 +313,17 @@ class FitterIV(Fitter):
         cnd1 = Ilm > Ils
         cnd2 = Irm < -2*Ils
         self.OK = cnd1 & cnd2
-        return self.OK
 
     def set_norm(self):
         if self.cut_at_min:
             self.M = self.im+1
         self.X = (self.V[:self.M].astype('d') - self.Vm)/self.dV
         self.Y = (self.I[:self.M].astype('d') - self.Im)/self.dI*2 - 1
-        return self.X, self.Y
 
     def set_unnorm(self):
-        self.p0 = self.LP_unnormalize(self.P0, self.Vm, self.VM, self.Im, self.IM)
-        self.p  = self.LP_unnormalize(self.P , self.Vm, self.VM, self.Im, self.IM)
-        return self.p, self.p0
+        '''self.p0 commented out for now (should only be calculated on-demand)'''
+        #self.p0 = self.LP_unnormalize(self.P0)
+        self.p  = self.LP_unnormalize(self.P )
 
     def set_guess(self):
         def find_i0(x):
@@ -342,30 +336,25 @@ class FitterIV(Fitter):
         Te = (V[self.im]-Vf)/np.log(1-I[self.im]/I0)
 
         self.P0 = np.array([I0, Vf, Te])
-        return self.P0
 
-    @staticmethod
-    def LP_unnormalize(P, Vm, VM, Im, IM):
-        dV, dI = VM-Vm, IM-Im
-        a = 2./dI
-        b = -(Im*a+1)
+    def LP_unnormalize(self, P):
+        a = 2./self.dI
+        b = -(self.Im*a+1)
 
         p = np.empty_like(P)
         p[0] = (P[0]-b)/a
-        p[1] = (P[1]+P[2]*np.log(1.-b/P[0]))*dV+Vm
-        p[2] = P[2]*dV
+        p[1] = (P[1]+P[2]*np.log(1.-b/P[0]))*self.dV+self.Vm
+        p[2] = P[2]*self.dV
         return p
 
-    @staticmethod
-    def LP_normalize(p, Vm, VM, Im, IM):
-        dV, dI = VM-Vm, IM-Im
-        a = 2./dI
-        b = -(Im*a+1)
+    def LP_normalize(self, p):
+        a = 2./self.dI
+        b = -(self.Im*a+1)
 
         P = np.empty_like(p)
         P[0] = a*p[0]+b
-        P[1] = (p[1]-p[2]*np.log(1.-b/P[0])-Vm)/dV
-        P[2] = p[2]/dV
+        P[1] = (p[1]-p[2]*np.log(1.-b/P[0])-self.Vm)/self.dV
+        P[2] = p[2]/self.dV
         return P
 
     @staticmethod
@@ -612,20 +601,16 @@ class FitterIV2(Fitter):
 
     def set_OK(self):
         self.OK = np.isfinite(self.p0).all()
-        return self.OK
 
     def set_norm(self):
         self.X = self.x / self.dV
         self.Y = self.y / self.dI
-        return self.X, self.Y
 
     def set_unnorm(self):
         self.p = self.P * self.fact
-        return self.p, self.p0
 
     def set_guess(self):
         self.P0 = self.p0 / self.fact
-        return self.P0
 
     @staticmethod
     def fitfun(p, V, a):
@@ -708,8 +693,8 @@ class IVSeries2:
 
 
 class IVSeriesSimple:
-    def __init__(self, S):
-        self.S = S
+    def __init__(self, S, R):
+        self.S, self.R = S, R
 
     @staticmethod
     def _slices(N, n, incr):
@@ -717,26 +702,36 @@ class IVSeriesSimple:
         sr = slice(n, N, incr)
         return sl, sr
 
+    def _get_valid_indices(self, i0, i1):
+        w = self.R.plunges()
+        isin = np.zeros_like(i0, bool)
+        for a, b in w.T:
+            isin[(a <= i0) & (i1 <= b)] = True
+        return np.flatnonzero(isin)
+
     def _prepare(self, n, incr, nvars):
         iE = self.S.V.iE
         sl, sr = self._slices(len(iE), n, incr)
         i0, i1 = iE[sl], iE[sr]
-        
         N = len(i0)
+
+        ind = self._get_valid_indices(i0, i1)
+        #ind = xrange(N)
+
         out = np.empty((N, nvars))
         out.fill(np.nan)
 
         shift = -(n // (2*incr))
-        return sl, sr, i0, i1, N, out, shift
+        return sl, sr, i0, i1, ind, out, shift
 
     def fit(self, n=1, incr=1, **kw):
-        sl, sr, i0, i1, N, out, shift = self._prepare(n, incr, 3)
+        sl, sr, i0, i1, ind, out, shift = self._prepare(n, incr, 3)
         
         S = self.S
         V, I, t = S.V.x, S.x, S.t
         self.mask = np.zeros(V.size, bool)
 
-        for j in xrange(N):
+        for j in ind:
             s = slice(i0[j], i1[j])
             fitter_IV = FitterIV(V[s], I[s], **kw)
             try:
@@ -748,7 +743,7 @@ class IVSeriesSimple:
         return self.PP
 
     def _fit_linear(self, FitterIVClass, n=5, incr=1, **kw):
-        sl, sr, i0, i1, N, out, shift = self._prepare(n, incr, 6)
+        sl, sr, i0, i1, ind, out, shift = self._prepare(n, incr, 6)
 
         c = self.PP.c[0]
         p_knots = np.concatenate((c[:1], 0.5*(c[:-1] + c[1:]), c[-1:]), axis=0)
@@ -764,7 +759,7 @@ class IVSeriesSimple:
         #mask = ~Sfit.x.mask
         mask = self.mask
 
-        for j in xrange(N):
+        for j in ind:
             s = slice(i0[j], i1[j])
             m = mask[s]
             if not np.any(m):
@@ -1148,7 +1143,7 @@ class Probe:
         self.PP = self.IV_series.PP
 
     def calc_IV_series_simple(self):
-        return map(IVSeriesSimple, self.I_swept)
+        return [IVSeriesSimple(I, self.S['Rs']) for I in self.I_swept]
 
     @memoized_property
     def IV_series_simple(self):
