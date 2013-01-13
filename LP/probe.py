@@ -732,18 +732,19 @@ class IVSeriesSimple:
     def fit(self, n=1, incr=1, **kw):
         sl, sr, i0, i1, N, out, shift = self._prepare(n, incr, 3)
         
-        self.mask = np.zeros(self.S.size, bool)
+        S = self.S
+        V, I, t = S.V.x, S.x, S.t
+        self.mask = np.zeros(V.size, bool)
 
         for j in xrange(N):
             s = slice(i0[j], i1[j])
-            S = self.S[s]
-            fitter_IV = FitterIV(S.V.x, S.x, **kw)
+            fitter_IV = FitterIV(V[s], I[s], **kw)
             try:
                 out[j] = fitter_IV.fit()
                 self.mask[s][fitter_IV.get_ind()] = True
             except FitterError:
                 pass
-        self.PP = PiecewisePolynomial(out[None], self.S.t, i0=i0, i1=i1, shift=shift)
+        self.PP = PiecewisePolynomial(out[None], t, i0=i0, i1=i1, shift=shift)
         return self.PP
 
     def _fit_linear(self, FitterIVClass, n=5, incr=1, **kw):
@@ -753,8 +754,10 @@ class IVSeriesSimple:
         p_knots = np.concatenate((c[:1], 0.5*(c[:-1] + c[1:]), c[-1:]), axis=0)
 
         p = np.concatenate((p_knots[sl], p_knots[sr]), axis=1)
-        
-        t0, t1 = self.S.t[i0], self.S.t[i1]
+       
+        S = self.S
+        V, I, t = S.V.x, S.x, S.t
+        t0, t1 = t[i0], t[i1]
         dt = t1 - t0
 
         #Sfit = self.get_Sfit()
@@ -767,12 +770,11 @@ class IVSeriesSimple:
             if not np.any(m):
                 continue
 
-            S = self.S[s]
-            S = S[m]
+            Vj, Ij, tj = V[s][m], I[s][m], t[s][m]
 
-            a = (S.t - t0[j]) / dt[j]
+            aj = (tj - t0[j]) / dt[j]
 
-            fitter_IV = FitterIVClass(S.V.x, S.x, a, p[j], **kw)
+            fitter_IV = FitterIVClass(Vj, Ij, aj, p[j], **kw)
             try:
                 out[j] = fitter_IV.fit()
             except FitterError:
@@ -782,7 +784,7 @@ class IVSeriesSimple:
         c[0] -= c[1]
         c[0] /= dt[:, None]
 
-        return PiecewisePolynomial(c, self.S.t, i0=i0, i1=i1, shift=shift)
+        return PiecewisePolynomial(c, t, i0=i0, i1=i1, shift=shift)
 
     def fit2(self, **kw):
         self.PP2 = self._fit_linear(FitterIV2, **kw)
