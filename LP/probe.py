@@ -289,7 +289,7 @@ class FitterIV(Fitter):
         
         self.im = self.I.argmin()
         self.Vm, self.VM = self.V[0], self.V[-1]
-        self.Im, self.IM = self.I[self.im], np.median(self.I[:self.I.size/2])
+        self.Im, self.IM = self.I[self.im], median(self.I[:self.I.size/2])
         self.dV = self.VM - self.Vm
         self.dI = self.IM - self.Im
 
@@ -305,7 +305,7 @@ class FitterIV(Fitter):
 
     def set_OK(self):
         def medianstd(x):
-            xm = np.median(x)
+            xm = median(x)
             dx = x-xm
             xs = np.sqrt(dx.dot(dx)/dx.size)
             return xm, xs

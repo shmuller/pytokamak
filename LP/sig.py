@@ -8,6 +8,16 @@ import operator
 from pdb import set_trace
 
 import scipy.optimize as opt
+import scipy.fftpack
+
+fft = scipy.fftpack.fft
+#fft = np.fft.fft
+
+try:
+    import bottleneck as bn
+    median = bn.median
+except ImportError:
+    median = np.median
 
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
@@ -646,11 +656,12 @@ class PeriodPhaseFinder:
     def __init__(self, x):
         self.x = x
 
-    def find_f(self):
-        nextpow2 = lambda x: 2**np.ceil(np.log2(x)).astype('i')
-        Nfft = nextpow2(self.x.size)
+    def nextpow2(self):
+        return 2**np.ceil(np.log2(self.x.size)).astype('i')
 
-        X = np.fft.fft(self.x-self.x.mean(), Nfft)
+    def find_f(self):
+        Nfft = self.nextpow2()
+        X = fft(self.x-self.x.mean(), Nfft)
         iM = np.abs(X[1:Nfft/2+1]).argmax()+1
         f = np.float(iM)/Nfft
         return f
@@ -920,7 +931,7 @@ class Digitizer:
 
     def calib_offset(self):
         self.load_raw()
-        offs = [np.median(self.x[node]) for node in self.nodes]
+        offs = [median(self.x[node]) for node in self.nodes]
         return offs
 
     def plot(self, fig=None):
