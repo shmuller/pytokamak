@@ -588,6 +588,14 @@ class IVSeriesViewer:
         self.MMOV = MouseMotionObserverViewer(fig.axes, self.ax, self.plotfun)
         fig2.show()
 
+    def get_fig(self, **kw):
+        menu_entries_ax = (('IV viewer', self.toggle),)
+
+        fig = get_fig(menu_entries_ax=menu_entries_ax, **kw)
+
+        fig.IV_series_viewer = self
+        return fig
+
 
 class FitterIV2(Fitter):
     def __init__(self, V, I, a, p0, **kw):
@@ -1245,12 +1253,7 @@ class Probe:
 
         if fig is None:
             IV_series_viewer = IVSeriesViewer(self.IV_series)
-            menu_entries_ax = (('IV viewer', IV_series_viewer.toggle),)
-
-            fig = get_fig(shape=(3,1), xlab=xlab, 
-                          figsize=(10,10), menu_entries_ax=menu_entries_ax)
-
-            fig.IV_series_viewer = IV_series_viewer
+            fig = IV_series_viewer.get_fig(shape=(3,1), xlab=xlab, figsize=(10,10))
 
         ax = fig.axes
         for i, pp in enumerate(PP.T):
