@@ -66,6 +66,65 @@ class MouseMotionObserverViewer:
         self.observer_canvas.mpl_disconnect(self.cid)
 
 
+class ToggleViewer:
+    def __init__(self, menu_entry='Viewer'):
+        self.menu_entry = menu_entry
+        self.MMOV = None
+
+    def on_close(self, event):
+        logger.debug("Closing")
+        self.MMOV = None
+
+    def plotfun(self, event):
+        pass
+
+    def viewer(self):
+        pass
+
+    def toggle(self, event):
+        fig = event.inaxes.figure
+        if self.MMOV is not None:
+            self.MMOV.viewer_canvas.manager.destroy()
+            return
+
+        self.ax = self.viewer()
+        fig2 = self.ax.figure
+
+        fig2.canvas.mpl_connect('close_event', self.on_close)
+
+        self.MMOV = MouseMotionObserverViewer(fig.axes, self.ax, self.plotfun)
+        fig2.show()
+
+    def get_fig(self, **kw):
+        menu_entries_ax = ((self.menu_entry, self.toggle),)
+
+        fig = get_fig(menu_entries_ax=menu_entries_ax, **kw)
+
+        fig.toggle_viewer = self
+        return fig
+
+
+class IVSeriesViewer(ToggleViewer):
+    def __init__(self, IV_series):
+        self.IV_series = IV_series
+
+        ToggleViewer.__init__(self, 'IV viewer')
+
+    def plotfun(self, event):
+        t_event = event.xdata
+        ti = self.IV_series.ti[:,1]
+        i = min(np.searchsorted(ti, t_event), ti.size-1)
+        self.IV_series.IV_group[i].plot(self.ax, 'get_xy')
+
+    def viewer(self):
+        fig = get_tfig(figsize=(6,5), xlab="V [V]")
+        ax, = fig.axes
+        ax.set_ylabel("I [A]")
+        ax.set_xlim(self.IV_series.V_range)
+        ax.set_ylim(self.IV_series.I_range)
+        return ax
+
+
 class FitterError(Exception):
     pass
 
@@ -554,47 +613,6 @@ class IVSeries:
             for line in ax.lines:
                 ax.draw_artist(line)
             canvas.blit(ax.bbox)
-            
-
-class IVSeriesViewer:
-    def __init__(self, IV_series):
-        self.IV_series = IV_series
-        self.MMOV = None
-
-    def on_close(self, event):
-        logger.debug("Closing")
-        self.MMOV = None
-
-    def plotfun(self, event):
-        t_event = event.xdata
-        ti = self.IV_series.ti[:,1]
-        i = min(np.searchsorted(ti, t_event), ti.size-1)
-        self.IV_series.IV_group[i].plot(self.ax, 'get_xy')
-
-    def toggle(self, event):
-        fig = event.inaxes.figure
-        if self.MMOV is not None:
-            self.MMOV.viewer_canvas.manager.destroy()
-            return
-
-        fig2 = get_tfig(figsize=(6,5), xlab="V [V]")
-        self.ax, = fig2.axes
-        self.ax.set_ylabel("I [A]")
-        self.ax.set_xlim(self.IV_series.V_range)
-        self.ax.set_ylim(self.IV_series.I_range)
-
-        fig2.canvas.mpl_connect('close_event', self.on_close)
-
-        self.MMOV = MouseMotionObserverViewer(fig.axes, self.ax, self.plotfun)
-        fig2.show()
-
-    def get_fig(self, **kw):
-        menu_entries_ax = (('IV viewer', self.toggle),)
-
-        fig = get_fig(menu_entries_ax=menu_entries_ax, **kw)
-
-        fig.IV_series_viewer = self
-        return fig
 
 
 class FitterIV2(Fitter):
