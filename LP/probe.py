@@ -76,9 +76,11 @@ class ToggleViewer:
         self.MMOV = None
 
     def plotfun(self, event):
+        # plot on self.ax
         pass
 
     def viewer(self):
+        # assign self.ax
         pass
 
     def toggle(self, event):
@@ -87,7 +89,7 @@ class ToggleViewer:
             self.MMOV.viewer_canvas.manager.destroy()
             return
 
-        self.ax = self.viewer()
+        self.viewer()
         fig2 = self.ax.figure
 
         fig2.canvas.mpl_connect('close_event', self.on_close)
@@ -118,11 +120,10 @@ class IVSeriesViewer(ToggleViewer):
 
     def viewer(self):
         fig = get_tfig(figsize=(6,5), xlab="V [V]")
-        ax, = fig.axes
-        ax.set_ylabel("I [A]")
-        ax.set_xlim(self.IV_series.V_range)
-        ax.set_ylim(self.IV_series.I_range)
-        return ax
+        self.ax = fig.axes[0]
+        self.ax.set_ylabel("I [A]")
+        self.ax.set_xlim(self.IV_series.V_range)
+        self.ax.set_ylim(self.IV_series.I_range)
 
 
 class FitterError(Exception):
@@ -718,6 +719,29 @@ class IVSeries2:
         return p
 
 
+class IVSeriesSimpleViewer(ToggleViewer):
+    def __init__(self, IV):
+        self.IV = IV
+
+        ToggleViewer.__init__(self, 'IV viewer')
+
+    def plotfun(self, event):
+        t_event = event.xdata
+        V, I, Ifit, t = self.IV.get_Sfit_at_event(t_event, PP='PP2')
+
+        self.ax.lines = []
+        return self.ax.plot(V, I, 'b-', V, Ifit, 'r-')
+
+    def viewer(self):
+        fig = get_tfig(figsize=(6,5), xlab="V [V]")
+        self.ax = fig.axes[0]
+        self.ax.set_ylabel("I [A]")
+        self.ax.set_xlim((-250, 100))
+        self.ax.set_ylim((-2, 1))
+        #self.ax.set_xlim(self.IV.V_range)
+        #self.ax.set_ylim(self.IV.I_range)
+
+
 class IVSeriesSimple:
     def __init__(self, S, R):
         self.S, self.R = S, R
@@ -821,12 +845,31 @@ class IVSeriesSimple:
         Ifit_masked = ma.masked_array(Ifit, ~self.mask)
         return CurrentSignal(Ifit_masked, t, V=V)
 
+    def get_Sfit_at_event(self, t_event, PP='PP'):
+        PP = getattr(self, PP)
+        ind = PP._findind(np.array([t_event]))[0]
+        s = slice(PP.i0[ind], PP.i1[ind])
+
+        S = self.S
+        V, I, t = S.V.x[s], S.x[s], S.t[s]
+        p = PP._polyval(t, ind.repeat(t.size)).T
+        Ifit = FitterIV.fitfun(p, V)
+        return V, I, Ifit, t
+
     def plot(self, ax=None, PP='PP', PP2='PP2'):
         ax = get_axes(ax)
         self.S.plot(ax=ax)
         self.get_Sfit(PP=PP).plot(ax=ax)
-        self.get_Sfit(PP=PP2).plot(ax=ax, linewidth=2)
+        self.get_Sfit(PP=PP2).plot(ax=ax)
         return ax
+
+    def plot2(self, fig=None):
+        if fig is None:
+            viewer = IVSeriesSimpleViewer(self)
+            fig = viewer.get_fig()
+
+        ax = fig.axes[0]
+        self.S.plot(ax=ax)
 
 
 class PhysicalResults:
