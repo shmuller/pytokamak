@@ -8,7 +8,7 @@ import warnings
 
 import logging
 reload(logging)
-logging.basicConfig(level=logging.WARN)
+logging.basicConfig(level=logging.DEBUG)
 logger = logging
 
 from pdb import set_trace
@@ -16,6 +16,8 @@ from pdb import set_trace
 from sig import *
 
 import LP.fitfun
+
+from sm_pyplot.contextmenupicker import ContextMenuPicker
 
 class ArrayView(np.ndarray):
     def __new__(subtype, x, fields):
@@ -35,18 +37,25 @@ class MouseMotionObserverViewer:
         self.cid = self.observer_canvas.mpl_connect('motion_notify_event', self.on_move)
         self.viewer_canvas.mpl_connect('resize_event', self.on_resize)
 
+        # no way to avoid a double redraw
+        self.viewer.callbacks.connect('xlim_changed', self.on_resize)
+        self.viewer.callbacks.connect('ylim_changed', self.on_resize)
+
+        # save existing artists and make background snapshot image
+        self.bglines = self.viewer.lines[:]
+        self.lines = []
         self.on_resize(None)
 
     def on_resize(self, event):
         logger.debug("Resizing")
-        save_vis = [line.get_visible() for line in self.viewer.lines]
-        for line in self.viewer.lines:
+        save_vis = [line.get_visible() for line in self.lines]
+        for line in self.lines:
             line.set_visible(False)
         
         self.viewer_canvas.draw()
         self.background = self.viewer_canvas.copy_from_bbox(self.viewer.bbox)
         
-        for line, vis in zip(self.viewer.lines, save_vis):
+        for line, vis in zip(self.lines, save_vis):
             line.set_visible(vis)
             self.viewer.draw_artist(line)
 
@@ -55,9 +64,9 @@ class MouseMotionObserverViewer:
         if event.inaxes in self.observers:
             self.viewer_canvas.restore_region(self.background)
                 
-            self.plotfun(event)
+            self.lines = self.plotfun(event)
 
-            for line in self.viewer.lines:
+            for line in self.lines:
                 self.viewer.draw_artist(line)
             self.viewer_canvas.blit(self.viewer.bbox)
 
@@ -65,10 +74,14 @@ class MouseMotionObserverViewer:
         logger.debug("Destroying")
         self.observer_canvas.mpl_disconnect(self.cid)
 
+        # delete blitted artists and redraw
+        self.viewer.lines = self.bglines[:]
+        self.lines = []
+
 
 class ToggleViewer:
     def __init__(self, menu_entry='Viewer'):
-        self.menu_entry = menu_entry
+        self.menu_entries_ax = ((menu_entry, self.toggle),)
         self.MMOV = None
 
     def on_close(self, event):
@@ -79,17 +92,21 @@ class ToggleViewer:
         # plot on self.ax
         pass
 
-    def viewer(self):
+    def viewer(self, event):
         # assign self.ax
         pass
 
     def toggle(self, event):
         fig = event.inaxes.figure
         if self.MMOV is not None:
-            self.MMOV.viewer_canvas.manager.destroy()
+            if fig == self.MMOV.viewer.figure:
+                self.MMOV = None
+                fig.canvas.draw()
+            else:
+                self.MMOV.viewer_canvas.manager.destroy()
             return
 
-        self.viewer()
+        self.viewer(event)
         fig2 = self.ax.figure
 
         fig2.canvas.mpl_connect('close_event', self.on_close)
@@ -98,9 +115,7 @@ class ToggleViewer:
         fig2.show()
 
     def get_fig(self, **kw):
-        menu_entries_ax = ((self.menu_entry, self.toggle),)
-
-        fig = get_fig(menu_entries_ax=menu_entries_ax, **kw)
+        fig = get_fig(menu_entries_ax=self.menu_entries_ax, **kw)
 
         fig.toggle_viewer = self
         return fig
@@ -118,7 +133,7 @@ class IVSeriesViewer(ToggleViewer):
         i = min(np.searchsorted(ti, t_event), ti.size-1)
         self.IV_series.IV_group[i].plot(self.ax, 'get_xy')
 
-    def viewer(self):
+    def viewer(self, event):
         fig = get_tfig(figsize=(6,5), xlab="V [V]")
         self.ax = fig.axes[0]
         self.ax.set_ylabel("I [A]")
@@ -732,15 +747,44 @@ class IVSeriesSimpleViewer(ToggleViewer):
         self.ax.lines = []
         return self.ax.plot(V, I, 'b-', V, Ifit, 'r-')
 
-    def viewer(self):
-        fig = get_tfig(figsize=(6,5), xlab="V [V]")
+    def viewer(self, event):
+        fig = get_tfig(figsize=(6,5), xlab="V (V)")
         self.ax = fig.axes[0]
-        self.ax.set_ylabel("I [A]")
+        self.ax.set_ylabel("I (A)")
         self.ax.set_xlim((-250, 100))
         self.ax.set_ylim((-2, 1))
         #self.ax.set_xlim(self.IV.V_range)
         #self.ax.set_ylim(self.IV.I_range)
 
+
+class IVSeriesSimpleViewer2(ToggleViewer):
+    def __init__(self, IV):
+        self.IV = IV
+
+        ToggleViewer.__init__(self, 'IV viewer 2')
+
+    def plotfun(self, event):
+        t_event = event.xdata
+        V, I, Ifit, t = self.IV.get_Sfit_at_event(t_event, PP='PP2')
+        dt = t - t[0]
+
+        self.ax.lines = self.MMOV.bglines[:]
+        lines = self.ax.plot(t, I, 'k-')
+        lines_fit = self.ax.plot(t, Ifit, 'r-', linewidth=1.5)
+        return lines + lines_fit
+
+    def viewer(self, event):
+        self.ax = event.inaxes
+        self.ax.set_autoscale_on(False)
+        """
+        fig = get_tfig(figsize=(6,5), xlab="t (s)")
+        self.ax = fig.axes[0]
+        self.ax.set_ylabel("I (A)")
+        self.ax.set_xlim((0, 0.0025))
+        self.ax.set_ylim((-2, 1))
+        #self.ax.set_xlim(self.IV.V_range)
+        #self.ax.set_ylim(self.IV.I_range)
+        """
 
 class IVSeriesSimple:
     def __init__(self, S, R):
@@ -774,7 +818,7 @@ class IVSeriesSimple:
         shift = -(n // (2*incr))
         return sl, sr, i0, i1, ind, out, shift
 
-    def fit(self, n=1, incr=1, **kw):
+    def _fit_const(self, n=1, incr=1, **kw):
         sl, sr, i0, i1, ind, out, shift = self._prepare(n, incr, 3)
         
         S = self.S
@@ -789,8 +833,7 @@ class IVSeriesSimple:
                 self.mask[s][fitter_IV.get_ind()] = True
             except FitterError:
                 pass
-        self.PP = PiecewisePolynomial(out[None], t, i0=i0, i1=i1, shift=shift)
-        return self.PP
+        return PiecewisePolynomial(out[None], t, i0=i0, i1=i1, shift=shift)
 
     def _fit_linear(self, FitterIVClass, n=5, incr=1, **kw):
         sl, sr, i0, i1, ind, out, shift = self._prepare(n, incr, 6)
@@ -831,11 +874,29 @@ class IVSeriesSimple:
 
         return PiecewisePolynomial(c, t, i0=i0, i1=i1, shift=shift)
 
+    def fit(self, **kw):
+        self.PP = self._fit_const(**kw)
+
     def fit2(self, **kw):
         self.PP2 = self._fit_linear(FitterIV2, **kw)
 
     def fit3(self, **kw):
         self.PP3 = self._fit_linear(FitterIV3, **kw)
+
+    @memoized_property
+    def PP(self):
+        print "Calculating PP..."
+        return self._fit_const()
+
+    @memoized_property
+    def PP2(self):
+        print "Calculating PP2..."
+        return self._fit_linear(FitterIV2)
+
+    @memoized_property
+    def PP3(self):
+        print "Calculating PP3..."
+        return self._fit_linear(FitterIV3)
 
     def get_Sfit(self, PP='PP'):
         t, V = self.S.t, self.S.V
@@ -865,8 +926,15 @@ class IVSeriesSimple:
 
     def plot2(self, fig=None):
         if fig is None:
-            viewer = IVSeriesSimpleViewer(self)
-            fig = viewer.get_fig()
+            fig = get_fig()
+
+            self.viewer = IVSeriesSimpleViewer(self)
+            self.viewer2 = IVSeriesSimpleViewer2(self)
+
+            menu_entries_ax = self.viewer.menu_entries_ax + self.viewer2.menu_entries_ax
+
+            fig.context_menu_picker = ContextMenuPicker(
+                    fig, menu_entries_ax=menu_entries_ax)
 
         ax = fig.axes[0]
         self.S.plot(ax=ax)
