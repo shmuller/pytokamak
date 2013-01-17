@@ -827,13 +827,12 @@ class IVSeriesSimple:
 
     def get_Sfit_at_event(self, t_event, PP='PP'):
         PP = getattr(self, PP)
-        ind = PP._findind(np.array([t_event]))[0]
-        s = slice(PP.i0[ind], PP.i1[ind])
+        s, p = PP.eval_at_event(t_event)
 
         S = self.S
         V, I, t = S.V.x[s], S.x[s], S.t[s]
-        p = PP._polyval(t, ind.repeat(t.size)).T
-        Ifit = FitterIV.fitfun(p, V)
+                
+        Ifit = FitterIV.fitfun(p.T, V)
         return V, I, Ifit, t
 
     def plot(self, ax=None, PP='PP', PP2='PP2'):

@@ -233,6 +233,13 @@ class PiecewisePolynomial:
             Y = Y*dX + a[ind]
         return Y
 
+    def eval_at_event(self, x_event):
+        ind = self._findind(np.array([x_event]))[0]
+        s = slice(self.i0[ind], self.i1[ind])
+        x = self.x[s]
+        y = self._polyval(x, ind.repeat(x.size))
+        return s, y
+
     @memoized_property
     def T(self):
         return self.__class__(self.c.swapaxes(2,3), self.x, **self.kw)
