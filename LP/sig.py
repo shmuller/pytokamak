@@ -101,6 +101,10 @@ class DictView(MutableMapping):
         self.valid_keys.remove(key)
 
 
+def dict_pop(d, **kw):
+    return {k: d.pop(k, kw[k]) for k in kw.keys()}
+
+
 class NodeInterpolator:
     def __init__(self, n):
         self.n = n
@@ -274,8 +278,12 @@ class PiecewisePolynomial:
         yr = self._polyval(xr, indl)
         return self._eval_prepare_output(il, yl, ir, yr, pad)
 
-    def plot(self, ax=None, x=None, w=None, pad=False, **kw):
-        i, y = self.eval(w=w, pad=pad)
+    @staticmethod
+    def _pop_eval_params(kw):
+        return dict_pop(kw, w=None, pad=False)
+    
+    def plot(self, ax=None, x=None, **kw):
+        i, y = self.eval(**self._pop_eval_params(kw))
 
         if x is None:
             x = self.x
@@ -321,7 +329,7 @@ class PiecewisePolynomialEndpoints(PiecewisePolynomial):
         y = self._polyval(x, ind.repeat(x.size))
         return s, y
 
-    def eval(self, w=None, ext=False, pad=False, shift=None):
+    def eval(self, w=None, pad=False, ext=False, shift=None):
         if shift is None:
             shift = self.shift
 
@@ -350,19 +358,12 @@ class PiecewisePolynomialEndpoints(PiecewisePolynomial):
         yr = self._polyval(xr, indl_shift)
         return self._eval_prepare_output(il, yl, ir, yr, pad)
 
-    def plot(self, ax=None, x=None, w=None, ext=False, pad=False, shift=None, **kw):
-        i, y = self.eval(w=w, ext=ext, pad=pad, shift=shift)
+    @staticmethod
+    def _pop_eval_params(kw):
+        return dict_pop(kw, w=None, pad=False, ext=False, shift=None)
         
-        if x is None:
-            x = self.x
-        x = x[i]
-                
-        ax = get_axes(ax)
-        ax.plot(x, y, **kw)
-        return ax
-
     def plot_ext(self, *args, **kw):
-        return self.plot(*args, ext=True, pad=True, **kw)
+        return self.plot(*args, pad=True, ext=True, **kw)
 
 
 class IOH5:
