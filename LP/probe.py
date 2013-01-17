@@ -751,7 +751,7 @@ class IVSeriesSimple:
                 self.mask[s][fitter_IV.get_ind()] = True
             except FitterError:
                 pass
-        return PiecewisePolynomial(out[None], t, i0=i0, i1=i1, shift=shift)
+        return PiecewisePolynomialEndpoints(out[None], t, i0=i0, i1=i1, shift=shift)
 
     def _fit_linear(self, FitterIVClass, n=5, incr=1, **kw):
         sl, sr, i0, i1, ind, out, shift = self._prepare(n, incr, 6)
@@ -790,7 +790,7 @@ class IVSeriesSimple:
         c[0] -= c[1]
         c[0] /= dt[:, None]
 
-        return PiecewisePolynomial(c, t, i0=i0, i1=i1, shift=shift)
+        return PiecewisePolynomialEndpoints(c, t, i0=i0, i1=i1, shift=shift)
 
     def fit(self, **kw):
         self.PP = self._fit_const(**kw)
