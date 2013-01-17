@@ -174,22 +174,24 @@ class PiecewisePolynomial:
         if isinstance(self.c, (tuple, list)):
             self.c = np.concatenate([c[None] for c in self.c], axis=0)
 
+        self.N = self.c.shape[1]
+        self.shape = self.c.shape[2:]
+        self.bcast = (-1,) + (1,)*len(self.shape)
+        self.NI = NodeInterpolator(self.c.shape[0])
+
         self.fill = kw.get('fill', None)
-        self.shift = kw.get('shift', 0)
         self.i0 = kw.get('i0', np.arange(x.size))
 
+        self.shift = kw.get('shift', 0)
         self.i1 = kw.get('i1', None)
         if self.i1 is not None:
             if self.i1.size != self.i0.size:
                 raise Exception("i1 and i0 must have same size")
             self.i0 = np.concatenate((self.i0, self.i1[-1:]))
 
-        self.N = self.c.shape[1]
-        self.shape = self.c.shape[2:]
-        self.bcast = (-1,) + (1,)*len(self.shape)
-
-        self.xi = self.x[self.i0]
-        self.NI = NodeInterpolator(self.c.shape[0])
+    @memoized_property
+    def xi(self):
+        return self.x[self.i0]
 
     def __getitem__(self, index):
         if not isinstance(index, tuple): 
@@ -576,9 +578,9 @@ class Signal:
     def range(self):
         return np.nanmin(self.x), np.nanmax(self.x)
 
-    def plot_range(self):
+    def plot_range(self, r=0.001):
         x = np.sort(self.x)
-        i = np.round(np.array([0.001, 0.999])*(x.size-1)).astype('i')
+        i = np.round(np.array([r, 1. - r])*(x.size-1)).astype('i')
         return tuple(x[i])
 
     def norm_to_region(self, cnd):

@@ -643,14 +643,14 @@ class IVSeries2:
 
 
 class IVSeriesSimpleViewerIV(ToggleViewer):
-    def __init__(self, IV):
-        self.IV = IV
+    def __init__(self, IV, PP='PP2'):
+        self.IV, self.PP = IV, PP
 
         ToggleViewer.__init__(self, 'IV viewer')
 
     def plotfun(self, event):
         t_event = event.xdata
-        V, I, Ifit, t = self.IV.get_Sfit_at_event(t_event, PP='PP2')
+        V, I, Ifit, t = self.IV.get_Sfit_at_event(t_event, PP=self.PP)
 
         self.clear()
         return self.ax.plot(V, I, 'b-', V, Ifit, 'r-')
@@ -659,21 +659,19 @@ class IVSeriesSimpleViewerIV(ToggleViewer):
         fig = get_tfig(figsize=(6,5), xlab="V (V)")
         self.ax = fig.axes[0]
         self.ax.set_ylabel("I (A)")
-        self.ax.set_xlim((-250, 100))
-        self.ax.set_ylim((-2, 1))
-        #self.ax.set_xlim(self.IV.V_range)
-        #self.ax.set_ylim(self.IV.I_range)
+        self.ax.set_xlim(self.IV.S.V.plot_range(r=0))
+        self.ax.set_ylim(self.IV.S.plot_range(r=0))
 
 
 class IVSeriesSimpleViewerIt(ToggleViewer):
-    def __init__(self, IV):
-        self.IV = IV
+    def __init__(self, IV, PP='PP2'):
+        self.IV, self.PP = IV, PP
 
         ToggleViewer.__init__(self, 'I(t) viewer')
 
     def plotfun(self, event):
         t_event = event.xdata
-        V, I, Ifit, t = self.IV.get_Sfit_at_event(t_event, PP='PP2')
+        V, I, Ifit, t = self.IV.get_Sfit_at_event(t_event, PP=self.PP)
         dt = t - t[0]
 
         self.clear()
@@ -683,21 +681,22 @@ class IVSeriesSimpleViewerIt(ToggleViewer):
         fig = get_tfig(figsize=(6,5), xlab="$\Delta$t (s)")
         self.ax = fig.axes[0]
         self.ax.set_ylabel("I (A)")
-        self.ax.set_xlim((0, 0.0025))
-        self.ax.set_ylim((-2, 1))
-        #self.ax.set_xlim(self.IV.V_range)
-        #self.ax.set_ylim(self.IV.I_range)
+
+        PP = getattr(self.IV, self.PP)
+        dtM = np.diff(PP.x[np.array((PP.i0[0], PP.i1[0]))])
+        self.ax.set_xlim((0, dtM))
+        self.ax.set_ylim(self.IV.S.plot_range(r=0))
 
 
 class IVSeriesSimpleViewerItIntegrated(ToggleViewerIntegrated):
-    def __init__(self, IV):
-        self.IV = IV
+    def __init__(self, IV, PP='PP2'):
+        self.IV, self.PP = IV, PP
 
         ToggleViewerIntegrated.__init__(self, 'I(t) integrated viewer')
 
     def plotfun(self, event):
         t_event = event.xdata
-        V, I, Ifit, t = self.IV.get_Sfit_at_event(t_event, PP='PP2')
+        V, I, Ifit, t = self.IV.get_Sfit_at_event(t_event, PP=self.PP)
 
         self.clear()
         lines = self.ax.plot(t, I, 'k-')
@@ -859,6 +858,8 @@ class IVSeriesSimple:
 
         ax = fig.axes[0]
         self.S.plot(ax=ax)
+        self.get_Sfit(PP='PP2').plot(ax=ax)
+        return ax
 
 
 class PhysicalResults:
