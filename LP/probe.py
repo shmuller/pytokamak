@@ -288,13 +288,13 @@ class FitterIV(Fitter):
         self.p  = self.LP_unnormalize(self.P )
 
     def set_guess(self):
-        def find_i0(x):
-            return np.flatnonzero(np.diff(np.sign(x)))[-1]
+        def zero_crossings(x):
+            return np.flatnonzero(np.diff(np.sign(x)))
 
         V, I = self.get_norm()
         I0 = 1.
-        i0 = find_i0(I)
-        Vf = (V[i0]+V[i0+1])/2
+        i0 = zero_crossings(I)
+        Vf = np.mean((V[i0] + V[i0+1])/2)
         Te = (V[self.im]-Vf)/np.log(1-I[self.im]/I0)
 
         self.P0 = np.array([I0, Vf, Te])

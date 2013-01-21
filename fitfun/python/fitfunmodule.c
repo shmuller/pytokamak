@@ -6,6 +6,46 @@
 
 #include <minpack.h>
 
+void e2(data *D)
+{
+    int i;
+    double *P = D->P, *x = D->x, *y = D->y;
+    double P0 = P[0], P1 = P[1];
+
+    for (i=D->m; i--; ) {
+        *y++ = P0*exp(-P1*(*x++));
+    }
+}
+
+void e2_diff(data *D)
+{
+    int i;
+    double *P = D->P, *x = D->x, *y = D->y, *ydata = D->ydata;
+    double P0 = P[0], P1 = P[1];
+
+    for (i=D->m; i--; ) {
+        *y++ = P0*exp(-P1*(*x++)) - *ydata++;
+    }
+}
+
+void e2_fit(data *D)
+{
+    leastsq(e2_diff, D);
+}
+
+double e2_rms(data *D)
+{
+    int i;
+    double *P = D->P, *x = D->x, *y = D->y;
+    double P0 = P[0], P1 = P[1];
+    double dy2 = 0., dy;
+
+    for (i=D->m; i--; ) {
+        dy = P0*exp(-P1*(*x++)) - *y++;
+        dy2 += dy*dy;
+    }
+    return sqrt(dy2) / D->m;
+}
 
 void IV3(data *D)
 {
@@ -216,6 +256,11 @@ static PyObject* meth_##fun(PyObject *self, PyObject *args) { \
     return Py_BuildValue("d", d);                             \
 }
 
+meth_template_passthru(e2, parse_args, 2)
+meth_template_passthru(e2_diff, parse_args_ydata, 2)
+meth_template_passthru(e2_fit, parse_args_ydata, 0)
+meth_template_double(e2_rms, parse_args)
+
 meth_template_passthru(IV3, parse_args, 2)
 meth_template_passthru(IV3_diff, parse_args_ydata, 2)
 meth_template_passthru(IV3_fit, parse_args_ydata, 0)
@@ -233,6 +278,10 @@ meth_template_double(IV6_rms, parse_args_a)
 
 
 static PyMethodDef methods[] = {
+    {"e2", meth_e2, METH_VARARGS, "Exp with 2 parameters"},
+    {"e2_diff", meth_e2_diff, METH_VARARGS, "Difference to Exp with 2 parameters"},
+    {"e2_fit", meth_e2_fit, METH_VARARGS, "Fit Exp with 2 parameters"},
+    {"e2_rms", meth_e2_rms, METH_VARARGS, "rms for Exp with 2 parameters"},
     {"IV3", meth_IV3, METH_VARARGS, "IV curve with 3 parameters"},
     {"IV3_diff", meth_IV3_diff, METH_VARARGS, "Difference to IV curve with 3 parameters"},
     {"IV3_fit", meth_IV3_fit, METH_VARARGS, "Fit IV curve with 3 parameters"},
