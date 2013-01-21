@@ -15,7 +15,10 @@ from pdb import set_trace
 
 from sig import *
 
-import LP.fitfun
+try:
+    import LP.fitfun as ff
+except ImportError:
+    import fitfun as ff
 
 from sm_pyplot.contextmenupicker import ContextMenuPicker
 from sm_pyplot.observer_viewer import ToggleViewer, ToggleViewerIntegrated
@@ -324,10 +327,10 @@ class FitterIV(Fitter):
         iP2 = 1./P[2]
         return P[0]*(1.-np.exp((X-P[1])*iP2))
 
-    custom_engine = LP.fitfun.IV3_fit
-    fitfun_fast = LP.fitfun.IV3
-    fitfun_diff = LP.fitfun.IV3_diff
-    fitfun_rms = LP.fitfun.IV3_rms
+    custom_engine = ff.IV3_fit
+    fitfun_fast = ff.IV3
+    fitfun_diff = ff.IV3_diff
+    fitfun_rms = ff.IV3_rms
 
     def fit(self):
         Fitter.fit(self)
@@ -569,10 +572,10 @@ class FitterIV2(Fitter):
         Te = p[2] + a*(p[5]-p[2])
         return Is*(1.-np.exp((V-Vf)/Te))
 
-    custom_engine = LP.fitfun.IV6_fit
-    fitfun_fast = LP.fitfun.IV6
-    fitfun_diff = LP.fitfun.IV6_diff
-    fitfun_rms = LP.fitfun.IV6_rms
+    custom_engine = ff.IV6_fit
+    fitfun_fast = ff.IV6
+    fitfun_diff = ff.IV6_diff
+    fitfun_rms = ff.IV6_rms
 
 
 class FitterIV3(FitterIV2):
@@ -590,10 +593,10 @@ class FitterIV3(FitterIV2):
     def set_guess(self):
         self.P0 = self.p0[self.perm] / self.fact
 
-    custom_engine = LP.fitfun.IV4_fit
-    fitfun_fast = LP.fitfun.IV4
-    fitfun_diff = LP.fitfun.IV4_diff
-    fitfun_rms = LP.fitfun.IV4_rms
+    custom_engine = ff.IV4_fit
+    fitfun_fast = ff.IV4
+    fitfun_diff = ff.IV4_diff
+    fitfun_rms = ff.IV4_rms
 
 
 class IVSeries2:
