@@ -640,6 +640,10 @@ class Signal:
         dx_dt = (x1 - x0)/(t1 - t0)
         return PiecewisePolynomial((dx_dt, x0), t)
 
+    def interp(self, ti):
+        xi = self.PP(ti)
+        return self.__class__(xi, ti, **self.kw)
+
     def smooth(self, w=100):
         self.x[:] = smooth(self.x, window_len=2*w+1)
         return self
