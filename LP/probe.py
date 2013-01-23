@@ -104,11 +104,7 @@ class Fitter:
         return opt.fmin(self.fun_rms, p0, args=args, disp=False)
 
     def fit_odr(self, p0, x, y, *args):
-        mod = odr.Model(self.fun, extra_args=args)
-        dat = odr.Data(x, y)
-        o = odr.ODR(dat, mod, p0)
-        out = o.run()
-        return out.beta
+        return odr.odr(self.fun, p0, y, x, extra_args=args)[0]
 
     def fit_leastsq(self, p0, *args):
         return opt.leastsq(self.fun_diff, p0, args=args)[0]
