@@ -215,10 +215,11 @@ class PiecewisePolynomial:
     def _polyval(self, X, ind):
         dX = (X - self.xi[ind]).reshape(self.bcast)
         
-        c = self.c
-        Y = c[0, ind].copy()
+        c = self.c[:, ind]
+        Y = c[0].copy()
         for a in c[1:]:
-            Y = Y*dX + a[ind]
+            Y *= dX
+            Y += a
         return Y
 
     def eval_at_event(self, x_event):

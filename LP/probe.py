@@ -624,17 +624,22 @@ class IVSeriesSimpleViewerIV(ToggleViewer):
 
     def plotfun(self, event):
         t_event = event.xdata
-        V, I, Ifit, t = self.IV.get_Sfit_at_event(t_event, PP=self.PP)
+        res = self.IV.get_Sfit_at_event(t_event, PP=self.PP)
+        if not isinstance(res, list):
+            res = [res]
 
         self.clear()
-        return self.ax.plot(V, I, 'b-', V, Ifit, 'r-')
+        lines = []
+        for V, I, Ifit, t in res:
+            lines += self.ax.plot(V, I, 'b-', V, Ifit, 'r-')
+        return lines
 
     def viewer(self, event):
         fig = get_tfig(figsize=(6,5), xlab="V (V)")
         self.ax = fig.axes[0]
         self.ax.set_ylabel("I (A)")
-        self.ax.set_xlim(self.IV.S.V.plot_range(r=0))
-        self.ax.set_ylim(self.IV.S.plot_range(r=0))
+        self.ax.set_xlim(self.IV.plot_range_V())
+        self.ax.set_ylim(self.IV.plot_range_I())
 
 
 class IVSeriesSimpleViewerIt(ToggleViewer):
@@ -645,21 +650,24 @@ class IVSeriesSimpleViewerIt(ToggleViewer):
 
     def plotfun(self, event):
         t_event = event.xdata
-        V, I, Ifit, t = self.IV.get_Sfit_at_event(t_event, PP=self.PP)
-        dt = t - t[0]
-
+        res = self.IV.get_Sfit_at_event(t_event, PP=self.PP)
+        if not isinstance(res, list):
+            res = [res]
+        
         self.clear()
-        return self.ax.plot(dt, I, 'b-', dt, Ifit, 'r-')
+        lines = []
+        for V, I, Ifit, t in res:
+            dt = t - t[0]
+            lines += self.ax.plot(dt, I, 'b-', dt, Ifit, 'r-')
+        return lines
 
     def viewer(self, event):
         fig = get_tfig(figsize=(6,5), xlab="$\Delta$t (s)")
         self.ax = fig.axes[0]
         self.ax.set_ylabel("I (A)")
 
-        PP = getattr(self.IV, self.PP)
-        dtM = np.diff(PP.x[np.array((PP.i0[0], PP.i1[0]))])
-        self.ax.set_xlim((0, dtM))
-        self.ax.set_ylim(self.IV.S.plot_range(r=0))
+        self.ax.set_xlim(self.IV.plot_range_dt(self.PP))
+        self.ax.set_ylim(self.IV.plot_range_I())
 
 
 class IVSeriesSimpleViewerItIntegrated(ToggleViewerIntegrated):
@@ -808,6 +816,17 @@ class IVSeriesSimple:
         Ifit = FitterIV.fitfun(p.T, V)
         return V, I, Ifit, t
 
+    def plot_range_dt(self, PP='PP'):
+        PP = getattr(self, PP)
+        dtM = np.diff(PP.x[np.array((PP.i0[0], PP.i1[0]))])
+        return (0, dtM)
+
+    def plot_range_V(self, r=0):
+        return self.S.V.plot_range(r)
+
+    def plot_range_I(self, r=0):
+        return self.S.plot_range(r)
+
     def plot(self, ax=None, PP='PP', PP2='PP2'):
         ax = get_axes(ax)
         self.S.plot(ax=ax)
@@ -834,6 +853,84 @@ class IVSeriesSimple:
         self.S.plot(ax=ax)
         self.get_Sfit(PP='PP2').plot(ax=ax)
         return ax
+
+    def plot_res(self, fig=None):
+        if fig is None:
+            xlab = 't (s)'
+            ylab = ('Isat (A)', 'Vf (V)', 'Te (eV)')
+            fig = get_fig(shape=(3, 1), figsize=(10, 10),
+                          xlab=xlab, ylab=ylab)
+
+            self.viewers = (IVSeriesSimpleViewerIV(self),
+                            IVSeriesSimpleViewerIt(self))
+            
+            menu_entries_ax = []
+            for v in self.viewers:
+                menu_entries_ax += v.menu_entries_ax
+
+            fig.context_menu_picker = ContextMenuPicker(
+                    fig, menu_entries_ax=menu_entries_ax)
+
+        for ax, PP in zip(fig.axes, self.PP2):
+             PP.plot(ax=ax)
+        return fig
+
+
+class IVSeriesSimpleGroup:
+    def __init__(self, S, R):
+        self.x = [IVSeriesSimple(s, R) for s in S]
+
+    def get_Sfit_at_event(self, t_event, PP='PP'):
+        return [x.get_Sfit_at_event(t_event, PP) for x in self.x]
+
+    def _plot_range_factory(range_fun):
+        def plot_range(self, *args):
+            r = np.array([getattr(x, range_fun)(*args) for x in self.x])
+            return r[:,0].min(), r[:,1].max()
+        return plot_range
+
+    plot_range_dt = _plot_range_factory('plot_range_dt')
+    plot_range_V  = _plot_range_factory('plot_range_V')
+    plot_range_I  = _plot_range_factory('plot_range_I')
+
+    def plot(self):
+        n = len(self.x)
+        xlab = "t (%s)" % self.x[0].S.tunits
+        ylab = ["%s (%s)" % (x.S.name, x.S.units) for x in self.x]
+        fig = get_fig(shape=(n, 1), figsize=(10, 10), xlab=xlab, ylab=ylab)
+
+        self.viewers = (IVSeriesSimpleViewerIV(self),
+                        IVSeriesSimpleViewerIt(self))
+
+        menu_entries_ax = []
+        for v in self.viewers:
+            menu_entries_ax += v.menu_entries_ax
+
+        fig.context_menu_picker = ContextMenuPicker(
+                fig, menu_entries_ax=menu_entries_ax)
+
+        for ax, x in zip(fig.axes, self.x):
+            x.plot(ax=ax)
+
+    def plot_res(self):
+        xlab = "t (s)"
+        ylab = ('Isat (A)', 'Vf (V)', 'Te (eV)')
+        fig = get_fig(shape=(3, 1), figsize=(10, 10), xlab=xlab, ylab=ylab)
+
+        self.viewers = (IVSeriesSimpleViewerIV(self),
+                        IVSeriesSimpleViewerIt(self))
+
+        menu_entries_ax = []
+        for v in self.viewers:
+            menu_entries_ax += v.menu_entries_ax
+
+        fig.context_menu_picker = ContextMenuPicker(
+                fig, menu_entries_ax=menu_entries_ax)
+
+        for x in self.x:
+            for ax, PP in zip(fig.axes, x.PP2):
+                PP.plot(ax=ax)
+        return fig
 
 
 class PhysicalResults:
@@ -1055,8 +1152,8 @@ class Probe:
         self.digitizer = digitizer
         self.PP = None
 
-        self.xlab = "t [s]"
-        self.ylab = ("Isat [A]", "Vf [V]", "Te [eV]")
+        self.xlab = "t (s)"
+        self.ylab = ("Isat (A)", "Vf (V)", "Te (eV)")
 
     def __getitem__(self, index):
         if not isinstance(index, tuple):
@@ -1176,7 +1273,7 @@ class Probe:
         self.PP = self.IV_series.PP
 
     def calc_IV_series_simple(self):
-        return [IVSeriesSimple(I, self.S['Rs']) for I in self.I_swept]
+        return IVSeriesSimpleGroup(self.I_swept, self.S['Rs'])
 
     @memoized_property
     def IV_series_simple(self):
@@ -1278,12 +1375,12 @@ class Probe:
 
         if fig is None:
             IV_series_viewer = IVSeriesViewer(self.IV_series)
-            fig = IV_series_viewer.get_fig(shape=(3,1), xlab=xlab, figsize=(10,10))
+            fig = IV_series_viewer.get_fig(shape=(3,1), figsize=(10,10),
+                                           xlab=xlab, ylab=ylab)
 
         ax = fig.axes
         for i, pp in enumerate(PP.T):
             pp.plot(ax[i], x=x, w=w)
-            ax[i].set_ylabel(ylab[i])
 
         fig.canvas.draw()
         return fig
