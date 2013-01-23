@@ -4,6 +4,8 @@ import scipy.interpolate as interp
 import scipy.optimize as opt
 import scipy.odr as odr
 
+import minpack as mp
+
 import warnings
 
 import logging
@@ -38,20 +40,30 @@ class Fitter:
     def __init__(self, x, y, args=(), engine='custom', 
             use_rms=True, use_diff=True, use_fast=True):
         self.x, self.y, self.args = x, y, args
-        self.use_rms, self.use_diff, self.use_fast = use_rms, use_diff, use_fast
 
         self.OK = None
         self.X = self.Y = None
         self.P = self.P0 = None
         self.p = self.p0 = None
 
-        if engine == 'custom' and hasattr(self, 'custom_engine'):
-            def wrap_custom(p0, x, y, *args):
-                out = np.empty_like(x)
-                return self.custom_engine(p0.copy(), x, out, y, *args)
-            self.engine = wrap_custom
+        self.buf = np.empty_like(x)
+
+        if use_fast and hasattr(self, 'fitfun_fast'):
+            self.fun = self.factory_buf(self.fitfun_fast)
         else:
-            self.set_engine(engine)
+            self.fun = self.fitfun
+
+        if use_diff and hasattr(self, 'fitfun_diff'):
+            self.fun_diff = self.factory_buf(self.fitfun_diff)
+        else:
+            self.fun_diff = self.factory_diff(self.fun)
+
+        if use_rms and hasattr(self, 'fitfun_rms'):
+            self.fun_rms = self.fitfun_rms
+        else:
+            self.fun_rms = self.factory_rms(self.fun_diff)
+
+        self.set_engine(engine)
 
     # overload
     def set_OK(self):
@@ -70,84 +82,47 @@ class Fitter:
     def fitfun(P, X):
         pass
 
-    # static
-    def wrap_fmin(fun, x, y, *args):
-        def dy2(p):
-            dy = fun(p, x, *args) - y
+    # fitfunction factories
+    def factory_buf(self, fun):
+        def fun_buf(p, x, *args):
+            return fun(p, x, self.buf[:x.size], *args)
+        return fun_buf
+
+    def factory_diff(self, fun_buf):
+        def fun_diff(p, x, y, *args):
+            return fun_buf(p, x, *args) - y
+        return fun_diff
+
+    def factory_rms(self, fun_diff):
+        def fun_rms(*args):
+            dy = fun_diff(*args)
             return dy.dot(dy)/dy.size
-        return dy2
+        return fun_rms
 
-    def call_fmin(f, p0):
-        return opt.fmin(f, p0, disp=False)
+    # fitting engines
+    def fit_fmin(self, p0, *args):
+        return opt.fmin(self.fun_rms, p0, args=args, disp=False)
 
-    def wrap_odr(fun, x, y, *args):
-        mod = odr.Model(fun, extra_args=args)
+    def fit_odr(self, p0, x, y, *args):
+        mod = odr.Model(self.fun, extra_args=args)
         dat = odr.Data(x, y)
-        
-        def wrapper(p):
-            return odr.ODR(dat, mod, p)
-        return wrapper
-
-    def call_odr(f, p0):
-        o = f(p0)
+        o = odr.ODR(dat, mod, p0)
         out = o.run()
         return out.beta
 
-    def wrap_leastsq(fun, x, y, *args):
-        def dy(p):
-            return fun(p, x, *args) - y
-        return dy
+    def fit_leastsq(self, p0, *args):
+        return opt.leastsq(self.fun_diff, p0, args=args)[0]
 
-    def call_leastsq(f, p0):
-        return opt.leastsq(f, p0)[0]
+    def fit_leastsq2(self, p0, x, *args):
+        return mp.leastsq(self.fitfun_diff, (p0.copy(), x, self.buf[:x.size]) + args)
 
-    engines = dict(fmin=dict(wrap=wrap_fmin, call=call_fmin),
-                   odr=dict(wrap=wrap_odr, call=call_odr),
-                   leastsq=dict(wrap=wrap_leastsq, call=call_leastsq))
-
-    @staticmethod
-    def engine_factory(fun, wrap_fun, wrap_call):
-        def wrapper(p0, x, y, *args):
-            f = wrap_fun(fun, x, y, *args)
-            return wrap_call(f, p0)
-        return wrapper
-
-    @staticmethod
-    def prealloc(wrap_fun):
-        def wrapper(fun, x, y, *args):
-            out = np.empty_like(x)
-            return wrap_fun(fun, x, y, out, *args)
-        return wrapper
-
-    @staticmethod
-    def wrap_none(fun, x, y, *args):
-        def wrapper(p):
-            return fun(p, x, y, *args)
-        return wrapper
-
-    @staticmethod
-    def wrap_diff(fun, x, y, *args):
-        out = np.empty_like(x)
-        def wrapper(p):
-            return fun(p, x, out, y, *args).copy()
-        return wrapper
+    def fit_custom(self, p0, x, *args):
+        return self.custom_engine(p0.copy(), x, self.buf[:x.size], *args)
 
     def set_engine(self, engine):
-        e = self.engines[engine]
+        self.engine = getattr(self, 'fit_' + engine)
 
-        if engine == 'fmin' and self.use_rms and hasattr(self, 'fitfun_rms'):
-            self.engine = self.engine_factory(
-                    self.fitfun_rms, self.wrap_none, e['call'])
-        elif engine == 'leastsq' and self.use_diff and hasattr(self, 'fitfun_diff'):
-            self.engine = self.engine_factory(
-                    self.fitfun_diff, self.wrap_diff, e['call'])
-        elif self.use_fast and hasattr(self, 'fitfun_fast'):
-            self.engine = self.engine_factory(
-                    self.fitfun_fast, self.prealloc(e['wrap']), e['call'])
-        else:
-            self.engine = self.engine_factory(
-                    self.fitfun, e['wrap'], e['call'])
-
+    # static
     def is_OK(self):
         if self.OK is None:
             self.set_OK()
