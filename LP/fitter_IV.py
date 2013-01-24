@@ -1,7 +1,10 @@
 import numpy as np
+import numpy.ma as ma
+
+from itertools import cycle
 
 from sig import median, memoized_property, get_fig, get_tfig
-from sig import PiecewisePolynomialEndpoints
+from sig import CurrentSignal, PiecewisePolynomialEndpoints
 
 from fitter import Fitter, FitterError
 
@@ -207,8 +210,11 @@ class IVSeriesSimpleViewerIV(ToggleViewer):
 
         self.clear()
         lines = []
+        colorcycle = cycle(self.colors)
         for V, I, Ifit, t in res:
-            lines += self.ax.plot(V, I, 'b-', V, Ifit, 'r-')
+            color = colorcycle.next()
+            lines += self.ax.plot(V, I, color=color)
+            lines += self.ax.plot(V, Ifit, color=color, linewidth=1.0)
         return lines
 
     def viewer(self, event):
@@ -217,6 +223,7 @@ class IVSeriesSimpleViewerIV(ToggleViewer):
         self.ax.set_ylabel("I (A)")
         self.ax.set_xlim(self.IV.plot_range_V())
         self.ax.set_ylim(self.IV.plot_range_I())
+        self.colors = ('b', 'g', 'r', 'c')
 
 
 class IVSeriesSimpleViewerIt(ToggleViewer):
@@ -233,9 +240,12 @@ class IVSeriesSimpleViewerIt(ToggleViewer):
         
         self.clear()
         lines = []
+        colorcycle = cycle(self.colors)
         for V, I, Ifit, t in res:
             dt = t - t[0]
-            lines += self.ax.plot(dt, I, 'b-', dt, Ifit, 'r-')
+            color = colorcycle.next()
+            lines += self.ax.plot(dt, I, color=color)
+            lines += self.ax.plot(dt, Ifit, color=color, linewidth=1.5)
         return lines
 
     def viewer(self, event):
@@ -245,6 +255,7 @@ class IVSeriesSimpleViewerIt(ToggleViewer):
 
         self.ax.set_xlim(self.IV.plot_range_dt(self.PP))
         self.ax.set_ylim(self.IV.plot_range_I())
+        self.colors = ('b', 'g', 'r', 'c')
 
 
 class IVSeriesSimpleViewerItIntegrated(ToggleViewerIntegrated):
@@ -389,8 +400,9 @@ class IVSeriesSimple:
 
         S = self.S
         V, I, t = S.V.x[s], S.x[s], S.t[s]
-                
+        
         Ifit = FitterIV.fitfun(p.T, V)
+        Ifit = ma.masked_array(Ifit, ~self.mask[s])
         return V, I, Ifit, t
 
     def plot_range_dt(self, PP='PP'):
@@ -404,9 +416,10 @@ class IVSeriesSimple:
     def plot_range_I(self, r=0):
         return self.S.plot_range(r)
 
-    def plot_raw(self, fig=None, PP='PP'):
-        if fig is None:
+    def plot_raw(self, ax=None, PP='PP'):
+        if ax is None:
             fig = get_tfig()
+            ax = fig.axes[0]
 
             self.viewers = (IVSeriesSimpleViewerIV(self, PP=PP),
                             IVSeriesSimpleViewerIt(self, PP=PP),
@@ -419,13 +432,12 @@ class IVSeriesSimple:
             fig.context_menu_picker = ContextMenuPicker(
                     fig, menu_entries_ax=menu_entries_ax)
 
-        ax = fig.axes[0]
         self.S.plot(ax=ax)
         self.get_Sfit(PP=PP).plot(ax=ax)
         return ax
 
-    def plot_raw2(self, fig=None):
-        return self.plot_raw(fig=fig, PP='PP2')
+    def plot_raw2(self, ax=None):
+        return self.plot_raw(ax=ax, PP='PP2')
 
     def plot(self, fig=None, PP='PP'):
         if fig is None:
@@ -475,8 +487,8 @@ class IVSeriesSimpleGroup:
         ylab = ["%s (%s)" % (x.S.name, x.S.units) for x in self.x]
         fig = get_tfig(shape=(n, 1), figsize=(10, 10), xlab=xlab, ylab=ylab)
 
-        self.viewers = (IVSeriesSimpleViewerIV(self),
-                        IVSeriesSimpleViewerIt(self))
+        self.viewers = (IVSeriesSimpleViewerIV(self, PP=PP),
+                        IVSeriesSimpleViewerIt(self, PP=PP))
 
         menu_entries_ax = []
         for v in self.viewers:
@@ -486,7 +498,8 @@ class IVSeriesSimpleGroup:
                 fig, menu_entries_ax=menu_entries_ax)
 
         for ax, x in zip(fig.axes, self.x):
-            x.plot(ax=ax, PP=PP)
+            x.plot_raw(ax=ax, PP=PP)
+        return fig
 
     def plot_raw2(self, fig=None):
         return self.plot_raw(fig=fig, PP='PP2')

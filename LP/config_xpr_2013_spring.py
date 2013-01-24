@@ -43,21 +43,114 @@ def_XPR_pos = dict(dig='XPR_pos', amp_default=amp_default, lines=dict(XPR=lines_
 ############################################
 E = campaign.add_experiment(date="20130124")
 
-E.add(29289, "DAQ test, Mach DC, single 1 kHz",
+E.add(29289, "DAQ test, Mach DC, single 1 kHz, 13.5 Vpp, DAQ 5 s",
         head = headI_tip3sep,
         ampI1 = CurrentProbe1[20],
         ampI2 = CurrentProbe2[20],
         ampI3 = CurrentProbe3[20], 
         descr = """\
-            """,
+            Everything OK.""",
         stars = '', **def_XPR_pos)
 
-E.rep(29290, 29289, "Std H-mode, 10 cm, 1 s, single at 1 kHz sine",
+E.rep(29290, 29289, "Std H-mode, 10 cm, 1 s, single 1 kHz sine, 13.5 Vpp",
         times = 1.0,
         posit = 0.1,
         descr = """\
-            """,
+            Went well.""",
+        stars = '**')
+
+# Andreas Burkhart
+E.rep(29291, 29290, "single 1 kHz triangle, 12.5 Vpp, more negative",
+        descr = """\
+            Tip 1 arced. Sweeps on tip 3 look better. Density higher than
+            on last shot.""",
+        stars = '*')
+
+# Gregor Birkenmeier
+E.rep(29302, 29291, "600 kA, 2.5 T, 1.3 MW NBI, all the way through",
+        times = 3.4,
+        posit = 0.34,
+        descr = """\
+            Beam came on at 3.4 s, not 3.5 s.""",
+        stars = '*')
+
+E.rep(29303, 29302, "B = 1.8 T, 1.3 MW NBI, 3.3 s, all on sweeps, 13.5 Vpp, 1 kHz",
+        times = 3.3,
+        posit = 0.34,
+        descr = """\
+            Second 100 V power supply was off. Overheating on way out.""",
+        stars = '**')
+
+E.rep(29304, 29303, "B = 1.2 T, switch 2nd Kepco on, didn't run",
+        times = 3.3,
+        posit = 0.34,
+        descr = "",
+        stars = '')
+
+E.rep(29305, 29304, "Repeat, didn't run",
+        times = 3.3,
+        posit = 0.34,
+        descr = "",
+        stars = '')
+
+E.rep(29306, 29305, "1.4 T, 800 kW",
+        times = 3.3,
+        posit = 0.34,
+        descr = "Good data.",
+        stars = '****')
+
+# Stefan Muller
+E.rep(29307, 29306, "Repeat with Mach at -200 V",
+        times = 3.3,
+        posit = 0.34,
+        descr = "Great! Arc only late on way out.",
+        stars = '*****')
+
+# Gregor Birkenmeier
+E.rep(29308, 29307, "B = 3.2 T, 1.6 MW, all on sweeps, single more pos",
+        times = 3.3,
+        posit = 0.34,
+        descr = "Overheat pretty early. Late L-H transition.",
+        stars = '**')
+
+E.rep(29309, 29308, "B = 2.5 T, 1.6 MW, all on sweeps, single more neg",
+        times = 3.3,
+        posit = 0.34,
+        descr = "Better. Mach signals OK.",
         stars = '***')
+
+E.rep(29310, 29309, "400 kA, B = 1.4 T, 0.8 MW, Mach -200 V, 50 ms later, sweep at 0.4 kHz",
+        times = 3.35,
+        posit = 0.34,
+        descr = "Already in H-mode, but nice data all the way across.",
+        stars = '****')
+
+# Stefan Muller
+E.rep(29311, 29310, "600 kA, B = 1.8 T, 1.0 MW, sweep at 0.7 kHz",
+        times = 3.35,
+        posit = 0.34,
+        descr = "Already in H-mode again, nice data almost until dwell.",
+        stars = '****')
+
+E.rep(29312, 29311, "Repeat, plunge 50 ms earlier, sweep at 1 kHz",
+        times = 3.30,
+        posit = 0.34,
+        descr = """\
+            Arced again, L-mode data complimentory to H-mode data in previous shot.""",
+        stars = '***')
+
+# Gregor Birkenmeier
+E.rep(29313, 29312, "2.1 MW at 3.0 s, so plunge at 2.7 s",
+        times = 2.70,
+        posit = 0.34,
+        descr = "Didn't run",
+        stars = '')
+
+E.rep(29315, 29313, "Repeat 29313",
+        times = 2.70,
+        posit = 0.34,
+        descr = "Nice L-mode data all the way through.",
+        stars = '****')
 
 
 
