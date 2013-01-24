@@ -406,7 +406,7 @@ class IVSeriesSimple:
 
     def plot_raw(self, fig=None, PP='PP'):
         if fig is None:
-            fig = get_fig()
+            fig = get_tfig()
 
             self.viewers = (IVSeriesSimpleViewerIV(self, PP=PP),
                             IVSeriesSimpleViewerIt(self, PP=PP),
@@ -431,8 +431,8 @@ class IVSeriesSimple:
         if fig is None:
             xlab = 't (s)'
             ylab = ('Isat (A)', 'Vf (V)', 'Te (eV)')
-            fig = get_fig(shape=(3, 1), figsize=(10, 10),
-                          xlab=xlab, ylab=ylab)
+            fig = get_tfig(shape=(3, 1), figsize=(10, 10),
+                           xlab=xlab, ylab=ylab)
 
             self.viewers = (IVSeriesSimpleViewerIV(self, PP=PP),
                             IVSeriesSimpleViewerIt(self, PP=PP))
@@ -473,7 +473,7 @@ class IVSeriesSimpleGroup:
         n = len(self.x)
         xlab = "t (%s)" % self.x[0].S.tunits
         ylab = ["%s (%s)" % (x.S.name, x.S.units) for x in self.x]
-        fig = get_fig(shape=(n, 1), figsize=(10, 10), xlab=xlab, ylab=ylab)
+        fig = get_tfig(shape=(n, 1), figsize=(10, 10), xlab=xlab, ylab=ylab)
 
         self.viewers = (IVSeriesSimpleViewerIV(self),
                         IVSeriesSimpleViewerIt(self))
@@ -494,7 +494,7 @@ class IVSeriesSimpleGroup:
     def plot(self, fig=None, PP='PP'):
         xlab = "t (s)"
         ylab = ('Isat (A)', 'Vf (V)', 'Te (eV)')
-        fig = get_fig(shape=(3, 1), figsize=(10, 10), xlab=xlab, ylab=ylab)
+        fig = get_tfig(shape=(3, 1), figsize=(10, 10), xlab=xlab, ylab=ylab)
 
         self.viewers = (IVSeriesSimpleViewerIV(self, PP=PP),
                         IVSeriesSimpleViewerIt(self, PP=PP))

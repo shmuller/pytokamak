@@ -43,7 +43,7 @@ def_XPR_pos = dict(dig='XPR_pos', amp_default=amp_default, lines=dict(XPR=lines_
 ############################################
 E = campaign.add_experiment(date="20130124")
 
-E.add(29289, "Probe test",
+E.add(29289, "DAQ test, Mach DC, single 1 kHz",
         head = headI_tip3sep,
         ampI1 = CurrentProbe1[20],
         ampI2 = CurrentProbe2[20],
@@ -52,10 +52,12 @@ E.add(29289, "Probe test",
             """,
         stars = '', **def_XPR_pos)
 
-E.rep(29290, 29289, "Probe test",
-        times = (1.6, 3.9),
-        posit = (0.17, 0.17),
+E.rep(29290, 29289, "Std H-mode, 10 cm, 1 s, single at 1 kHz sine",
+        times = 1.0,
+        posit = 0.1,
         descr = """\
             """,
         stars = '***')
+
+
 
