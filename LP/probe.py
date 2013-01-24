@@ -216,8 +216,8 @@ class PhysicalResults:
         self.keys = ('n_cs', 'Mach', 'nv', 'mnv', 'j', 'Vf', 'Te', 'Vp', 
                 'cs', 'n', 'v', 'pe', 'R', 't', 'Dt')
 
-        sup = lambda x: r'$^{\mathdefault{%s}}$' % x
-        sub = lambda x: r'$_{\mathdefault{%s}}$' % x
+        def sup(x): return r'$^{\mathdefault{%s}}$' % x
+        def sub(x): return r'$_{\mathdefault{%s}}$' % x
 
         self.units = dict(
                 n_cs = r'm%s s%s' % (sup('-2'), sup('-1')),
@@ -480,8 +480,7 @@ class Probe:
 
     @memoized_property
     def is_swept(self):
-        is_swept = lambda I: I.V.is_swept
-        return np.array(map(is_swept, self.I))
+        return np.array([I.V.is_swept for I in self.I])
 
     @memoized_property
     def I_swept(self):
@@ -619,20 +618,6 @@ class Probe:
     def load(self, **kw):
         self.load_raw(**kw)
         self.load_res()
-
-    def analyze2(self, n=2):
-        self.IV_series2 = self.calc_IV_series(n=2)
-        self.PP2 = self.IV_series2.fit()
-
-        """
-        II = self.get_type('Current')
-        V = II[0].V
-        PP = self.PP(V.t)
-        mask = self.IV_series.mask()
-        
-        iE = self.IV_series.iE
-        self.IV_series2 = IVSeries2(V, II, PP, mask, iE)
-        """
 
     def plot(self, fig=None, PP='PP', x=None, plunge=None, inout=None):
         if self.PP is None:

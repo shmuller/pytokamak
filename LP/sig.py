@@ -864,7 +864,8 @@ class VoltageSignal(Signal):
         kw.setdefault('type', 'Voltage')
         kw.setdefault('units', 'V')
 
-        self.min_ptp = kw.pop('min_ptp', 20)
+        self.dt = kw.pop('dt', 0.1)
+        self.min_ptp = kw.pop('min_ptp', 50)
 
         Signal.__init__(self, x, t, **kw)
 
@@ -879,7 +880,8 @@ class VoltageSignal(Signal):
     @memoized_property
     def is_swept(self):
         D = self.min_ptp
-        return self.x.ptp() > D and self.PPF.D > D
+        cnd = self.t < self.t[0] + self.dt
+        return self.x[cnd].ptp() > D and self.PPF.D > D
 
     def plot_sweeps(self, ax=None, **kw):
         ax = get_axes(ax)

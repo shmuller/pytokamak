@@ -135,6 +135,7 @@ class FitterIV(Fitter):
         if Te < 0. or Te > 0.5*self.dV:
             raise FitterError("Unrealistic Te")
 
+
 class FitterIV2(Fitter):
     def __init__(self, V, I, a, p0, **kw):
         Fitter.__init__(self, V, I, args=(a,), **kw)
@@ -193,7 +194,7 @@ class FitterIV3(FitterIV2):
 
 
 class IVSeriesSimpleViewerIV(ToggleViewer):
-    def __init__(self, IV, PP='PP2'):
+    def __init__(self, IV, PP='PP'):
         self.IV, self.PP = IV, PP
 
         ToggleViewer.__init__(self, 'IV viewer')
@@ -219,7 +220,7 @@ class IVSeriesSimpleViewerIV(ToggleViewer):
 
 
 class IVSeriesSimpleViewerIt(ToggleViewer):
-    def __init__(self, IV, PP='PP2'):
+    def __init__(self, IV, PP='PP'):
         self.IV, self.PP = IV, PP
 
         ToggleViewer.__init__(self, 'I(t) viewer')
@@ -247,7 +248,7 @@ class IVSeriesSimpleViewerIt(ToggleViewer):
 
 
 class IVSeriesSimpleViewerItIntegrated(ToggleViewerIntegrated):
-    def __init__(self, IV, PP='PP2'):
+    def __init__(self, IV, PP='PP'):
         self.IV, self.PP = IV, PP
 
         ToggleViewerIntegrated.__init__(self, 'I(t) integrated viewer')
@@ -403,20 +404,13 @@ class IVSeriesSimple:
     def plot_range_I(self, r=0):
         return self.S.plot_range(r)
 
-    def plot(self, ax=None, PP='PP', PP2='PP2'):
-        ax = get_axes(ax)
-        self.S.plot(ax=ax)
-        self.get_Sfit(PP=PP).plot(ax=ax)
-        self.get_Sfit(PP=PP2).plot(ax=ax)
-        return ax
-
-    def plot2(self, fig=None):
+    def plot_raw(self, fig=None, PP='PP'):
         if fig is None:
             fig = get_fig()
 
-            self.viewers = (IVSeriesSimpleViewerIV(self),
-                            IVSeriesSimpleViewerIt(self),
-                            IVSeriesSimpleViewerItIntegrated(self))
+            self.viewers = (IVSeriesSimpleViewerIV(self, PP=PP),
+                            IVSeriesSimpleViewerIt(self, PP=PP),
+                            IVSeriesSimpleViewerItIntegrated(self, PP=PP))
             
             menu_entries_ax = []
             for v in self.viewers:
@@ -427,18 +421,21 @@ class IVSeriesSimple:
 
         ax = fig.axes[0]
         self.S.plot(ax=ax)
-        self.get_Sfit(PP='PP2').plot(ax=ax)
+        self.get_Sfit(PP=PP).plot(ax=ax)
         return ax
 
-    def plot_res(self, fig=None):
+    def plot_raw2(self, fig=None):
+        return self.plot_raw(fig=fig, PP='PP2')
+
+    def plot(self, fig=None, PP='PP'):
         if fig is None:
             xlab = 't (s)'
             ylab = ('Isat (A)', 'Vf (V)', 'Te (eV)')
             fig = get_fig(shape=(3, 1), figsize=(10, 10),
                           xlab=xlab, ylab=ylab)
 
-            self.viewers = (IVSeriesSimpleViewerIV(self),
-                            IVSeriesSimpleViewerIt(self))
+            self.viewers = (IVSeriesSimpleViewerIV(self, PP=PP),
+                            IVSeriesSimpleViewerIt(self, PP=PP))
             
             menu_entries_ax = []
             for v in self.viewers:
@@ -447,9 +444,12 @@ class IVSeriesSimple:
             fig.context_menu_picker = ContextMenuPicker(
                     fig, menu_entries_ax=menu_entries_ax)
 
-        for ax, PP in zip(fig.axes, self.PP2):
-             PP.plot(ax=ax)
+        for ax, p in zip(fig.axes, getattr(self, PP)):
+             p.plot(ax=ax)
         return fig
+
+    def plot2(self, fig=None):
+        return self.plot(fig=fig, PP='PP2')
 
 
 class IVSeriesSimpleGroup:
@@ -469,7 +469,7 @@ class IVSeriesSimpleGroup:
     plot_range_V  = _plot_range_factory('plot_range_V')
     plot_range_I  = _plot_range_factory('plot_range_I')
 
-    def plot(self):
+    def plot_raw(self, fig=None, PP='PP'):
         n = len(self.x)
         xlab = "t (%s)" % self.x[0].S.tunits
         ylab = ["%s (%s)" % (x.S.name, x.S.units) for x in self.x]
@@ -486,15 +486,18 @@ class IVSeriesSimpleGroup:
                 fig, menu_entries_ax=menu_entries_ax)
 
         for ax, x in zip(fig.axes, self.x):
-            x.plot(ax=ax)
+            x.plot(ax=ax, PP=PP)
 
-    def plot_res(self):
+    def plot_raw2(self, fig=None):
+        return self.plot_raw(fig=fig, PP='PP2')
+
+    def plot(self, fig=None, PP='PP'):
         xlab = "t (s)"
         ylab = ('Isat (A)', 'Vf (V)', 'Te (eV)')
         fig = get_fig(shape=(3, 1), figsize=(10, 10), xlab=xlab, ylab=ylab)
 
-        self.viewers = (IVSeriesSimpleViewerIV(self),
-                        IVSeriesSimpleViewerIt(self))
+        self.viewers = (IVSeriesSimpleViewerIV(self, PP=PP),
+                        IVSeriesSimpleViewerIt(self, PP=PP))
 
         menu_entries_ax = []
         for v in self.viewers:
@@ -504,8 +507,11 @@ class IVSeriesSimpleGroup:
                 fig, menu_entries_ax=menu_entries_ax)
 
         for x in self.x:
-            for ax, PP in zip(fig.axes, x.PP2):
-                PP.plot(ax=ax)
+            for ax, p in zip(fig.axes, getattr(x, PP)):
+                p.plot(ax=ax)
         return fig
+
+    def plot2(self, fig=None):
+        return self.plot(fig=fig, PP='PP2')
 
 
