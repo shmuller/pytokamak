@@ -114,19 +114,20 @@ class FitterIV(Fitter):
 
     def fit(self):
         Fitter.fit(self)
-        save = self.X, self.Y
-        Y0 = 0.
-        while True:
-            self.M *= self.red_fact
-            self.X, self.Y = self.X[:self.M], self.Y[:self.M]
-            P_old = self.P
-            Fitter.fit(self, P0=self.P)
-            
-            if np.any(self.P > P_old) or (self.eval_norm(self.X[-1]) > Y0):
-                self.P = P_old
-                break
 
-        self.X, self.Y = save
+        if self.red_fact < 1:
+            save = self.X, self.Y
+            Y0 = 0.
+            while True:
+                self.M *= self.red_fact
+                self.X, self.Y = self.X[:self.M], self.Y[:self.M]
+                P_old = self.P
+                Fitter.fit(self, P0=self.P)    
+                if np.any(self.P > P_old) or (self.eval_norm(self.X[-1]) > Y0):
+                    self.P = P_old
+                    break
+            self.X, self.Y = save
+            
         self.set_unnorm()
         self.check_Te()
         return self.p
@@ -339,6 +340,7 @@ class IVSeriesSimple:
         #Sfit = self.get_Sfit()
         #mask = ~Sfit.x.mask
         mask = self.mask
+        #mask = np.ones_like(self.mask)
 
         for j in ind:
             s = slice(i0[j], i1[j])

@@ -576,11 +576,14 @@ class Probe:
     @memoized_property
     def res(self):
         if self.PP is None:
+            self.analyze()
+            """
             try:
                 self.load()
             except ResultsIOError:
                 self.analyze()
                 self.save_res()
+            """
 
         Isat = self.PP.c[0,:,:,0].T
         Vf   = self.PP.c[0,:,:,1].T
@@ -617,7 +620,7 @@ class Probe:
 
     def load(self, **kw):
         self.load_raw(**kw)
-        self.load_res()
+        #self.load_res()
 
     def plot(self, fig=None, PP='PP', x=None, plunge=None, inout=None):
         if self.PP is None:

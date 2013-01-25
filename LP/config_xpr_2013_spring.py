@@ -154,3 +154,83 @@ E.rep(29315, 29313, "Repeat 29313",
 
 
 
+############################################
+E = campaign.add_experiment(date="20130125")
+
+E.add(29319, "Mach DC, single 1 kHz, 13.5 Vpp, DAQ 5 s",
+        head = headI_tip3sep,
+        ampI1 = CurrentProbe1[20],
+        ampI2 = CurrentProbe2[20],
+        ampI3 = CurrentProbe3[20], 
+        descr = """\
+            DAQ OK.""",
+        stars = '', **def_XPR_pos)
+
+# Daniel Carralero
+E.rep(29320, 29319, "3 plunges",
+        times = (2.4, 3.1, 3.8),
+        posit = (0.34, 0.34, 0.34),
+        descr = """\
+            Plasma was in H-mode and probe pulled it back
+            to L-mode.""",
+        stars = '**')
+
+E.rep(29321, 29320, "1 plunge, all on sweeps",
+        times = 3.8,
+        posit = 0.34,
+        descr = """\
+            Arcs at PF region.""",
+        stars = '**')
+
+E.rep(29322, 29321, "Less density",
+        descr = """\
+            Arcs similar to last shot. Density wasn't really lower.""",
+        stars = '**')
+
+E.rep(29323, 29322, "Less density now",
+        descr = """\
+            Very low density. No arcs, but not enough positive Voltage.""",
+        stars = '****')
+
+E.rep(29324, 29323, "n = 2.5e19, Mach at -200 V",
+        descr = """\
+            Tip 1 arcs at 28 cm. Nice fluctuation data before that.
+            Profiles also OK up to the same positions.""",
+        stars = '***')
+
+E.rep(29325, 29324, "n = 6e19, All swept at 14 Vpp (more pos)",
+        descr = """\
+            Didn'r run.""",
+        stars = '')
+
+E.rep(29326, 29325, "Repeat",
+        descr = """\
+            Nice high density data. Too high Mach numbers again.""",
+        stars = '****')
+
+# DAQ test
+E.rep(29336, 29326, "DAQ test",
+        descr = "",
+        stars = '')
+
+# Hans-Werner Mueller
+E.rep(29337, 29336, "n = 1.5e19, 1 MA, 600 kW ECRH, same sweep settings, 1 plunge at 2.3 s",
+        times = 2.3,
+        posit = 0.34,
+        descr = """\
+            Very nice profiles. Ran a bit out of positive sweep voltage.
+            Single tip creeps up again on way out.""",
+        stars = '****')
+
+E.rep(29338, 29337, "Mach at -200 V, single swept at 14.5 Vpp, 1 kHz",
+        descr = """\
+            Nice fluctuation data on Mach probe, no arcs.""",
+        stars = '*****')
+
+E.rep(29339, 29338, "Increase sweep amplitude to 15.5 Vpp, 1 kHz",
+        descr = """\
+            Good data again. 15.5 Vpp was too high, since Kepco starts
+            oscillating.""",
+        stars = '****')
+
+
