@@ -21,6 +21,7 @@ except ImportError:
 
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
+import matplotlib.mlab as mlab
 
 from sm_pyplot import tight_figure
 
@@ -608,7 +609,7 @@ class Signal:
             self.x[:] *= other
         return self
 
-    @property
+    @memoized_property
     def size(self):
         return self.x.size
 
@@ -624,10 +625,14 @@ class Signal:
     def range(self):
         return np.nanmin(self.x), np.nanmax(self.x)
 
+    @staticmethod
+    def _percentiles(x, p):
+        x = np.sort(x)
+        i = np.round(np.asarray(p)*(x.size-1)).astype('i')
+        return x[i]
+
     def plot_range(self, r=0.001):
-        x = np.sort(self.x)
-        i = np.round(np.array([r, 1. - r])*(x.size-1)).astype('i')
-        return tuple(x[i])
+        return tuple(self._percentiles(self.x, [r, 1. - r]))
 
     def norm_to_region(self, cnd):
         self.x[:] -= self.x[cnd].mean()
@@ -708,6 +713,28 @@ class Signal:
     def plot(self, ax=None, **kw):
         ax = get_axes(ax)
         ax.plot(self.t, self.x.T, **kw)
+        return ax
+
+    @memoized_property
+    def fs(self):
+        return (self.t.size - 1) / (self.t[-1] - self.t[0])
+
+    def specgram(self, ax=None, NFFT=2048, step=512, 
+            cmap='spectral', **kw):
+        Pxx, freqs, bins = mlab.specgram(self.x, NFFT, 1e-3*self.fs,
+                mlab.detrend_linear, mlab.window_hanning, NFFT - step)
+        
+        df = freqs[1] - freqs[0]
+        extent = self.t[0], self.t[-1], freqs[0] - df/2, freqs[-1] - df/2
+        Z = 10. * np.log10(Pxx)
+
+        ax = get_axes(ax)
+        im = ax.imshow(Z, aspect='auto', cmap=cmap, origin='lower', 
+                extent=extent, interpolation='none', **kw)
+        
+        ax.set_xlabel('t (s)')
+        ax.set_ylabel('f (kHz)')
+        ax.figure.tight_layout(pad=0.2)
         return ax
 
 

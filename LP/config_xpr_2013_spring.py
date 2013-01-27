@@ -230,7 +230,8 @@ E.rep(29338, 29337, "Mach at -200 V, single swept at 14.5 Vpp, 1 kHz",
 E.rep(29339, 29338, "Increase sweep amplitude to 15.5 Vpp, 1 kHz",
         descr = """\
             Good data again. 15.5 Vpp was too high, since Kepco starts
-            oscillating.""",
-        stars = '****')
+            oscillating. Similar to last shot, but HFS density twice as much
+            as on previous shot.""",
+        stars = '*****')
 
 
