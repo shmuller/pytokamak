@@ -470,9 +470,9 @@ class Probe:
 
     def _shortcut_factory(name):
         @memoized_property
-        def wrapper(self):
+        def shortcut(self):
             return self.get_type(name)
-        return wrapper
+        return shortcut
 
     I = _shortcut_factory('Current')
     V = _shortcut_factory('Voltage')
@@ -505,14 +505,14 @@ class Probe:
         return fig
     
     def get_dwell_params(self):
-        R = self.R[0]
+        R = self.S['Rs']
         iM = R.t_ind[1]
         tM = R.t[iM]
         RM = R.x[iM]
         return tM, RM
 
     def trim(self, plunge='all'):
-        R = self.R[0]
+        R = self.S['Rs']
         i0, iM, i1 = R.t_ind
 
         if plunge == 'all':
@@ -522,6 +522,18 @@ class Probe:
 
         for S in self.S.itervalues():
             S.trim(s)
+
+    @memoized_property
+    def t0(self):
+        return self.x['t'][0]
+
+    def shift_t(self, plunge=None, phase=1):
+        t0 = self.t0
+        R = self.S['Rs']
+        if plunge is None:
+            R.t -= R.t[0] - t0
+        else:
+            R.t -= R.t[R.t_ind[phase][plunge]]
 
     def smooth_I(self, w=10):
         for I in self.I:
@@ -547,15 +559,12 @@ class Probe:
     def analyze(self):
         self.PP = self.IV_series.PP
 
-    def calc_IV_series_simple(self):
+    def calc_IV(self):
         return IVSeriesSimpleGroup(self.I_swept, self.S['Rs'])
 
     @memoized_property
-    def IV_series_simple(self):
-        return self.calc_IV_series_simple()
-
-    def analyze_simple(self):
-        self.PP_simple = [IV.fit() for IV in self.IV_series_simple]
+    def IV(self):
+        return self.calc_IV()
     
     def PP_fluct(self, Vmax=-150):
         self.analyze()

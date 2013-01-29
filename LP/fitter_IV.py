@@ -324,7 +324,7 @@ class IVSeriesSimple:
                 pass
         return PiecewisePolynomialEndpoints(out[None], t, i0=i0, i1=i1, shift=shift)
 
-    def _fit_linear(self, FitterIVClass, n=5, incr=1, **kw):
+    def _fit_linear(self, FitterIVClass, n=5, incr=1, use_mask=True, **kw):
         sl, sr, i0, i1, ind, out, shift = self._prepare(n, incr, 6)
 
         c = self.PP.c[0]
@@ -339,8 +339,10 @@ class IVSeriesSimple:
 
         #Sfit = self.get_Sfit()
         #mask = ~Sfit.x.mask
-        mask = self.mask
-        #mask = np.ones_like(self.mask)
+        if use_mask:
+            mask = self.mask
+        else:
+            mask = np.ones_like(self.mask)
 
         for j in ind:
             s = slice(i0[j], i1[j])
@@ -441,7 +443,7 @@ class IVSeriesSimple:
     def plot_raw2(self, ax=None):
         return self.plot_raw(ax=ax, PP='PP2')
 
-    def plot(self, fig=None, PP='PP'):
+    def plot(self, fig=None, PP='PP', **kw):
         if fig is None:
             xlab = 't (s)'
             ylab = ('Isat (A)', 'Vf (V)', 'Te (eV)')
@@ -459,11 +461,11 @@ class IVSeriesSimple:
                     fig, menu_entries_ax=menu_entries_ax)
 
         for ax, p in zip(fig.axes, getattr(self, PP)):
-             p.plot(ax=ax)
+             p.plot(ax=ax, **kw)
         return fig
 
-    def plot2(self, fig=None):
-        return self.plot(fig=fig, PP='PP2')
+    def plot2(self, fig=None, **kw):
+        return self.plot(fig=fig, PP='PP2', **kw)
 
 
 class IVSeriesSimpleGroup:
@@ -483,50 +485,62 @@ class IVSeriesSimpleGroup:
     plot_range_V  = _plot_range_factory('plot_range_V')
     plot_range_I  = _plot_range_factory('plot_range_I')
 
+    def _forall_factory(method):
+        def forall(self, *args, **kw):
+            for x in self.x:
+                getattr(x, method)(*args, **kw)
+        return forall
+
+    fit  = _forall_factory('fit')
+    fit2 = _forall_factory('fit2')
+
     def plot_raw(self, fig=None, PP='PP'):
-        n = len(self.x)
-        xlab = "t (%s)" % self.x[0].S.tunits
-        ylab = ["%s (%s)" % (x.S.name, x.S.units) for x in self.x]
-        fig = get_tfig(shape=(n, 1), figsize=(10, 10), xlab=xlab, ylab=ylab)
+        if fig is None:
+            xlab = "t (%s)" % self.x[0].S.tunits
+            ylab = ["%s (%s)" % (x.S.name, x.S.units) for x in self.x]
+            fig = get_tfig(shape=(len(self.x), 1), figsize=(10, 10), 
+                           xlab=xlab, ylab=ylab)
 
-        self.viewers = (IVSeriesSimpleViewerIV(self, PP=PP),
-                        IVSeriesSimpleViewerIt(self, PP=PP))
+            self.viewers = (IVSeriesSimpleViewerIV(self, PP=PP),
+                            IVSeriesSimpleViewerIt(self, PP=PP))
 
-        menu_entries_ax = []
-        for v in self.viewers:
-            menu_entries_ax += v.menu_entries_ax
+            menu_entries_ax = []
+            for v in self.viewers:
+                menu_entries_ax += v.menu_entries_ax
 
-        fig.context_menu_picker = ContextMenuPicker(
-                fig, menu_entries_ax=menu_entries_ax)
+            fig.context_menu_picker = ContextMenuPicker(
+                    fig, menu_entries_ax=menu_entries_ax)
 
         for ax, x in zip(fig.axes, self.x):
-            x.plot_raw(ax=ax, PP=PP)
+            x.plot_raw(ax=ax, PP=PP, **kw)
         return fig
 
     def plot_raw2(self, fig=None):
         return self.plot_raw(fig=fig, PP='PP2')
 
-    def plot(self, fig=None, PP='PP'):
-        xlab = "t (s)"
-        ylab = ('Isat (A)', 'Vf (V)', 'Te (eV)')
-        fig = get_tfig(shape=(3, 1), figsize=(10, 10), xlab=xlab, ylab=ylab)
+    def plot(self, fig=None, PP='PP', **kw):
+        if fig is None:
+            xlab = "t (s)"
+            ylab = ('Isat (A)', 'Vf (V)', 'Te (eV)')
+            fig = get_tfig(shape=(3, 1), figsize=(10, 10), 
+                           xlab=xlab, ylab=ylab)
 
-        self.viewers = (IVSeriesSimpleViewerIV(self, PP=PP),
-                        IVSeriesSimpleViewerIt(self, PP=PP))
+            self.viewers = (IVSeriesSimpleViewerIV(self, PP=PP),
+                            IVSeriesSimpleViewerIt(self, PP=PP))
 
-        menu_entries_ax = []
-        for v in self.viewers:
-            menu_entries_ax += v.menu_entries_ax
+            menu_entries_ax = []
+            for v in self.viewers:
+                menu_entries_ax += v.menu_entries_ax
 
-        fig.context_menu_picker = ContextMenuPicker(
-                fig, menu_entries_ax=menu_entries_ax)
+            fig.context_menu_picker = ContextMenuPicker(
+                    fig, menu_entries_ax=menu_entries_ax)
 
         for x in self.x:
             for ax, p in zip(fig.axes, getattr(x, PP)):
-                p.plot(ax=ax)
+                p.plot(ax=ax, **kw)
         return fig
 
-    def plot2(self, fig=None):
-        return self.plot(fig=fig, PP='PP2')
+    def plot2(self, fig=None, **kw):
+        return self.plot(fig=fig, PP='PP2', **kw)
 
 

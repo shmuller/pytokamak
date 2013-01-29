@@ -728,12 +728,14 @@ class Signal:
         extent = self.t[0], self.t[-1], freqs[0] - df/2, freqs[-1] - df/2
         Z = 10. * np.log10(Pxx)
 
-        ax = get_axes(ax)
+        if ax is None:
+            ax = get_axes()
+            ax.set_xlabel('t (s)')
+            ax.set_ylabel('f (kHz)')
+
         im = ax.imshow(Z, aspect='auto', cmap=cmap, origin='lower', 
                 extent=extent, interpolation='none', **kw)
         
-        ax.set_xlabel('t (s)')
-        ax.set_ylabel('f (kHz)')
         ax.figure.tight_layout(pad=0.2)
         return ax
 
@@ -929,7 +931,7 @@ class CurrentSignal(Signal):
 
     def __getitem__(self, index):
         s = Signal.__getitem__(self, index)
-        if self.V is not None:
+        if self.V:
             s.V = self.V[index]
         return s
 
