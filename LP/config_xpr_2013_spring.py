@@ -71,15 +71,20 @@ E.rep(29302, 29291, "600 kA, 2.5 T, 1.3 MW NBI, all the way through",
         times = 3.4,
         posit = 0.34,
         descr = """\
-            Beam came on at 3.4 s, not 3.5 s.""",
-        stars = '*')
+            Beam came on at 3.4 s, not 3.5 s. Mach tip 1 arcs almost 
+            immediately, single tip shortly after.""",
+        stars = '**')
 
 E.rep(29303, 29302, "B = 1.8 T, 1.3 MW NBI, 3.3 s, all on sweeps, 13.5 Vpp, 1 kHz",
         times = 3.3,
         posit = 0.34,
         descr = """\
-            Second 100 V power supply was off. Overheating on way out.""",
-        stars = '**')
+            Second 100 V power supply was off, so swept Mach probes are useless.
+            However, good data from single tip all the way through, with L-H
+            transition when the probe was at 22 cm. NO arcing. Probe did not
+            appear to alter density rise, which appears to be stopped by large
+            ELMs.""",
+        stars = '***')
 
 E.rep(29304, 29303, "B = 1.2 T, switch 2nd Kepco on, didn't run",
         times = 3.3,
@@ -96,14 +101,14 @@ E.rep(29305, 29304, "Repeat, didn't run",
 E.rep(29306, 29305, "1.4 T, 800 kW",
         times = 3.3,
         posit = 0.34,
-        descr = "Good data.",
+        descr = "Good data. L-H transition at 3.432 s.",
         stars = '****')
 
 # Stefan Muller
 E.rep(29307, 29306, "Repeat with Mach at -200 V",
         times = 3.3,
         posit = 0.34,
-        descr = "Great! Arc only late on way out.",
+        descr = "Great! L-H transition at 3.427 s",
         stars = '*****')
 
 # Gregor Birkenmeier
