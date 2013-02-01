@@ -1,12 +1,10 @@
 import numpy as np
 import numpy.ma as ma
 
-from LP import probe_xpr
-from LP.sig import memoized_property
+import probe_xpr
+from sig import memoized_property
 
-from sm_pyplot import tight_figure
-
-figure = tight_figure.pickable_linked_lod_figure
+from sm_pyplot.tight_figure import get_fig, get_axes
 
 
 class AUGOverview:
@@ -22,6 +20,8 @@ class AUGOverview:
 
         self.XPR = probe_xpr.ProbeXPR(shn=shn)
 
+        self.def_plots = ('power', 'density', 'XPR_I', 'XPR_R', 'Ipolsol')
+
     def load(self, diag):
         IO = probe_xpr.IOMdsAUG(shn=self.shn, diag=diag)
         chn = self.chn[diag] + ('t',)
@@ -34,39 +34,36 @@ class AUGOverview:
     def S(self):
         return {k: self.load(k) for k in self.chn.keys()}
 
-    def plot(self):
-        S, XPR = self.S, self.XPR
-
-        S_DCN  = S['DCN']
-        S_ECRH = S['ECS']
-        S_NI   = S['NIS']
-        S_WMHD = S['GQI']
-        S_MAC  = S['MAC']
-
-        fig = figure(figsize=(6,6))
-
-        ax = fig.add_subplot(511)
-
+    def plot_power(self, ax):
+        ax = get_axes(ax)
         ax.set_ylabel('Power (MW)')
+        S_ECRH = self.S['ECS']
+        S_NI   = self.S['NIS']
+        S_WMHD = self.S['GQI']
+
         ax.plot(S_ECRH['t'], 1e-6*S_ECRH['PECRH'], label="ECRH")
         ax.plot(S_NI['t'], 1e-6*S_NI['PNI'], label="NBI")
         ax.plot(S_WMHD['t'], 1e-5*S_WMHD['Wmhd'], label="WMHD (x10)")
-
         ax.legend()
+        return ax
 
-        ax = fig.add_subplot(512)
+    def plot_density(self, ax):
+        ax = get_axes(ax)
         ax.set_ylabel('n (10$^{\mathdefault{19}}$ m$^{\mathdefault{-3}}$)')
-
+        S_DCN  = self.S['DCN']
+        
         t = S_DCN['t']
         for c in ('H-1', 'H-4', 'H-5'):
             n = S_DCN[c]
             n[n < 0] = np.nan
             ax.plot(t, 1e-19*n, label=c)
-
         ax.legend()
+        return ax
 
-        ax = fig.add_subplot(513)
+    def plot_XPR_I(self, ax):
+        ax = get_axes(ax)
         ax.set_ylabel('Current (A)')
+        XPR = self.XPR
 
         t = XPR['tip1'].t
         I1, I2, I3 = XPR['tip1'].x, XPR['tip2'].x, XPR['tip3'].x
@@ -77,23 +74,20 @@ class AUGOverview:
         ax.plot(t, I1, label='Mach tip 1')
         ax.plot(t, I2, label='Mach tip 2')
         ax.plot(t, I3, label='Single tip')
-
-        #XPR['tip3'].V.plot(ax=ax)
-
         ax.legend()
+        return ax
 
-        #tips = 'tip1', 'tip2', 'tip3'
-        #
-        #for tip in tips:
-        #    XPR[tip].plot(ax=ax)
-
-        ax = fig.add_subplot(514)
+    def plot_XPR_R(self, ax):
+        ax = get_axes(ax)
         ax.set_ylabel('Pos (cm)')
-
+        XPR = self.XPR
         ax.plot(XPR['R'].t, 100*XPR['R'].x)
+        return ax
 
-        ax = fig.add_subplot(515)
+    def plot_Ipolsol(self, ax):
+        ax = get_axes(ax)
         ax.set_ylabel('Current (kA)')
+        S_MAC = self.S['MAC']
 
         t = S_MAC['t']
         Ia = ma.masked_array(S_MAC['Ipolsola'], t > 6.)
@@ -102,16 +96,16 @@ class AUGOverview:
         ax.plot(t, 1e-3*Ia, label='Ipolsola')
         ax.plot(t, 1e-3*Ii, label='Ipolsoli')
         ax.legend()
+        return ax
 
-        for ax in fig.axes:
-            ax.set_xlim((1,7))
-            ax.grid(True)
+    def plot(self, fig=None, plots=None):
+        if plots is None:
+            plots = self.def_plots
 
-        for ax in fig.axes[:-1]:
-            ax.set_xticklabels('')
+        fig = get_fig(fig, shape=(len(plots), 1), figsize=(6,6), xlab='t (s)')
+        fig.axes[0].set_xlim((1,7))
 
-        fig.axes[-1].set_xlabel('t (s)')
-
-        fig.tight_layout(pad=0.2)
-
+        for p, ax in zip(plots, fig.axes):
+            getattr(self, 'plot_' + p)(ax)
+        return fig
 

@@ -240,3 +240,35 @@ E.rep(29339, 29338, "Increase sweep amplitude to 15.5 Vpp, 1 kHz",
         stars = '*****')
 
 
+############################################
+E = campaign.add_experiment(date="20130131")
+
+# New tips lengths after change on 20130130: 
+#
+# lower right: 3.04 mm
+# lower left: 3.03 mm
+# upper: 1.83 mm
+
+E.add(29377, "DAQ test, all tips on sweeps at 14.5 Vpp",
+        head = headI_tip3sep,
+        ampI1 = CurrentProbe1[20],
+        ampI2 = CurrentProbe2[20],
+        ampI3 = CurrentProbe3[20], 
+        descr = """\
+            DAQ OK.""",
+        stars = '', **def_XPR_pos)
+
+# Peter Lang
+E.rep(29378, 29377, "Test plunge at 0.9 s, to 12 cm, sweeps at 13.5 Vpp",
+        times = 0.9,
+        posit = 0.12,
+        descr = """\
+            All signals there. Arcs immediately after entering plasma, but
+            normal measurements already before dwell.""",
+        stars = '*')
+
+
+
+
+
+
