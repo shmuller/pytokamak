@@ -534,6 +534,7 @@ class Probe:
             R.t -= R.t[0] - t0
         else:
             R.t -= R.t[R.t_ind[phase][plunge]]
+        return self
 
     def smooth_I(self, w=10):
         for I in self.I:

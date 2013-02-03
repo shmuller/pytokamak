@@ -368,12 +368,15 @@ class IVSeriesSimple:
 
     def fit(self, **kw):
         self.PP = self._fit_const(**kw)
+        return self
 
     def fit2(self, **kw):
         self.PP2 = self._fit_linear(FitterIV2, **kw)
+        return self
 
     def fit3(self, **kw):
         self.PP3 = self._fit_linear(FitterIV3, **kw)
+        return self
 
     @memoized_property
     def PP(self):
@@ -411,8 +414,8 @@ class IVSeriesSimple:
 
     def plot_range_dt(self, PP='PP'):
         PP = getattr(self, PP)
-        dtM = np.diff(PP.x[np.array((PP.i0[0], PP.i1[0]))])
-        return (0, dtM)
+        t = PP.x[[PP.i0[0], PP.i1[0]]]
+        return (0, t[1] - t[0])
 
     def plot_range_V(self, r=0):
         return self.S.V.plot_range(r)
@@ -469,8 +472,17 @@ class IVSeriesSimple:
 
 
 class IVSeriesSimpleGroup:
-    def __init__(self, S, R):
-        self.x = [IVSeriesSimple(s, R) for s in S]
+    def __init__(self, S=None, R=None, x=None):
+        if x is not None:
+            self.x = x
+        else:
+            self.x = np.array([IVSeriesSimple(s, R) for s in S])
+
+    def __getitem__(self, index):
+        x = self.x[index]
+        if isinstance(x, np.ndarray):
+            x = self.__class__(x=x)
+        return x
 
     def get_Sfit_at_event(self, t_event, PP='PP'):
         return [x.get_Sfit_at_event(t_event, PP) for x in self.x]
@@ -489,6 +501,7 @@ class IVSeriesSimpleGroup:
         def forall(self, *args, **kw):
             for x in self.x:
                 getattr(x, method)(*args, **kw)
+            return self
         return forall
 
     fit  = _forall_factory('fit')
@@ -512,7 +525,7 @@ class IVSeriesSimpleGroup:
                     fig, menu_entries_ax=menu_entries_ax)
 
         for ax, x in zip(fig.axes, self.x):
-            x.plot_raw(ax=ax, PP=PP, **kw)
+            x.plot_raw(ax=ax, PP=PP)
         return fig
 
     def plot_raw2(self, fig=None):
