@@ -7,8 +7,8 @@ from config import Campaign
 
 campaign = Campaign()
 
-tip1 = TipXPR(number=1, pos='lower left', V_keys='ampV1', I_keys='ampI2')
-tip2 = TipXPR(number=2, pos='lower right', V_keys='ampV1', I_keys='ampI3')
+tip1 = TipXPR(number=1, pos='lower left', V_keys='ampVF', I_keys='ampI2')
+tip2 = TipXPR(number=2, pos='lower right', V_keys='ampVF', I_keys='ampI3')
 tip3 = TipXPR(number=3, pos='upper', V_keys='ampVF', I_keys='ampI1')
 
 headI = HeadXPR(tips=(tip1, tip2, tip3), R_keys='ampR')
@@ -66,6 +66,21 @@ E.rep(20342, 20341, "Repeat",
 E.rep(20343, 20342, "Repeat", 
         descr = "Again similar.", 
         stars = '**')
+
+
+############################################
+E = campaign.add_experiment(date="20060404")
+
+E.add(21256, "Maximos high density data", 
+        times = 3.5, 
+        posit = 0.31,
+        head = headI,
+        descr = "Shot didn't run.",
+        stars = '', **def_LPS_old)
+
+E.rep(21258, 21256, "Plunge all the way through",
+        descr = "",
+        stars = '')
 
 
 ############################################

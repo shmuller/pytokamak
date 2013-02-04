@@ -141,6 +141,62 @@ double IV4_rms(data *D)
     return sqrt(dy2) / D->m;
 }
 
+void IV5(data *D)
+{
+    int i;
+    double *P = D->P, *x = D->x, *y = D->y, *a = D->a;
+    double P0 = P[0], P1 = P[1], iP2 = 1./P[2];
+    double dP0 = P[3]-P0, dP1 = P[4]-P1;
+    double ai, P0i, P1i;
+
+    for (i=D->m; i--; ) {
+        ai = *a++;
+        P0i = P0 + ai*dP0;
+        P1i = P1 + ai*dP1;
+        *y++ = P0i*(1. - exp((*x++ - P1i)*iP2));
+    }
+}
+
+void IV5_diff(data *D)
+{
+    int i;
+    double *P = D->P, *x = D->x, *y = D->y, *a = D->a, *ydata = D->ydata;
+    double P0 = P[0], P1 = P[1], iP2 = 1./P[2];
+    double dP0 = P[3]-P0, dP1 = P[4]-P1;
+    double ai, P0i, P1i;
+
+    for (i=D->m; i--; ) {
+        ai = *a++;
+        P0i = P0 + ai*dP0;
+        P1i = P1 + ai*dP1;
+        *y++ = P0i*(1. - exp((*x++ - P1i)*iP2)) - *ydata++;
+    }
+}
+
+void IV5_fit(data *D)
+{
+    leastsq(IV5_diff, D);
+}
+
+double IV5_rms(data *D)
+{
+    int i;
+    double *P = D->P, *x = D->x, *y = D->y, *a = D->a;
+    double P0 = P[0], P1 = P[1], iP2 = 1./P[2];
+    double dP0 = P[3]-P0, dP1 = P[4]-P1;
+    double ai, P0i, P1i;
+    double dy2 = 0., dy;
+
+    for (i=D->m; i--; ) {
+        ai = *a++;
+        P0i = P0 + ai*dP0;
+        P1i = P1 + ai*dP1;
+        dy = P0i*(1. - exp((*x++ - P1i)*iP2)) - *y++;
+        dy2 += dy*dy;
+    }
+    return sqrt(dy2) / D->m;
+}
+
 void IV6(data *D)
 {
     int i;
@@ -271,6 +327,11 @@ meth_template_passthru(IV4_diff, parse_args_ydata_a, 2)
 meth_template_passthru(IV4_fit, parse_args_ydata_a, 0)
 meth_template_double(IV4_rms, parse_args_a)
 
+meth_template_passthru(IV5, parse_args_a, 2)
+meth_template_passthru(IV5_diff, parse_args_ydata_a, 2)
+meth_template_passthru(IV5_fit, parse_args_ydata_a, 0)
+meth_template_double(IV5_rms, parse_args_a)
+
 meth_template_passthru(IV6, parse_args_a, 2)
 meth_template_passthru(IV6_diff, parse_args_ydata_a, 2)
 meth_template_passthru(IV6_fit, parse_args_ydata_a, 0)
@@ -290,6 +351,10 @@ static PyMethodDef methods[] = {
     {"IV4_diff", meth_IV4_diff, METH_VARARGS, "Difference to IV curve with 4 parameters"},
     {"IV4_fit", meth_IV4_fit, METH_VARARGS, "Fit IV curve with 4 parameters"},
     {"IV4_rms", meth_IV4_rms, METH_VARARGS, "rms for IV curve with 4 parameters"},
+    {"IV5", meth_IV5, METH_VARARGS, "IV curve with 5 parameters"},
+    {"IV5_diff", meth_IV5_diff, METH_VARARGS, "Difference to IV curve with 5 parameters"},
+    {"IV5_fit", meth_IV5_fit, METH_VARARGS, "Fit IV curve with 5 parameters"},
+    {"IV5_rms", meth_IV5_rms, METH_VARARGS, "rms for IV curve with 5 parameters"},
     {"IV6", meth_IV6, METH_VARARGS, "IV curve with 6 parameters"},
     {"IV6_diff", meth_IV6_diff, METH_VARARGS, "Difference to IV curve with 6 parameters"},
     {"IV6_fit", meth_IV6_fit, METH_VARARGS, "Fit IV curve with 6 parameters"},

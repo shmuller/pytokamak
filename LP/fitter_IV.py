@@ -140,7 +140,7 @@ class FitterIV(Fitter):
             raise FitterError("Unrealistic Te")
 
 
-class FitterIV2(Fitter):
+class FitterIV6(Fitter):
     def __init__(self, V, I, a, p0, **kw):
         Fitter.__init__(self, V, I, args=(a,), **kw)
 
@@ -176,12 +176,11 @@ class FitterIV2(Fitter):
     fitfun_rms = ff.IV6_rms
 
 
-class FitterIV3(FitterIV2):
+class FitterIV6Perm(FitterIV6):
     def __init__(self, *args, **kw):
-        FitterIV2.__init__(self, *args, **kw)
+        # derived class needs to assign self.perm and self.iperm here
 
-        self.perm = np.array((0,1,2,3))
-        self.iperm = np.array((0,1,2,3,1,2))
+        FitterIV6.__init__(self, *args, **kw)
         self.fact = self.fact[self.perm]
 
     def set_unnorm(self):
@@ -190,6 +189,25 @@ class FitterIV3(FitterIV2):
 
     def set_guess(self):
         self.P0 = self.p0[self.perm] / self.fact
+
+
+class FitterIV5(FitterIV6Perm):
+    def __init__(self, *args, **kw):
+        self.perm = np.array((0,1,2,3,4))
+        self.iperm = np.array((0,1,2,3,4,2))
+        FitterIV6Perm.__init__(self, *args, **kw)
+
+    custom_engine = ff.IV5_fit
+    fitfun_fast = ff.IV5
+    fitfun_diff = ff.IV5_diff
+    fitfun_rms = ff.IV5_rms
+
+
+class FitterIV4(FitterIV6Perm):
+    def __init__(self, *args, **kw):
+        self.perm = np.array((0,1,2,3))
+        self.iperm = np.array((0,1,2,3,1,2))
+        FitterIV6Perm.__init__(self, *args, **kw)
 
     custom_engine = ff.IV4_fit
     fitfun_fast = ff.IV4
@@ -275,6 +293,26 @@ class IVSeriesSimpleViewerItIntegrated(ToggleViewerIntegrated):
         return lines + lines_fit
 
 
+# method factories for IVSeriesSimple and IVSeriesSimpleGroup
+def _plot_factory(plotfun, PP):
+    def plot(self, **kw):
+        return getattr(self, plotfun)(PP=PP, **kw)
+    return plot
+
+def _plot_range_factory(rangefun):
+    def plot_range(self, *args):
+        r = np.array([getattr(x, rangefun)(*args) for x in self.x])
+        return r[:,0].min(), r[:,1].max()
+    return plot_range
+
+def _forall_factory(method):
+    def forall(self, *args, **kw):
+        for x in self.x:
+            getattr(x, method)(*args, **kw)
+        return self
+    return forall
+
+
 class IVSeriesSimple:
     def __init__(self, S, R):
         self.S, self.R = S, R
@@ -307,16 +345,21 @@ class IVSeriesSimple:
         shift = -(n // (2*incr))
         return sl, sr, i0, i1, ind, out, shift
 
-    def _fit_const(self, n=1, incr=1, **kw):
+    def _fit_const(self, FitterIVClass, n=1, incr=1, mask=None, **kw):
         sl, sr, i0, i1, ind, out, shift = self._prepare(n, incr, 3)
         
         S = self.S
         V, I, t = S.V.x, S.x, S.t
         self.mask = np.zeros(V.size, bool)
 
+        if mask is None:
+            def get_mask(s): return None
+        else:
+            def get_mask(s): return mask[s]
+
         for j in ind:
             s = slice(i0[j], i1[j])
-            fitter_IV = FitterIV(V[s], I[s], **kw)
+            fitter_IV = FitterIVClass(V[s], I[s], mask=get_mask(s), **kw)
             try:
                 out[j] = fitter_IV.fit()
                 self.mask[s][fitter_IV.get_ind()] = True
@@ -367,31 +410,40 @@ class IVSeriesSimple:
         return PiecewisePolynomialEndpoints(c, t, i0=i0, i1=i1, shift=shift)
 
     def fit(self, **kw):
-        self.PP = self._fit_const(**kw)
+        self.PP = self._fit_const(FitterIV, **kw)
         return self
 
-    def fit2(self, **kw):
-        self.PP2 = self._fit_linear(FitterIV2, **kw)
+    def fit6(self, **kw):
+        self.PP6 = self._fit_linear(FitterIV6, **kw)
         return self
 
-    def fit3(self, **kw):
-        self.PP3 = self._fit_linear(FitterIV3, **kw)
+    def fit5(self, **kw):
+        self.PP5 = self._fit_linear(FitterIV5, **kw)
+        return self
+
+    def fit4(self, **kw):
+        self.PP4 = self._fit_linear(FitterIV4, **kw)
         return self
 
     @memoized_property
     def PP(self):
         print "Calculating PP..."
-        return self._fit_const()
+        return self._fit_const(FitterIV)
 
     @memoized_property
-    def PP2(self):
-        print "Calculating PP2..."
-        return self._fit_linear(FitterIV2)
+    def PP6(self):
+        print "Calculating PP6..."
+        return self._fit_linear(FitterIV6)
 
     @memoized_property
-    def PP3(self):
-        print "Calculating PP3..."
-        return self._fit_linear(FitterIV3)
+    def PP5(self):
+        print "Calculating PP5..."
+        return self._fit_linear(FitterIV5)
+
+    @memoized_property
+    def PP4(self):
+        print "Calculating PP4..."
+        return self._fit_linear(FitterIV4)
 
     def get_Sfit(self, PP='PP'):
         t, V = self.S.t, self.S.V
@@ -443,9 +495,6 @@ class IVSeriesSimple:
         self.get_Sfit(PP=PP).plot(ax=ax)
         return ax
 
-    def plot_raw2(self, ax=None):
-        return self.plot_raw(ax=ax, PP='PP2')
-
     def plot(self, fig=None, PP='PP', **kw):
         if fig is None:
             xlab = 't (s)'
@@ -467,8 +516,12 @@ class IVSeriesSimple:
              p.plot(ax=ax, **kw)
         return fig
 
-    def plot2(self, fig=None, **kw):
-        return self.plot(fig=fig, PP='PP2', **kw)
+    plot_raw6 = _plot_factory('plot_raw', 'PP6')
+    plot_raw5 = _plot_factory('plot_raw', 'PP5')
+    plot_raw4 = _plot_factory('plot_raw', 'PP4')
+    plot6 = _plot_factory('plot', 'PP6')
+    plot5 = _plot_factory('plot', 'PP5')
+    plot4 = _plot_factory('plot', 'PP4')
 
 
 class IVSeriesSimpleGroup:
@@ -487,25 +540,14 @@ class IVSeriesSimpleGroup:
     def get_Sfit_at_event(self, t_event, PP='PP'):
         return [x.get_Sfit_at_event(t_event, PP) for x in self.x]
 
-    def _plot_range_factory(range_fun):
-        def plot_range(self, *args):
-            r = np.array([getattr(x, range_fun)(*args) for x in self.x])
-            return r[:,0].min(), r[:,1].max()
-        return plot_range
-
     plot_range_dt = _plot_range_factory('plot_range_dt')
     plot_range_V  = _plot_range_factory('plot_range_V')
     plot_range_I  = _plot_range_factory('plot_range_I')
 
-    def _forall_factory(method):
-        def forall(self, *args, **kw):
-            for x in self.x:
-                getattr(x, method)(*args, **kw)
-            return self
-        return forall
-
     fit  = _forall_factory('fit')
-    fit2 = _forall_factory('fit2')
+    fit6 = _forall_factory('fit6')
+    fit5 = _forall_factory('fit5')
+    fit4 = _forall_factory('fit4')
 
     def plot_raw(self, fig=None, PP='PP'):
         if fig is None:
@@ -527,9 +569,6 @@ class IVSeriesSimpleGroup:
         for ax, x in zip(fig.axes, self.x):
             x.plot_raw(ax=ax, PP=PP)
         return fig
-
-    def plot_raw2(self, fig=None):
-        return self.plot_raw(fig=fig, PP='PP2')
 
     def plot(self, fig=None, PP='PP', **kw):
         if fig is None:
@@ -553,7 +592,11 @@ class IVSeriesSimpleGroup:
                 p.plot(ax=ax, **kw)
         return fig
 
-    def plot2(self, fig=None, **kw):
-        return self.plot(fig=fig, PP='PP2', **kw)
+    plot_raw6 = _plot_factory('plot_raw', 'PP6')
+    plot_raw5 = _plot_factory('plot_raw', 'PP5')
+    plot_raw4 = _plot_factory('plot_raw', 'PP4')
+    plot6 = _plot_factory('plot', 'PP6')
+    plot5 = _plot_factory('plot', 'PP5')
+    plot4 = _plot_factory('plot', 'PP4')
 
 
