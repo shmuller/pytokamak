@@ -550,6 +550,9 @@ class Probe:
         iE = np.c_[V.iE[:-n], V.iE[n:]]
         return IVSeries(V, II, iE, **kw)
 
+    def set_IV_series(self, **kw):
+        self.IV_series = self.calc_IV_series(**kw)
+
     @memoized_property
     def IV_series(self):
         IV_series = self.calc_IV_series()
