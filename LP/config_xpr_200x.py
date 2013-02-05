@@ -7,11 +7,15 @@ from config import Campaign
 
 campaign = Campaign()
 
-tip1 = TipXPR(number=1, pos='lower left', V_keys='ampVF', I_keys='ampI2')
-tip2 = TipXPR(number=2, pos='lower right', V_keys='ampVF', I_keys='ampI3')
-tip3 = TipXPR(number=3, pos='upper', V_keys='ampVF', I_keys='ampI1')
+class TipLPS(CylindricalTip):
+    def __init__(self, *args, **kw):
+        CylindricalTip.__init__(self, 0.00045, 0.002, *args, **kw)
 
-headI = HeadXPR(tips=(tip1, tip2, tip3), R_keys='ampR')
+tip1 = TipLPS(number=1, pos='lower left', V_keys='ampVF', I_keys='ampI2')
+tip2 = TipLPS(number=2, pos='lower right', V_keys='ampVF', I_keys='ampI3')
+tip3 = TipLPS(number=3, pos='upper', V_keys='ampVF', I_keys='ampI1')
+
+head = HeadXPR(tips=(tip1, tip2, tip3), R_keys='ampR')
 
 amp_LPS_old = dict(ampR = Amp(fact=0.004, offs=-2745*0.004))
 
@@ -32,7 +36,7 @@ def_LPS_old = dict(dig='LPS_old', amp_default=amp_default_unity, lines=dict(LPS=
 E = campaign.add_experiment(date="20050621")
 
 E.add(20326, "Standard Ohmic, Maximos fitting demo",
-        head = headI,
+        head = head,
         descr = """\
             Nice shot. Sinusoidal sweep. Isat slanting visible.""",
         stars = '****', **def_LPS_old)
@@ -74,7 +78,7 @@ E = campaign.add_experiment(date="20060404")
 E.add(21256, "Maximos high density data", 
         times = 3.5, 
         posit = 0.31,
-        head = headI,
+        head = head,
         descr = "Shot didn't run.",
         stars = '', **def_LPS_old)
 
@@ -89,7 +93,7 @@ E = campaign.add_experiment(date="20060407")
 E.add(21288, "Standard Ohmic", 
         times = 2.1, 
         posit = 0.34,
-        head = headI,
+        head = head,
         descr = "",
         stars = '*', **def_LPS_old)
 
@@ -114,7 +118,7 @@ E = campaign.add_experiment(date="20060411")
 E.add(21320, "", 
         times = 2.2,
         posit = 0.31,
-        head = headI,
+        head = head,
         descr = """\
             Data quality OK. Mach signals get very high, while 
             single tip signal is very low.""",

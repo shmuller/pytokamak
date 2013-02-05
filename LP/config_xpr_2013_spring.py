@@ -9,13 +9,18 @@ campaign = Campaign()
 
 tip1 = TipXPR(number=1, pos='lower left', V_keys='ampV1', I_keys='ampI3')
 tip2 = TipXPR(number=2, pos='lower right', V_keys='ampV1', I_keys='ampI1')
-tip3 = TipXPR(number=3, pos='upper', V_keys='ampV1', I_keys='ampI2')
+tip3 = TipXPR(number=3, pos='upper', V_keys='ampV2', I_keys='ampI2')
 
-headI = HeadXPR(tips=(tip1, tip2, tip3), R_keys='ampR')
+head = HeadXPR(tips=(tip1, tip2, tip3), R_keys='ampR')
 
-tip3sep = TipXPR(number=3, pos='upper', V_keys='ampV2', I_keys='ampI2')
+tip1_20130130 = CylindricalTip(r=0.0005, z=0.00303,
+        number=1, pos='lower left', V_keys='ampV1', I_keys='ampI3')
+tip2_20130130 = CylindricalTip(r=0.0005, z=0.00304,
+        number=2, pos='lower right', V_keys='ampV1', I_keys='ampI1')
+tip3_20130130 = CylindricalTip(r=0.0005, z=0.00183,
+        number=3, pos='upper', V_keys='ampV2', I_keys='ampI2')
 
-headI_tip3sep = HeadXPR(tips=(tip1, tip2, tip3sep), R_keys='ampR')
+head_20130130 = HeadXPR(tips=(tip1_20130130, tip2_20130130, tip3_20130130), R_keys='ampR')
 
 fact = 4 * 5.54630/27. / 2**16
 offs = -47578968*fact - 0.105
@@ -44,7 +49,7 @@ def_XPR_pos = dict(dig='XPR_pos', amp_default=amp_default, lines=dict(XPR=lines_
 E = campaign.add_experiment(date="20130124")
 
 E.add(29289, "DAQ test, Mach DC, single 1 kHz, 13.5 Vpp, DAQ 5 s",
-        head = headI_tip3sep,
+        head = head,
         ampI1 = CurrentProbe1[20],
         ampI2 = CurrentProbe2[20],
         ampI3 = CurrentProbe3[20], 
@@ -163,7 +168,7 @@ E.rep(29315, 29313, "Repeat 29313",
 E = campaign.add_experiment(date="20130125")
 
 E.add(29319, "Mach DC, single 1 kHz, 13.5 Vpp, DAQ 5 s",
-        head = headI_tip3sep,
+        head = head,
         ampI1 = CurrentProbe1[20],
         ampI2 = CurrentProbe2[20],
         ampI3 = CurrentProbe3[20], 
@@ -250,7 +255,7 @@ E = campaign.add_experiment(date="20130131")
 # upper: 1.83 mm
 
 E.add(29377, "DAQ test, all tips on sweeps at 14.5 Vpp",
-        head = headI_tip3sep,
+        head = head_20130130,
         ampI1 = CurrentProbe1[20],
         ampI2 = CurrentProbe2[20],
         ampI3 = CurrentProbe3[20], 

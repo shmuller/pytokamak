@@ -222,9 +222,9 @@ class ProbeXPR(Probe):
                 tip = tips[num - 1]
                 j = Isat[i] / tip.area
                 if tip.pos == 'lower left':
-                    meas.jp = j
+                    meas.jp = 2*j
                 elif tip.pos == 'lower right':
-                    meas.jm = j
+                    meas.jm = 2*j
             else:
                 meas.Vf = Vf[i]
                 meas.Te = Te[i]

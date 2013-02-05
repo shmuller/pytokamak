@@ -259,7 +259,7 @@ class PhysicalResults:
         self.fact['mnv'] = self.fact['Dt'] = 1e3
 
         self.lim = dict.fromkeys(self.keys, (None, None))
-        self.lim['n'] = (0, 3e19)
+        self.lim['n'] = (0, 2e20)
         self.lim['Mach'] = (-2, 2)
         self.lim['Te'] = (0, 100)
         self.lim['R'] = (0, None)
