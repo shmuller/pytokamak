@@ -273,7 +273,77 @@ E.rep(29378, 29377, "Test plunge at 0.9 s, to 12 cm, sweeps at 13.5 Vpp",
         stars = '*')
 
 
+############################################
+E = campaign.add_experiment(date="20130205")
 
+E.add(29400, "DAQ test, all tips on sweeps at 13.5 Vpp",
+        head = head_20130130,
+        ampI1 = CurrentProbe1[20],
+        ampI2 = CurrentProbe2[20],
+        ampI3 = CurrentProbe3[20], 
+        descr = """\
+            DAQ OK.""",
+        stars = '', **def_XPR_pos)
 
+# CTS
+E.rep(29401, 29400, "Cond. at 6.0 s, 10 cm, 50 mA/mV to avoid saturation",
+        times = 6.0,
+        posit = 0.1,
+        ampI1 = CurrentProbe1[50],
+        ampI2 = CurrentProbe2[50],
+        ampI3 = CurrentProbe3[50], 
+        descr = """\
+            OK. Already in rampdown. No arcs.""",
+        stars = '*')
+
+E.rep(29402, 29401, "Go to 5.5 s, 25 cm",
+        times = 5.5,
+        posit = 0.25,
+        descr = """Didn't run.""",
+        stars = '')
+
+E.rep(29403, 29402, "Repeat",
+        descr = """\
+            Better. Now some mini arcs.""",
+        stars = '**')
+
+E.rep(29404, 29403, "All the way thru",
+        posit = 0.34,
+        descr = """\
+            Programming error led to probe not retracting, VPE at 6.02122 s.
+            Data appears to be H-mode, high density, ELMs. Rough.""",
+        stars = '***')
+
+E.rep(29405, 29404, "25 cm",
+        posit = 0.25,
+        descr = """\
+            No strong arcs. Still mini-arcs on tip 1 (still not clean).""",
+        stars = '***')
+
+E.rep(29406, 29405, "30 cm, 5.9 s, 20 mA/mV",
+        times = 5.9,
+        posit = 0.3,
+        ampI1 = CurrentProbe1[20],
+        ampI2 = CurrentProbe2[20],
+        ampI3 = CurrentProbe3[20], 
+        descr = """\
+            Good data, but plasma disrupts at dwell.""",
+        stars = '***')
+
+# G. Birkenmeier
+E.rep(29407, 29406, "Repeat of 29315, 34 cm, 2.9 s, Mach -200 V",
+        times = 2.9,
+        posit = 0.34,
+        descr = """\
+            Unfortunately arc on Mach tip 1 already pretty early.""",
+        stars = '***')
+
+E.rep(29408, 29407, "Repeat with more power, 2.725 s, all on sweeps",
+        times = 2.725,
+        posit = 0.34,
+        descr = """\
+            Missed H-mode, very nice L-mode data on way in and out.
+            No arcs.""",
+        stars = '****')
 
 
