@@ -562,7 +562,7 @@ class Signal:
         self.type = kw.get('type', None)
         self.units = kw.get('units', "")
         self.tunits = kw.get('tunits', "s")
-
+        
     def __call__(self, t):
         return self.PP(t)
 
@@ -710,8 +710,16 @@ class Signal:
     def local_argmax(self, *args):
         return self.apply_argfun(np.argmax, *args)
 
+    @memoized_property
+    def xlab(self):
+        return "t (%s)" % self.tunits
+
+    @memoized_property
+    def ylab(self):
+        return "%s (%s)" % (self.name, self.units)
+
     def plot(self, ax=None, **kw):
-        ax = get_axes(ax)
+        ax = get_axes(ax, xlab=self.xlab, ylab=self.ylab)
         ax.plot(self.t, self.x.T, **kw)
         return ax
 
@@ -728,10 +736,7 @@ class Signal:
         extent = self.t[0], self.t[-1], freqs[0] - df/2, freqs[-1] - df/2
         Z = 10. * np.log10(Pxx)
 
-        if ax is None:
-            ax = get_axes()
-            ax.set_xlabel('t (s)')
-            ax.set_ylabel('f (kHz)')
+        ax = get_axes(ax, xlab='t (s)', ylab='f (kHz)')
 
         im = ax.imshow(Z, aspect='auto', cmap=cmap, origin='lower', 
                 extent=extent, interpolation='none', **kw)
@@ -879,8 +884,7 @@ class PositionSignal(Signal):
         return np.concatenate(self.regions(fun=np.arange, **kw))
 
     def plot_plunges(self, ax=None, **kw):
-        ax = get_axes(ax)
-        Signal.plot(self, ax, **kw)
+        ax = Signal.plot(self, ax, **kw)
         i0, iM, i1 = self.t_ind
         ax.plot(self.t[i0], self.x[i0], 'r*')
         ax.plot(self.t[i1], self.x[i1], 'g*')
@@ -913,8 +917,7 @@ class VoltageSignal(Signal):
         return self.x[cnd].ptp() > D and self.PPF.D > D
 
     def plot_sweeps(self, ax=None, **kw):
-        ax = get_axes(ax)
-        Signal.plot(self, ax, **kw)
+        ax = Signal.plot(self, ax, **kw)
         ax.plot(self.t[self.iE], self.x[self.iE], 'r+')
         return ax
 

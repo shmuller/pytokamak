@@ -37,7 +37,7 @@ class FitterIV(Fitter):
         self.M = self.V.size
 
         self.cut_at_min = kw.pop('cut_at_min', True)
-        self.red_fact = kw.pop('red_fact', 0.95)
+        self.r = kw.pop('r', 0.95)
         
         Fitter.__init__(self, self.V, self.I, **kw)
 
@@ -115,11 +115,11 @@ class FitterIV(Fitter):
     def fit(self):
         Fitter.fit(self)
 
-        if self.red_fact < 1:
+        if self.r < 1:
             save = self.X, self.Y
             Y0 = 0.
             while True:
-                self.M *= self.red_fact
+                self.M *= self.r
                 self.X, self.Y = self.X[:self.M], self.Y[:self.M]
                 P_old = self.P
                 Fitter.fit(self, P0=self.P)    
