@@ -176,6 +176,20 @@ class FitterIV6(Fitter):
     fitfun_rms = ff.IV6_rms
 
 
+class FitterIV6i(FitterIV6):
+    @staticmethod
+    def fitfun(p, V, a):
+        Is = p[0] + a*(p[3]-p[0])
+        Vf = p[1] + a*(p[4]-p[1])
+        iTe = 1./p[2] + a*(1./p[5]-1./p[2])
+        return Is*(1.-np.exp((V-Vf)*iTe))
+
+    custom_engine = ff.IV6i_fit
+    fitfun_fast = ff.IV6i
+    fitfun_diff = ff.IV6i_diff
+    fitfun_rms = ff.IV6i_rms
+
+
 class FitterIV6Perm(FitterIV6):
     def __init__(self, *args, **kw):
         # derived class needs to assign self.perm and self.iperm here
@@ -417,6 +431,10 @@ class IVSeriesSimple:
         self.PP6 = self._fit_linear(FitterIV6, **kw)
         return self
 
+    def fit6i(self, **kw):
+        self.PP6i = self._fit_linear(FitterIV6i, **kw)
+        return self
+
     def fit5(self, **kw):
         self.PP5 = self._fit_linear(FitterIV5, **kw)
         return self
@@ -434,6 +452,11 @@ class IVSeriesSimple:
     def PP6(self):
         print "Calculating PP6..."
         return self._fit_linear(FitterIV6)
+
+    @memoized_property
+    def PP6i(self):
+        print "Calculating PP6i..."
+        return self._fit_linear(FitterIV6i)
 
     @memoized_property
     def PP5(self):
@@ -517,9 +540,11 @@ class IVSeriesSimple:
         return fig
 
     plot_raw6 = _plot_factory('plot_raw', 'PP6')
+    plot_raw6i = _plot_factory('plot_raw', 'PP6i')
     plot_raw5 = _plot_factory('plot_raw', 'PP5')
     plot_raw4 = _plot_factory('plot_raw', 'PP4')
     plot6 = _plot_factory('plot', 'PP6')
+    plot6i = _plot_factory('plot', 'PP6i')
     plot5 = _plot_factory('plot', 'PP5')
     plot4 = _plot_factory('plot', 'PP4')
 
@@ -544,10 +569,11 @@ class IVSeriesSimpleGroup:
     plot_range_V  = _plot_range_factory('plot_range_V')
     plot_range_I  = _plot_range_factory('plot_range_I')
 
-    fit  = _forall_factory('fit')
-    fit6 = _forall_factory('fit6')
-    fit5 = _forall_factory('fit5')
-    fit4 = _forall_factory('fit4')
+    fit   = _forall_factory('fit')
+    fit6  = _forall_factory('fit6')
+    fit6i = _forall_factory('fit6i')
+    fit5  = _forall_factory('fit5')
+    fit4  = _forall_factory('fit4')
 
     def plot_raw(self, fig=None, PP='PP'):
         if fig is None:
@@ -593,9 +619,11 @@ class IVSeriesSimpleGroup:
         return fig
 
     plot_raw6 = _plot_factory('plot_raw', 'PP6')
+    plot_raw6i = _plot_factory('plot_raw', 'PP6i')
     plot_raw5 = _plot_factory('plot_raw', 'PP5')
     plot_raw4 = _plot_factory('plot_raw', 'PP4')
     plot6 = _plot_factory('plot', 'PP6')
+    plot6i = _plot_factory('plot', 'PP6i')
     plot5 = _plot_factory('plot', 'PP5')
     plot4 = _plot_factory('plot', 'PP4')
 
