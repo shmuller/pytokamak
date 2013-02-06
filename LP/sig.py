@@ -3,7 +3,6 @@ import numpy.ma as ma
 import os
 import h5py
 import copy
-import operator
 
 from pdb import set_trace
 
@@ -334,7 +333,10 @@ class PiecewisePolynomialEndpoints(PiecewisePolynomial):
 
     def eval(self, w=None, pad=False, ext=False, shift=None):
         if shift is None:
-            shift = self.shift
+            if ext:
+                shift = 0
+            else:
+                shift = self.shift
 
         try:
             ind = self._mask(w)[:-1]
@@ -515,7 +517,7 @@ class Amp:
             self.fact, self.offs = fact, offs
 
     def __call__(self, x):
-        return x*self.fact + self.offs   # try x.__mult__ if x is object
+        return x*self.fact + self.offs   # try x.__mul__ if x is object
 
     def apply(self, x):
         x *= self.fact
@@ -570,44 +572,54 @@ class Signal:
     def __getitem__(self, index):
         return self.__class__(self.x[index], self.t[index], **self.kw)
 
+    def __array__(self):
+        return self.x
+
+    def __array_wrap__(self, x):
+        return self.__class__(x, self.t, **self.kw)
+
     def _op_factory(op, calcfun):
-        def calcx(self, other):
-            if isinstance(other, Signal):
+        def apply(self, other, out=None):
+            try:
                 if other.units != self.units:
                     raise Exception("Unit mismatch")
                 other = other.x
+            except AttributeError:
+                pass
             
-            return op(self.x, other)
+            return op(self.x, other, out)
 
-        def calci(self, other):
-            x = calcx(self, other)
+        def iapply(self, other):
+            apply(self, other, self.x)
             return self
 
-        def calc(self, other):
-            x = calcx(self, other)
-            return self.__class__(x, self.t, **self.kw)
+        def wapply(self, other):
+            return self.__array_wrap__(apply(self, other))
         
         return locals()[calcfun]
 
-    __add__  = _op_factory(operator.add , 'calc')
-    __sub__  = _op_factory(operator.sub , 'calc')
-    __iadd__ = _op_factory(operator.iadd, 'calci')
-    __isub__ = _op_factory(operator.isub, 'calci')
-    __lt__   = _op_factory(operator.lt  , 'calcx')
-    __le__   = _op_factory(operator.le  , 'calcx')
-    __eq__   = _op_factory(operator.eq  , 'calcx')
-    __ne__   = _op_factory(operator.ne  , 'calcx')
-    __ge__   = _op_factory(operator.ge  , 'calcx')
-    __gt__   = _op_factory(operator.gt  , 'calcx')
+    __lt__   = _op_factory(np.less         , 'apply')
+    __le__   = _op_factory(np.less_equal   , 'apply')
+    __eq__   = _op_factory(np.equal        , 'apply')
+    __ne__   = _op_factory(np.not_equal    , 'apply')
+    __ge__   = _op_factory(np.greater_equal, 'apply')
+    __gt__   = _op_factory(np.greater      , 'apply')
+
+    __add__  = _op_factory(np.add     , 'wapply')
+    __iadd__ = _op_factory(np.add     , 'iapply')
+    __sub__  = _op_factory(np.subtract, 'wapply')
+    __isub__ = _op_factory(np.subtract, 'iapply')
+    __div__  = _op_factory(np.divide  , 'wapply')
+    __idiv__ = _op_factory(np.divide  , 'iapply')
 
     def __mul__(self, other):
-        return self.__class__(other*self.x, self.t, **self.kw)
-
+        return self.__array_wrap__(other*self.x)
+    
     def __imul__(self, other):
         try:
             other.apply(self.x)
         except AttributeError:
-            self.x[:] *= other
+            np.multiply(self.x, other, self.x)
         return self
 
     @memoized_property
@@ -661,7 +673,7 @@ class Signal:
         return c
 
     def as_PP(self, PP):
-        c = self.ppolyfit(PP.i0, PP.i1, PP.c.shape[0])
+        c = self.ppolyfit(PP.i0, PP.i1, PP.c.shape[0] - 1)
         return PP.__class__(c, PP.x, **PP.kw)
         
     def smooth(self, w=100):

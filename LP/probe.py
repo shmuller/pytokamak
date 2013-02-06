@@ -432,11 +432,8 @@ class Probe:
         self.ylab = ("Isat (A)", "Vf (V)", "Te (eV)")
 
     def __getitem__(self, index):
-        if not isinstance(index, tuple):
-            return self.S[index]
-        else:
-            return tuple([self.S[i] for i in index])
-
+        return self.S[index]
+        
     def mapsig(self):
         pass
 
@@ -465,8 +462,9 @@ class Probe:
             self.trim(plunge)
     
     def get_type(self, type):
-        is_type = lambda x: x.type == type
-        return np.array(filter(is_type, self.S.itervalues()))
+        def is_type(x): 
+            return x.type == type
+        return np.array(filter(is_type, self.S.itervalues()), dtype=object)
 
     def _shortcut_factory(name):
         @memoized_property
