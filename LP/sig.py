@@ -186,6 +186,7 @@ class PiecewisePolynomial:
 
         self.fill = kw.get('fill', None)
         self.i0 = kw.get('i0', np.arange(x.size))
+        self.i1 = self.i0[1:]
 
     @memoized_property
     def xi(self):
@@ -650,6 +651,19 @@ class Signal:
         xi = self.PP(ti)
         return self.__class__(xi, ti, **self.kw)
 
+    def ppolyfit(self, i0, i1, deg):
+        N = len(i1)
+        c = np.empty((deg + 1, N))
+        for i in xrange(N):
+            s = slice(i0[i], i1[i])
+            t = self.t[s]
+            c[:,i] = np.polyfit(t - t[0], self.x[s], deg)
+        return c
+
+    def as_PP(self, PP):
+        c = self.ppolyfit(PP.i0, PP.i1, PP.c.shape[0])
+        return PP.__class__(c, PP.x, **PP.kw)
+        
     def smooth(self, w=100):
         self.x[:] = smooth(self.x, window_len=2*w+1)
         return self
