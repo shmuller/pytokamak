@@ -230,6 +230,28 @@ class PiecewisePolynomial:
     def xi(self):
         return self.x[self.i0]
 
+    def __array__(self):
+        return self.c
+
+    def __array_wrap__(self, c):
+        return self.__class__(c, self.x, **self.kw)
+
+    def __add__(self, other):
+        c = self.c.copy()
+        c[-1] += other
+        return self.__array_wrap__(c)
+
+    def __sub__(self, other):
+        c = self.c.copy()
+        c[-1] -= other
+        return self.__array_wrap__(c)
+
+    def __mul__(self, other):
+        return self.__array_wrap__(self.c*other)
+
+    def __div__(self, other):
+        return self.__array_wrap__(self.c/other)
+
     def __getitem__(self, index):
         if not isinstance(index, tuple): 
             index = (index,)

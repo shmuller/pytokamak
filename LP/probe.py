@@ -585,7 +585,7 @@ class Probe:
         pass
 
     @memoized_property
-    def res(self):
+    def res_old(self):
         if self.PP is None:
             self.analyze()
             """
@@ -613,7 +613,7 @@ class Probe:
         shn = self.digitizer.shn
         return PhysicalResults(shn, self['Rs'], i, meas)
     
-    def res2(self, PP='PP'):
+    def calc_res(self, PP='PP'):
         try:
             PP_j  = self.IV['tip1+tip2'].get_PP(PP)
             PP_jp = self.IV['tip1'].get_PP(PP)[0]
@@ -636,6 +636,14 @@ class Probe:
 
         shn = self.digitizer.shn
         return PhysicalResults(shn, self['Rs'], i, meas)
+
+    @memoized_property
+    def res(self):
+        return self.calc_res()
+
+    @memoized_property
+    def res6(self):
+        return self.calc_res(PP='PP6')
 
     @memoized_property
     def h5name_res(self):

@@ -384,15 +384,19 @@ class IV:
     def _fit_linear(self, FitterIVClass, n=5, incr=1, use_mask=True, **kw):
         sl, sr, i0, i1, ind, out, shift = self._prepare(n, incr, 6)
 
-        c = self.PP.c[0]
-        p_knots = np.concatenate((c[:1], 0.5*(c[:-1] + c[1:]), c[-1:]), axis=0)
-
-        p = np.concatenate((p_knots[sl], p_knots[sr]), axis=1)
-       
         S = self.S
         V, I, t = S.V.x, S.x, S.t
         t0, t1 = t[i0], t[i1]
         dt = t1 - t0
+
+        try:
+            # try fast version first
+            c = self.PP.c[0]
+            p_knots = np.concatenate((c[:1], 0.5*(c[:-1] + c[1:]), c[-1:]), axis=0)
+            p = np.concatenate((p_knots[sl], p_knots[sr]), axis=1)
+        except:
+            # fallback to full evaluation
+            p = np.concatenate((self.PP(t0), self.PP(t1)), axis=1)
 
         #Sfit = self.get_Sfit()
         #mask = ~Sfit.x.mask

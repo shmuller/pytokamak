@@ -220,11 +220,11 @@ class ProbeXPR(Probe):
             num = II[i].number
             if num > 0:
                 tip = tips[num - 1]
-                j = Isat[i] / tip.area
+                j = Isat[i] / (0.5*tip.area)
                 if tip.pos == 'lower left':
-                    meas.jp = 2*j
+                    meas.jp = j
                 elif tip.pos == 'lower right':
-                    meas.jm = 2*j
+                    meas.jm = j
             else:
                 meas.Vf = Vf[i]
                 meas.Te = Te[i]
