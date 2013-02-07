@@ -229,7 +229,7 @@ class FitterIV4(FitterIV6Perm):
     fitfun_rms = ff.IV4_rms
 
 
-class IVSeriesSimpleViewerIV(ToggleViewer):
+class IVViewer(ToggleViewer):
     def __init__(self, IV, PP='PP'):
         self.IV, self.PP = IV, PP
 
@@ -259,7 +259,7 @@ class IVSeriesSimpleViewerIV(ToggleViewer):
         self.colors = ('b', 'g', 'r', 'c')
 
 
-class IVSeriesSimpleViewerIt(ToggleViewer):
+class IVViewerIt(ToggleViewer):
     def __init__(self, IV, PP='PP'):
         self.IV, self.PP = IV, PP
 
@@ -291,7 +291,7 @@ class IVSeriesSimpleViewerIt(ToggleViewer):
         self.colors = ('b', 'g', 'r', 'c')
 
 
-class IVSeriesSimpleViewerItIntegrated(ToggleViewerIntegrated):
+class IVViewerItIntegrated(ToggleViewerIntegrated):
     def __init__(self, IV, PP='PP'):
         self.IV, self.PP = IV, PP
 
@@ -307,7 +307,7 @@ class IVSeriesSimpleViewerItIntegrated(ToggleViewerIntegrated):
         return lines + lines_fit
 
 
-# method factories for IVSeriesSimple and IVSeriesSimpleGroup
+# method factories for IV and IVContainer
 def _plot_factory(plotfun, PP):
     def plot(self, **kw):
         return getattr(self, plotfun)(PP=PP, **kw)
@@ -327,7 +327,7 @@ def _forall_factory(method):
     return forall
 
 
-class IVSeriesSimple:
+class IV:
     def __init__(self, S, R):
         self.S, self.R = S, R
 
@@ -503,9 +503,9 @@ class IVSeriesSimple:
             fig = get_tfig(xlab=self.S.xlab, ylab=self.S.ylab)
             ax = fig.axes[0]
 
-            self.viewers = (IVSeriesSimpleViewerIV(self, PP=PP),
-                            IVSeriesSimpleViewerIt(self, PP=PP),
-                            IVSeriesSimpleViewerItIntegrated(self, PP=PP))
+            self.viewers = (IVViewer(self, PP=PP),
+                            IVViewerIt(self, PP=PP),
+                            IVViewerItIntegrated(self, PP=PP))
             
             menu_entries_ax = []
             for v in self.viewers:
@@ -525,8 +525,8 @@ class IVSeriesSimple:
             fig = get_tfig(shape=(3, 1), figsize=(10, 10),
                            xlab=xlab, ylab=ylab)
 
-            self.viewers = (IVSeriesSimpleViewerIV(self, PP=PP),
-                            IVSeriesSimpleViewerIt(self, PP=PP))
+            self.viewers = (IVViewer(self, PP=PP),
+                            IVViewerIt(self, PP=PP))
             
             menu_entries_ax = []
             for v in self.viewers:
@@ -549,14 +549,14 @@ class IVSeriesSimple:
     plot4 = _plot_factory('plot', 'PP4')
 
 
-class IVSeriesSimpleGroup(Container):
+class IVContainer(Container):
     def __init__(self, S=None, R=None, x=None):
         if x is not None:
             self.x = x
         else:
             Container.__init__(self)
             for k, s in S.iteritems():
-                self.x[k] = IVSeriesSimple(s, R)
+                self.x[k] = IV(s, R)
 
     def __getitem__(self, indx):
         try:
@@ -588,8 +588,8 @@ class IVSeriesSimpleGroup(Container):
             fig = get_tfig(shape=(len(self.x), 1), figsize=(10, 10), 
                            xlab=xlab, ylab=ylab)
 
-            self.viewers = (IVSeriesSimpleViewerIV(self, PP=PP),
-                            IVSeriesSimpleViewerIt(self, PP=PP))
+            self.viewers = (IVViewer(self, PP=PP),
+                            IVViewerIt(self, PP=PP))
 
             menu_entries_ax = []
             for v in self.viewers:
@@ -609,8 +609,8 @@ class IVSeriesSimpleGroup(Container):
             fig = get_tfig(shape=(3, 1), figsize=(10, 10), 
                            xlab=xlab, ylab=ylab)
 
-            self.viewers = (IVSeriesSimpleViewerIV(self, PP=PP),
-                            IVSeriesSimpleViewerIt(self, PP=PP))
+            self.viewers = (IVViewer(self, PP=PP),
+                            IVViewerIt(self, PP=PP))
 
             menu_entries_ax = []
             for v in self.viewers:

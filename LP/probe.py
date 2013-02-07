@@ -13,7 +13,7 @@ from pdb import set_trace
 
 from sig import *
 
-from fitter_IV import FitterIV, FitterError, IVSeriesSimpleGroup
+from fitter_IV import FitterIV, FitterError, IVContainer
 
 from sm_pyplot.contextmenupicker import ContextMenuPicker
 from sm_pyplot.observer_viewer import ToggleViewer, ToggleViewerIntegrated
@@ -562,7 +562,7 @@ class Probe:
         self.PP = self.IV_series.PP
 
     def calc_IV(self):
-        return IVSeriesSimpleGroup(self.I_swept, self.S['Rs'])
+        return IVContainer(self.I_swept, self.S['Rs'])
 
     @memoized_property
     def IV(self):
