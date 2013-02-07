@@ -496,7 +496,7 @@ class Probe:
                 I.V.plot(ax)
 
         for key, ax in zip(keys, fig.axes):
-            for S in self.get_type(key[0]):
+            for S in self.get_type(key[0]).itervalues():
                 S.plot(ax)
 
         fig.canvas.draw()
@@ -613,21 +613,19 @@ class Probe:
         shn = self.digitizer.shn
         return PhysicalResults(shn, self['Rs'], i, meas)
     
-    @property
-    def res2(self):
-        #self.IV.fit(engine='fmin')
-        #self.IV.fit(r=0.99).fit6(engine='odr')
-        PP = self.IV['tip1+tip2'].PP
-        PP_jp = self.IV['tip1'].PP[0]
-        PP_jm = self.IV['tip2'].PP[0]
-        
-        #PP = self.IV[0].PP6
-        #PP_jp = self.S['tip1'].as_PP(PP)
-        #PP_jm = self.S['tip2'].as_PP(PP)
+    def res2(self, PP='PP'):
+        try:
+            PP_j  = self.IV['tip1+tip2'].get_PP(PP)
+            PP_jp = self.IV['tip1'].get_PP(PP)[0]
+            PP_jm = self.IV['tip2'].get_PP(PP)[0]
+        except KeyError:
+            PP_j  = self.IV['tip3'].get_PP(PP)
+            PP_jp = self.S['tip1'].as_PP(PP_j)
+            PP_jm = self.S['tip2'].as_PP(PP_j)
 
-        c = np.concatenate((PP.c, PP_jp.c[:,:,None], PP_jm.c[:,:,None]), axis=2)
+        c = np.concatenate((PP_j.c, PP_jp.c[:,:,None], PP_jm.c[:,:,None]), axis=2)
         
-        PP2 = PP.__class__(c, PP.x, **PP.kw)
+        PP2 = PP_j.__class__(c, PP_j.x, **PP_j.kw)
         i, meas = PP2.eval()
 
         keys = ('j', 'Vf', 'Te', 'jp', 'jm')

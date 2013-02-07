@@ -468,6 +468,9 @@ class IV:
         print "Calculating PP4..."
         return self._fit_linear(FitterIV4)
 
+    def get_PP(self, PP='PP'):
+        return getattr(self, PP)
+
     def get_Sfit(self, PP='PP'):
         t, V = self.S.t, self.S.V
         p = getattr(self, PP)(t).T
@@ -562,11 +565,14 @@ class IVContainer(Container):
         try:
             return self.x[indx]
         except (KeyError, TypeError):
-            k = np.array(self.x.keys())[indx]
-            if isinstance(k, np.ndarray):
-                return self.__class__(x=DictView(self.x, k))
-            else:
-                return self.x[k]
+            try:
+                k = np.array(self.x.keys())[indx]
+                if isinstance(k, np.ndarray):
+                    return self.__class__(x=DictView(self.x, k))
+                else:
+                    return self.x[k]
+            except (ValueError, IndexError):
+                raise KeyError(indx)
 
     def get_Sfit_at_event(self, t_event, PP='PP'):
         return [x.get_Sfit_at_event(t_event, PP) for x in self]

@@ -11,9 +11,9 @@ class TipLPS(CylindricalTip):
     def __init__(self, *args, **kw):
         CylindricalTip.__init__(self, 0.00045, 0.002, *args, **kw)
 
-tip1 = TipLPS(number=1, pos='lower left', V_keys='ampVF', I_keys='ampI2')
-tip2 = TipLPS(number=2, pos='lower right', V_keys='ampVF', I_keys='ampI3')
-tip3 = TipLPS(number=3, pos='upper', V_keys='ampVF', I_keys='ampI1')
+tip1 = TipLPS(number=1, pos='lower left', V_keys='ampV1', I_keys='ampI2')
+tip2 = TipLPS(number=2, pos='lower right', V_keys='ampV1', I_keys='ampI3')
+tip3 = TipLPS(number=3, pos='upper', V_keys='ampV1', I_keys='ampI1')
 
 head = HeadXPR(tips=(tip1, tip2, tip3), R_keys='ampR')
 
