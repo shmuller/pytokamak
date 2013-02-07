@@ -210,8 +210,8 @@ class IVSeries:
 
 
 class PhysicalResults:
-    def __init__(self, shn, R, i0, meas, usetex=usetex):
-        self.shn, self.R, self.i0, self.meas, self.usetex = shn, R, i0, meas, usetex
+    def __init__(self, shn, R, i, meas, usetex=usetex):
+        self.shn, self.R, self.i, self.meas, self.usetex = shn, R, i, meas, usetex
 
         self.keys = ('n_cs', 'Mach', 'nv', 'mnv', 'j', 'Vf', 'Te', 'Vp', 
                 'cs', 'n', 'v', 'pe', 'R', 't', 'Dt')
@@ -265,9 +265,10 @@ class PhysicalResults:
         self.lim['R'] = (0, None)
 
     @memoized_property
-    def PP(self):
+    def res(self):
         qe = 1.6022e-19
         mi = 2*1.67e-27
+        R0 = 1.645
 
         Gp = self.meas.jp/qe
         Gm = self.meas.jm/qe
@@ -277,6 +278,9 @@ class PhysicalResults:
 
         dtype = zip(self.keys, [np.double]*len(self.keys))
         res = np.empty(Gp.size, dtype).view(np.recarray)
+
+        res.t = self.R.t[self.i]
+        res.R = R0 - self.R.x[self.i]
 
         res.Mach = Mach = 0.5*np.log(Gm/Gp)
         res.n_cs = n_cs = np.e*np.sqrt(Gp*Gm)
@@ -292,23 +296,21 @@ class PhysicalResults:
         res.n  = n = n_cs/cs
         res.v  = v = Mach*cs
         res.pe = n*qe*Te
+        return res 
 
-        return PiecewisePolynomial(res[None], self.R.t, i0=self.i0)
+    def _mask(self, w):
+        ind0, ind1 = np.searchsorted(self.i, w)
+        return np.concatenate(map(np.arange, ind0, ind1))
 
     def eval(self, plunge=None, inout=None):
         w = self.R.plunges(plunge, inout)
         
-        i, y = self.PP.eval(w=w)
-        
-        R0 = 1.645
-        y.t  = self.R.t[i]
-        y.R  = R0 - self.R.x[i]
-        y.Dt = y.t
+        y = self.res[self._mask(w)]
 
+        y.Dt = y.t
         tM = self.R.tM(plunge)
         if len(tM) == 1:
             y.Dt -= tM[0]
-
         return y
 
     def make_name(self, plunge=None, inout=None):        
@@ -606,8 +608,12 @@ class Probe:
 
         self.get_meas(Isat, Vf, Te, meas)
        
+        R = self.S['Rs']
+        PP = PiecewisePolynomial(meas[None], R.t, i0=self.PP.i0)
+        i, meas = PP.eval()
+
         shn = self.digitizer.shn
-        return PhysicalResults(shn, self['Rs'], self.PP.i0, meas)
+        return PhysicalResults(shn, R, i, meas)
         
     @memoized_property
     def h5name_res(self):
