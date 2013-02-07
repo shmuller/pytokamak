@@ -52,7 +52,7 @@ from mdsclient import *
 from mediansmooth import *
 from cookb_signalsmooth import smooth
 
-from collections import MutableMapping, Iterable
+from collections import MutableMapping, Iterable, OrderedDict
 
 def ensure_tuple(d, *keys):
     for k in keys:
@@ -75,12 +75,12 @@ class memoized_property(object):
 
 
 class DictView(MutableMapping):
-    def __init__(self, source, valid_keys):
-        self.source, self.valid_keys = source, valid_keys
+    def __init__(self, base, valid_keys):
+        self.base, self.valid_keys = base, valid_keys
 
     def __getitem__(self, key):
         if key in self.valid_keys:
-            return self.source[key]
+            return self.base[key]
         else:
             raise KeyError(key)
 
@@ -93,12 +93,51 @@ class DictView(MutableMapping):
 
     def __setitem__(self, key, value):
         if key in self.valid_keys:
-            self.source[key] = value
+            self.base[key] = value
         else:
             raise KeyError(key)
 
     def __delitem__(self, key):
         self.valid_keys.remove(key)
+
+    def __repr__(self):
+        return self.__class__.__name__ + " with: " + self.valid_keys.__repr__()
+
+
+class Container(Iterable):
+    def __init__(self):
+        self.x = OrderedDict()
+
+    def __getitem__(self, indx):
+        return self.x[indx]
+
+    def __iter__(self):
+        return self.x.itervalues()
+
+    def __add__(self, other):
+        s = self.__class__()
+        s.x = self.x.copy()
+        s.x.update(other.x)
+        return s
+
+    def __iadd__(self, other):
+        self.x.update(other.x)
+        return self
+
+    @staticmethod
+    def _item(v, attr, cnd):
+        x = np.array([getattr(v, attr)])
+        if cnd(v):
+            return x
+        else:
+            return np.empty((0,), x.dtype)
+
+    def collect_as_list(self, attr, cnd=lambda v: True): 
+        return np.concatenate([v.collect_as_list(attr, cnd) if isinstance(v, Container)
+            else self._item(v, attr, cnd) for v in self.x.itervalues()])
+
+    def collect_as_dict(self, attr):
+        return {k: getattr(v, attr) for k, v in self.x.iteritems()}
 
 
 def dict_pop(d, **kw):

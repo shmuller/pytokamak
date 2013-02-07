@@ -4,7 +4,7 @@ import textwrap
 
 from collections import OrderedDict
 
-from sig import ensure_tuple, PositionSignal, VoltageSignal, CurrentSignal
+from sig import ensure_tuple, Container, PositionSignal, VoltageSignal, CurrentSignal
 
 class Tip:
     def __init__(self, area, proj_area, number, pos, 
@@ -202,42 +202,6 @@ class Shot:
 
         self.head.calib(get_amp)
         
-
-class Container:
-    def __init__(self):
-        self.x = OrderedDict()
-
-    def __getitem__(self, indx):
-        return self.x[indx]
-
-    def __iter__(self):
-        return self.x.itervalues()
-
-    def __add__(self, other):
-        s = self.__class__()
-        s.x = self.x.copy()
-        s.x.update(other.x)
-        return s
-
-    def __iadd__(self, other):
-        self.x.update(other.x)
-        return self
-
-    @staticmethod
-    def _item(v, attr, cnd):
-        x = np.array([getattr(v, attr)])
-        if cnd(v):
-            return x
-        else:
-            return np.empty((0,), x.dtype)
-
-    def collect_as_list(self, attr, cnd=lambda v: True): 
-        return np.concatenate([v.collect_as_list(attr, cnd) if isinstance(v, Container)
-            else self._item(v, attr, cnd) for v in self.x.itervalues()])
-
-    def collect_as_dict(self, attr):
-        return {k: getattr(v, attr) for k, v in self.x.iteritems()}
-
 
 class ShotContainer(Container):
     @property

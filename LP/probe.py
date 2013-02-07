@@ -464,27 +464,25 @@ class Probe:
             self.trim(plunge)
     
     def get_type(self, type):
-        def is_type(x): 
-            return x.type == type
-        return np.array(filter(is_type, self.S.itervalues()), dtype=object)
-
-    def _shortcut_factory(name):
-        @memoized_property
-        def shortcut(self):
-            return self.get_type(name)
-        return shortcut
-
-    I = _shortcut_factory('Current')
-    V = _shortcut_factory('Voltage')
-    R = _shortcut_factory('Position')
+        keys = [k for k, v in self.S.iteritems() if v.type == type]
+        return DictView(self.S, keys)
 
     @memoized_property
-    def is_swept(self):
-        return np.array([I.V.is_swept for I in self.I])
+    def I(self):
+        return self.get_type('Current')
+
+    @memoized_property
+    def V(self):
+        return self.get_type('Voltage')
+
+    @memoized_property
+    def R(self):
+        return self.get_type('Position')
 
     @memoized_property
     def I_swept(self):
-        return self.I[self.is_swept]
+        keys = [k for k, I in self.I.iteritems() if I.V.is_swept]
+        return DictView(self.I, keys)
 
     def plot_raw(self, fig=None,
             keys = (('Position',), ('Current',), ('Voltage',))):
@@ -494,7 +492,7 @@ class Probe:
 
         ax = fig.axes[np.flatnonzero(keys == 'Voltage')]
         if ax:
-            for I in self.I:
+            for I in self.I.itervalues():
                 I.V.plot(ax)
 
         for key, ax in zip(keys, fig.axes):
@@ -537,16 +535,16 @@ class Probe:
         return self
 
     def smooth_I(self, w=10):
-        for I in self.I:
+        for I in self.I.itervalues():
             I.smooth(w)
 
     def corr_capa(self):
-        for I in self.I:
+        for I in self.I.itervalues():
             I.x[:] -= I.I_capa()
 
     def calc_IV_series(self, n=1, **kw):
-        II = self.I
-        V = self.I_swept[0].V
+        II = self.I.values()
+        V = self.I_swept.values()[0].V
         iE = np.c_[V.iE[:-n], V.iE[n:]]
         return IVSeries(V, II, iE, **kw)
 
@@ -615,12 +613,13 @@ class Probe:
         shn = self.digitizer.shn
         return PhysicalResults(shn, self['Rs'], i, meas)
     
-    @memoized_property
+    @property
     def res2(self):
         #self.IV.fit(engine='fmin')
-        PP = self.IV[3].PP
-        PP_jp = self.IV[0].PP[0]
-        PP_jm = self.IV[1].PP[0]
+        #self.IV.fit(r=0.99).fit6(engine='odr')
+        PP = self.IV['tip1+tip2'].PP
+        PP_jp = self.IV['tip1'].PP[0]
+        PP_jm = self.IV['tip2'].PP[0]
         
         #PP = self.IV[0].PP6
         #PP_jp = self.S['tip1'].as_PP(PP)

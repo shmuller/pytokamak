@@ -4,7 +4,7 @@ import numpy.ma as ma
 from itertools import cycle
 
 from sig import median, memoized_property, get_fig, get_tfig
-from sig import CurrentSignal, PiecewisePolynomialEndpoints
+from sig import DictView, Container, CurrentSignal, PiecewisePolynomialEndpoints
 
 from fitter import Fitter, FitterError
 
@@ -315,13 +315,13 @@ def _plot_factory(plotfun, PP):
 
 def _plot_range_factory(rangefun):
     def plot_range(self, *args):
-        r = np.array([getattr(x, rangefun)(*args) for x in self.x])
+        r = np.array([getattr(x, rangefun)(*args) for x in self])
         return r[:,0].min(), r[:,1].max()
     return plot_range
 
 def _forall_factory(method):
     def forall(self, *args, **kw):
-        for x in self.x:
+        for x in self:
             getattr(x, method)(*args, **kw)
         return self
     return forall
@@ -500,7 +500,7 @@ class IVSeriesSimple:
 
     def plot_raw(self, ax=None, PP='PP'):
         if ax is None:
-            fig = get_tfig()
+            fig = get_tfig(xlab=self.S.xlab, ylab=self.S.ylab)
             ax = fig.axes[0]
 
             self.viewers = (IVSeriesSimpleViewerIV(self, PP=PP),
@@ -549,21 +549,27 @@ class IVSeriesSimple:
     plot4 = _plot_factory('plot', 'PP4')
 
 
-class IVSeriesSimpleGroup:
+class IVSeriesSimpleGroup(Container):
     def __init__(self, S=None, R=None, x=None):
         if x is not None:
             self.x = x
         else:
-            self.x = np.array([IVSeriesSimple(s, R) for s in S])
+            Container.__init__(self)
+            for k, s in S.iteritems():
+                self.x[k] = IVSeriesSimple(s, R)
 
-    def __getitem__(self, index):
-        x = self.x[index]
-        if isinstance(x, np.ndarray):
-            x = self.__class__(x=x)
-        return x
+    def __getitem__(self, indx):
+        try:
+            return self.x[indx]
+        except (KeyError, TypeError):
+            k = np.array(self.x.keys())[indx]
+            if isinstance(k, np.ndarray):
+                return self.__class__(x=DictView(self.x, k))
+            else:
+                return self.x[k]
 
     def get_Sfit_at_event(self, t_event, PP='PP'):
-        return [x.get_Sfit_at_event(t_event, PP) for x in self.x]
+        return [x.get_Sfit_at_event(t_event, PP) for x in self]
 
     plot_range_dt = _plot_range_factory('plot_range_dt')
     plot_range_V  = _plot_range_factory('plot_range_V')
@@ -577,8 +583,8 @@ class IVSeriesSimpleGroup:
 
     def plot_raw(self, fig=None, PP='PP'):
         if fig is None:
-            xlab = "t (%s)" % self.x[0].S.tunits
-            ylab = ["%s (%s)" % (x.S.name, x.S.units) for x in self.x]
+            xlab = self.x.values()[0].S.xlab
+            ylab = [x.S.ylab for x in self]
             fig = get_tfig(shape=(len(self.x), 1), figsize=(10, 10), 
                            xlab=xlab, ylab=ylab)
 
@@ -592,7 +598,7 @@ class IVSeriesSimpleGroup:
             fig.context_menu_picker = ContextMenuPicker(
                     fig, menu_entries_ax=menu_entries_ax)
 
-        for ax, x in zip(fig.axes, self.x):
+        for ax, x in zip(fig.axes, self.x.values()):
             x.plot_raw(ax=ax, PP=PP)
         return fig
 
@@ -613,7 +619,7 @@ class IVSeriesSimpleGroup:
             fig.context_menu_picker = ContextMenuPicker(
                     fig, menu_entries_ax=menu_entries_ax)
 
-        for x in self.x:
+        for x in self:
             for ax, p in zip(fig.axes, getattr(x, PP)):
                 p.plot(ax=ax, **kw)
         return fig

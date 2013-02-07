@@ -215,7 +215,7 @@ class ProbeXPR(Probe):
 
         tips = head.tips
 
-        II = self.get_type('Current')
+        II = self.I.values()
         for i in xrange(len(II)):
             num = II[i].number
             if num > 0:
