@@ -372,7 +372,7 @@ class IVSeriesSimple:
             def get_mask(s): return mask[s]
 
         for j in ind:
-            s = slice(i0[j], i1[j])
+            s = slice(i0[j], i1[j] + 1)
             fitter_IV = FitterIVClass(V[s], I[s], mask=get_mask(s), **kw)
             try:
                 out[j] = fitter_IV.fit()
@@ -402,7 +402,7 @@ class IVSeriesSimple:
             mask = np.ones_like(self.mask)
 
         for j in ind:
-            s = slice(i0[j], i1[j])
+            s = slice(i0[j], i1[j] + 1)
             m = mask[s]
             if not np.any(m):
                 continue

@@ -598,23 +598,48 @@ class Probe:
                 self.save_res()
             """
 
-        Isat = self.PP.c[0,:,:,0].T
-        Vf   = self.PP.c[0,:,:,1].T
-        Te   = self.PP.c[0,:,:,2].T
+        PP = self.PP
+        Isat = PP.c[0,:,:,0].T
+        Vf   = PP.c[0,:,:,1].T
+        Te   = PP.c[0,:,:,2].T
 
         keys = ('jp', 'jm', 'Vf', 'Te')
         dtype = zip(keys, [np.double]*len(keys))
         meas = np.empty(Isat.shape[1], dtype).view(np.recarray)
 
         self.get_meas(Isat, Vf, Te, meas)
-       
-        R = self.S['Rs']
-        PP = PiecewisePolynomial(meas[None], R.t, i0=self.PP.i0)
-        i, meas = PP.eval()
+
+        PP2 = PP.__class__(meas[None], PP.x, **PP.kw)
+        i, meas = PP2.eval()
 
         shn = self.digitizer.shn
-        return PhysicalResults(shn, R, i, meas)
+        return PhysicalResults(shn, self['Rs'], i, meas)
+    
+    @memoized_property
+    def res2(self):
+        #self.IV.fit(engine='fmin')
+        PP = self.IV[3].PP
+        PP_jp = self.IV[0].PP[0]
+        PP_jm = self.IV[1].PP[0]
         
+        #PP = self.IV[0].PP6
+        #PP_jp = self.S['tip1'].as_PP(PP)
+        #PP_jm = self.S['tip2'].as_PP(PP)
+
+        c = np.concatenate((PP.c, PP_jp.c[:,:,None], PP_jm.c[:,:,None]), axis=2)
+        
+        PP2 = PP.__class__(c, PP.x, **PP.kw)
+        i, meas = PP2.eval()
+
+        keys = ('j', 'Vf', 'Te', 'jp', 'jm')
+        dtype = zip(keys, [np.double]*len(keys))
+        meas = meas.view(dtype).reshape(-1).view(np.recarray)
+
+        self.get_meas2(meas)
+
+        shn = self.digitizer.shn
+        return PhysicalResults(shn, self['Rs'], i, meas)
+
     @memoized_property
     def h5name_res(self):
         return self.digitizer.IO_file.h5name[:-3] + "_res.h5"

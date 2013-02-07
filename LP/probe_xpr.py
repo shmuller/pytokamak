@@ -213,7 +213,7 @@ class ProbeXPR(Probe):
         #i_up = head.get_tip_number_by_position('lower left')
         #i_dn = head.get_tip_number_by_position('lower right')
 
-        tips = self.config.head.tips
+        tips = head.tips
 
         II = self.get_type('Current')
         for i in xrange(len(II)):
@@ -228,6 +228,13 @@ class ProbeXPR(Probe):
             else:
                 meas.Vf = Vf[i]
                 meas.Te = Te[i]
+
+    def get_meas2(self, meas):
+        head = self.config.head
+        tips = head.tips
+        meas.jp /= 0.5*tips[0].area
+        meas.jm /= 0.5*tips[1].area
+        meas.j  /= tips[2].area
 
     def position_calib(self):
         R = self['R']
