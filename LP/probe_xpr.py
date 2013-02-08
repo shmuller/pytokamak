@@ -21,6 +21,7 @@ Signal = probe.Signal
 Digitizer = probe.Digitizer
 Amp = probe.Amp
 Probe = probe.Probe
+PhysicalResults = probe.PhysicalResults
 
 ampUnity = Amp(fact=1., offs=0.)
 ampInv   = Amp(fact=-1., offs=0.)
@@ -229,12 +230,49 @@ class ProbeXPR(Probe):
                 meas.Vf = Vf[i]
                 meas.Te = Te[i]
 
-    def get_meas2(self, meas):
-        head = self.config.head
-        tips = head.tips
-        meas.jp /= 0.5*tips[0].area
-        meas.jm /= 0.5*tips[1].area
-        meas.j  /= tips[2].area
+    def calc_res(self, PP='PP'):
+        tips = self.config.head.tips
+
+        A = (0.5*tips[0].area, 0.5*tips[1].area, tips[2].area)
+
+        try:
+            PP_j  = self.IV['tip1+tip2'].get_PP(PP)
+            PP_jp = self.IV['tip1'].get_PP(PP)[0]
+            PP_jm = self.IV['tip2'].get_PP(PP)[0]
+            PP_jt = PP_j[0].copy()
+            A_j = A[0] + A[1]
+        except KeyError:
+            PP_j  = self.IV['tip3'].get_PP(PP)
+            PP_jp = self.S['tip1'].as_PP(PP_j)
+            PP_jm = self.S['tip2'].as_PP(PP_j)
+            PP_jt = self.S['tip1+tip2'].as_PP(PP_j)
+            A_j = A[2]
+
+        PP_j[0].c /= A_j
+        PP_jp.c /= A[0]
+        PP_jm.c /= A[1]
+        PP_jt.c /= A[0] + A[1]
+
+        keys = ['j', 'Vf', 'Te', 'jp', 'jm', 'jt']
+        c = np.dstack((PP_j.c, PP_jp.c, PP_jm.c, PP_jt.c))
+
+        try:
+            PP_j3 = self.IV['tip3'].get_PP(PP)[0].copy()
+            PP_j3.c /= A[2]
+
+            keys.append('j3')
+            c = np.dstack((c, PP_j3.c))
+        except KeyError:
+            pass
+
+        self.PP_meas = PP_j.__class__(c, PP_j.x, **PP_j.kw)
+        i, meas = self.PP_meas.eval()
+
+        dtype = zip(keys, [np.double]*len(keys))
+        meas = meas.view(dtype).reshape(-1).view(np.recarray)
+
+        shn = self.digitizer.shn
+        return PhysicalResults(shn, self['Rs'], i, meas)
 
     def position_calib(self):
         R = self['R']

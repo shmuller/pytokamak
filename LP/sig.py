@@ -236,6 +236,9 @@ class PiecewisePolynomial:
     def __array_wrap__(self, c):
         return self.__class__(c, self.x, **self.kw)
 
+    def copy(self):
+        return self.__array_wrap__(self.c.copy())
+
     def __add__(self, other):
         c = self.c.copy()
         c[-1] += other

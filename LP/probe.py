@@ -614,28 +614,7 @@ class Probe:
         return PhysicalResults(shn, self['Rs'], i, meas)
     
     def calc_res(self, PP='PP'):
-        try:
-            PP_j  = self.IV['tip1+tip2'].get_PP(PP)
-            PP_jp = self.IV['tip1'].get_PP(PP)[0]
-            PP_jm = self.IV['tip2'].get_PP(PP)[0]
-        except KeyError:
-            PP_j  = self.IV['tip3'].get_PP(PP)
-            PP_jp = self.S['tip1'].as_PP(PP_j)
-            PP_jm = self.S['tip2'].as_PP(PP_j)
-
-        c = np.concatenate((PP_j.c, PP_jp.c[:,:,None], PP_jm.c[:,:,None]), axis=2)
-        
-        PP2 = PP_j.__class__(c, PP_j.x, **PP_j.kw)
-        i, meas = PP2.eval()
-
-        keys = ('j', 'Vf', 'Te', 'jp', 'jm')
-        dtype = zip(keys, [np.double]*len(keys))
-        meas = meas.view(dtype).reshape(-1).view(np.recarray)
-
-        self.get_meas2(meas)
-
-        shn = self.digitizer.shn
-        return PhysicalResults(shn, self['Rs'], i, meas)
+        pass
 
     @memoized_property
     def res(self):
