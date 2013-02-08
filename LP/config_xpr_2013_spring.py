@@ -347,3 +347,57 @@ E.rep(29408, 29407, "Repeat with more power, 2.725 s, all on sweeps",
         stars = '****')
 
 
+############################################
+E = campaign.add_experiment(date="20130208")
+
+# Stefan Muller
+E.add(29438, "DAQ test, single tip on sweeps at 13.5 Vpp, Mach at -200 V",
+        head = head_20130130,
+        ampI1 = CurrentProbe1[20],
+        ampI2 = CurrentProbe2[20],
+        ampI3 = CurrentProbe3[20], 
+        descr = """\
+            """,
+        stars = '', **def_XPR_pos)
+
+E.rep(29439, 29438, "Ref. 29311, beams on at 1.1, 2.7, 4.3 s",
+        times = (1.15, 2.75, 4.35),
+        posit = (0.34, 0.34, 0.34),
+        descr = """\
+            Arcs before dwell, but OK data. Discharge had modes that severely
+            impacted the H-mode.""",
+        stars = '***')
+
+E.rep(29440, 29439, "Repeat with single tip floating",
+        times = (1.15, 2.75, 4.35),
+        posit = (0.34, 0.34, 0.34),
+        descr = """\
+            Arc burns all the way through shot!""",
+        stars = '*')
+
+E.rep(29441, 29440, "Repeat with single tip at -150 V, 20 ms earlier,",
+        times = (1.13, 2.73, 4.33),
+        posit = (0.34, 0.34, 0.34),
+        descr = """\
+            Arc burns all the way through shot! Ok data on single tip.""",
+        stars = '*')
+
+# Standard H Mode
+E.rep(29442, 29441, "Probe test, all on sweeps",
+        times = 6.0,
+        posit = 0.05,
+        descr = """\
+            Tip 1 resistive, arcs even before plasma.""",
+        stars = '*')
+
+# Tests
+E.rep(29443, 29442, "No plunge, but standing at waiting position",
+        times = (),
+        posit = (),
+        descr = """\
+            Tip 1 resistive, arcs even before plasma.""",
+        stars = '')
+
+
+
+

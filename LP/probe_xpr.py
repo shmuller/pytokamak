@@ -236,13 +236,13 @@ class ProbeXPR(Probe):
         A = (0.5*tips[0].area, 0.5*tips[1].area, tips[2].area)
 
         try:
-            PP_j  = self.IV['tip1+tip2'].get_PP(PP)
-            PP_jp = self.IV['tip1'].get_PP(PP)[0]
-            PP_jm = self.IV['tip2'].get_PP(PP)[0]
+            PP_j  = self.IV['tip1+tip2'].get_PP(PP).copy()
+            PP_jp = self.IV['tip1'].get_PP(PP)[0].copy()
+            PP_jm = self.IV['tip2'].get_PP(PP)[0].copy()
             PP_jt = PP_j[0].copy()
             A_j = A[0] + A[1]
         except KeyError:
-            PP_j  = self.IV['tip3'].get_PP(PP)
+            PP_j  = self.IV['tip3'].get_PP(PP).copy()
             PP_jp = self.S['tip1'].as_PP(PP_j)
             PP_jm = self.S['tip2'].as_PP(PP_j)
             PP_jt = self.S['tip1+tip2'].as_PP(PP_j)
