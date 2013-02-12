@@ -489,9 +489,9 @@ class Probe:
         keys = np.array(keys, ndmin=2)
 
         fig = get_fig(fig, keys.shape, xlab=self.xlab, ylab=keys)
+        axes = np.array(fig.axes).reshape(keys.shape)
 
-        ax = fig.axes[np.flatnonzero(keys == 'Voltage')]
-        if ax:
+        for ax in axes[keys == 'Voltage']:
             for I in self.I.itervalues():
                 I.V.plot(ax)
 

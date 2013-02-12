@@ -15,6 +15,7 @@ reload(probe)
 
 import config_xpr as config
 
+TdiError = probe.TdiError
 IOMds = probe.IOMds
 IOFile = probe.IOFile
 Signal = probe.Signal
@@ -58,8 +59,9 @@ class IOMdsAUG(IOMds):
 
 
 class IOFileAUG(IOFile):
-    def __init__(self, shn, diag='XPR'):
-        IOFile.__init__(self, shn=shn, suffix="_"+diag, subdir="AUG")
+    def __init__(self, *args, **kw):
+        kw.setdefault('subdir', "AUG")
+        IOFile.__init__(self, *args, **kw)
 
 
 class DigitizerXPR(Digitizer):
@@ -67,7 +69,7 @@ class DigitizerXPR(Digitizer):
         Digitizer.__init__(self, shn, sock, name='XPR')
 
         self.IO_mds = IOMdsAUG(shn, sock, diag='XPR', raw=raw)
-        self.IO_file = IOFileAUG(shn, diag='XPR')
+        self.IO_file = IOFileAUG(shn, suffix='_XPR')
         self.nodes = ('S1', 'S2', 'S3', 'S4', 'S5', 'S6', 'S7', 'S8', 't')
 
     def update_window(self):
@@ -123,7 +125,7 @@ class DigitizerLPS(Digitizer):
         Digitizer.__init__(self, shn, sock, name='LPS')
 
         self.IO_mds = IOMdsAUG(shn, sock, diag='LPS', raw=raw)
-        self.IO_file = IOFileAUG(shn, diag='LPS')
+        self.IO_file = IOFileAUG(shn, suffix='_LPS')
         self.nodes = ('CUR1', 'VOL1', 'CUR2', 'VOL2', 'VOL3', 'VOL4', 't')
 
         self.window = slice(2048, None)
@@ -144,7 +146,7 @@ class DigitizerXPOS(Digitizer):
         Digitizer.__init__(self, shn, sock, name='XPOS')
 
         self.IO_mds = IOMdsAUG(shn, sock, diag='LPS')
-        self.IO_file = IOFileAUG(shn, diag='LPS_XPOS')
+        self.IO_file = IOFileAUG(shn, suffix='_LPS_XPOS')
         self.nodes = ('XPOS', 't')
 
 

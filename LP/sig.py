@@ -490,8 +490,8 @@ class IO:
 
 
 class IOFile(IO):
-    def __init__(self, shn=0, suffix="", subdir=""):
-        self.shn, self.suffix, self.subdir = shn, suffix, subdir
+    def __init__(self, shn=0, suffix="", subdir="", group=""):
+        self.shn, self.suffix, self.subdir, self.group = shn, suffix, subdir, group
 
         self.basepath = os.environ['DATAPATH']
         self.fullpath = os.path.join(self.basepath, self.subdir)
@@ -502,24 +502,25 @@ class IOFile(IO):
         IO.__init__(self)
 
     def get_size(self, node):
-        return self._f[node].len()
+        return self._f[self.group + '/' + node].len()
 
     def get_node(self, node):
-        return self._f[node].value
+        return self._f[self.group + '/' + node].value
 
     def put_node(self, node, val):
-        self._f.create_dataset(node, data=val, compression="gzip")
+        name = self.group + '/' + node
+        if name in self._f:
+            del self._f[name]
+        self._f.create_dataset(name, data=val, compression="gzip")
 
     def load(self, *args):
-        self._f = h5py.File(self.h5name,"r")
-        x = IO.load(self, *args)
-        self._f.close()
+        with h5py.File(self.h5name, "r") as self._f:
+            x = IO.load(self, *args)
         return x
 
     def save(self, *args):
-        self._f = h5py.File(self.h5name,"w")
-        IO.save(self, *args)
-        self._f.close()
+        with h5py.File(self.h5name, "a") as self._f:
+            IO.save(self, *args)
 
 
 class TdiError(Exception):
@@ -1072,6 +1073,9 @@ class Digitizer:
     def x(self):
         return self.load()
 
+    def __getitem__(self, indx):
+        return self.x[indx]
+
     def load_raw_mds(self):
         self.x = self.IO_mds.load(self.nodes, self.more_nodes)
         return self.x
@@ -1083,7 +1087,7 @@ class Digitizer:
     def load_raw(self):
         try:
             self.load_raw_file()
-        except IOError:
+        except (IOError, KeyError):
             self.load_raw_mds()
             self.save()
         return self.x
@@ -1122,12 +1126,11 @@ class Digitizer:
         nodes.remove('t')
         n = len(nodes)
 
-        fig = get_fig(fig, (n, 1), xlab='t (s)')
+        fig = get_fig(fig, (n, 1), xlab='t (s)', ylab=nodes)
         
         t = self.x['t']
         for node, ax in zip(nodes, fig.axes):
             ax.plot(t, self.x[node])
-            ax.set_ylabel(node)
         fig.canvas.draw()
         return fig
 

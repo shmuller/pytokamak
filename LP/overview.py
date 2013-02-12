@@ -2,9 +2,26 @@ import numpy as np
 import numpy.ma as ma
 
 import probe_xpr
-from sig import memoized_property
+from sig import memoized_property, Digitizer
 
 from sm_pyplot.tight_figure import get_fig, get_axes
+
+from probe_xpr import TdiError, IOMdsAUG, IOFileAUG
+
+
+class DigitizerAUG(Digitizer):
+    def __init__(self, shn, diag, nodes, sock=None):
+        Digitizer.__init__(self, shn, sock, name=diag)
+
+        self.IO_mds = IOMdsAUG(shn, sock, diag=diag, raw=False)
+        self.IO_file = IOFileAUG(shn, suffix='_AUG', group=diag)
+        self.nodes = nodes + ('t',)
+
+    def load(self):
+        try:
+            return Digitizer.load(self)
+        except TdiError:
+            return {node: 0. for node in self.nodes}
 
 
 class AUGOverview:
@@ -15,31 +32,23 @@ class AUGOverview:
             DCN = ('H-1', 'H-2', 'H-3', 'H-4', 'H-5'),
             ECS = ('PECRH',),
             NIS = ('PNI',),
-            GQI = ('Wmhd',),
+            FPG = ('Wmhd',),
             MAC = ('Ipolsola', 'Ipolsoli'))
 
         self.XPR = probe_xpr.ProbeXPR(shn=shn)
 
         self.def_plots = ('power', 'density', 'XPR_I', 'XPR_R', 'Ipolsol')
 
-    def load(self, diag):
-        IO = probe_xpr.IOMdsAUG(shn=self.shn, diag=diag)
-        chn = self.chn[diag] + ('t',)
-        try:
-            return IO.load(chn)
-        except probe_xpr.probe.TdiError:
-            return {c: 0. for c in chn}
-
     @memoized_property
     def S(self):
-        return {k: self.load(k) for k in self.chn.keys()}
+        return {k: DigitizerAUG(self.shn, k, v) for k, v in self.chn.iteritems()}
 
     def plot_power(self, ax):
         ax = get_axes(ax)
         ax.set_ylabel('Power (MW)')
         S_ECRH = self.S['ECS']
         S_NI   = self.S['NIS']
-        S_WMHD = self.S['GQI']
+        S_WMHD = self.S['FPG']
 
         ax.plot(S_ECRH['t'], 1e-6*S_ECRH['PECRH'], label="ECRH")
         ax.plot(S_NI['t'], 1e-6*S_NI['PNI'], label="NBI")
