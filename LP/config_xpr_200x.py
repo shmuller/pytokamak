@@ -17,6 +17,12 @@ tip3 = TipLPS(number=3, pos='upper', V_keys='ampV1', I_keys='ampI1')
 
 head = HeadXPR(tips=(tip1, tip2, tip3), R_keys='ampR')
 
+tip1_V2 = TipLPS(number=1, pos='lower left', V_keys='ampV2', I_keys='ampI2')
+tip2_V2 = TipLPS(number=2, pos='lower right', V_keys='ampV2', I_keys='ampI3')
+tip3_V2 = TipLPS(number=3, pos='upper', V_keys='ampV2', I_keys='ampI1')
+
+head_V2 = HeadXPR(tips=(tip1_V2, tip2_V2, tip3_V2), R_keys='ampR')
+
 amp_LPS_old = dict(ampR = Amp(fact=0.004, offs=-2745*0.004))
 
 mapping_LPS_old = dict(
@@ -25,7 +31,7 @@ mapping_LPS_old = dict(
             ampI1 = 'CUR1',
             ampI2 = 'CUR2',
             ampI3 = 'VOL3',
-            ampVF = 'VOL2')
+            ampV2 = 'VOL2')
 
 lines_LPS = dict(amp=amp_LPS_old, mapping=mapping_LPS_old)
 
@@ -118,7 +124,7 @@ E = campaign.add_experiment(date="20060411")
 E.add(21320, "", 
         times = 2.2,
         posit = 0.31,
-        head = head,
+        head = head_V2,
         descr = """\
             Data quality OK. Mach signals get very high, while 
             single tip signal is very low.""",
