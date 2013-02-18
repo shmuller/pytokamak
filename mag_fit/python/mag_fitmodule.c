@@ -3,7 +3,49 @@
 
 #include "../mag_fit.h"
 
-static PyObject* call_magfit(PyObject *self, PyObject *args)
+static PyObject* meth_magfit(PyObject *self, PyObject *args)
+{
+	PyObject *p[5];
+	
+	if (!PyArg_ParseTuple(args, "OOOOO", p, p+1, p+2, p+3, p+4)) {
+        return NULL;
+    }
+    
+    int n_x          = PyArray_DIM(p[0], 0);
+    int n_params     = PyArray_DIM(p[3], 0);
+
+    double *x        = PyArray_DATA(p[0]);
+    double *y        = PyArray_DATA(p[1]);
+    double *yfit     = PyArray_DATA(p[2]);
+    double *c_params = PyArray_DATA(p[3]);
+    int    *do_var   = PyArray_DATA(p[4]);
+    
+    int i, rc;
+    static int mag_infos = 0;
+
+    double chi_sqr = 0., eps_abs = 0., eps_rel = 1e-4;
+    int iter_max = 200;
+
+    int n_pars = 20;
+    void *mem = calloc((n_x+2*n_pars)*sizeof(double), 1);
+
+    double *w = (double*) mem;
+    double *c_nb_val = w + n_x;
+    double *c_nb_cst = c_nb_val + n_pars;
+
+    for (i=0; i<n_x; ++i) w[i] = 1.;
+
+    rc = magfit(mag_doppel, x, y, w, yfit, &n_x,
+			    c_params, do_var, &n_pars, c_nb_val, c_nb_cst,
+	            &chi_sqr, &iter_max, &eps_abs, &eps_rel, &mag_infos);
+
+    free(mem);
+
+    Py_RETURN_NONE;
+}
+
+
+static PyObject* meth_call_magfit(PyObject *self, PyObject *args)
 {
 	PyObject *p[5];
 	
@@ -94,7 +136,8 @@ static PyObject* call_magfit(PyObject *self, PyObject *args)
 
 
 static PyMethodDef methods[] = {
-    {"call_magfit", call_magfit, METH_VARARGS, "Interface to mag_fit library"},
+    {"magfit", meth_magfit, METH_VARARGS, "Interface to mag_fit library"},
+    {"call_magfit", meth_call_magfit, METH_VARARGS, "IDL interface replication"},
     {NULL, NULL, 0, NULL}
 };
  
@@ -103,3 +146,4 @@ initmag_fit(void)
 {
     Py_InitModule("mag_fit", methods);
 }
+

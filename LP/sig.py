@@ -677,6 +677,9 @@ class Signal:
     __div__  = _op_factory(np.divide  , 'wapply')
     __idiv__ = _op_factory(np.divide  , 'iapply')
 
+    def __neg__(self):
+        return self.__array_wrap__(-self.x)
+
     def __mul__(self, other):
         return self.__array_wrap__(other*self.x)
     
@@ -1121,12 +1124,12 @@ class Digitizer:
         offs = [median(self.x[node]) for node in self.nodes]
         return offs
 
-    def plot(self, fig=None):
-        nodes = list(self.nodes)
-        nodes.remove('t')
-        n = len(nodes)
+    def plot(self, fig=None, nodes=None):
+        if nodes is None:
+            nodes = list(self.nodes)
+            nodes.remove('t')
 
-        fig = get_fig(fig, (n, 1), xlab='t (s)', ylab=nodes)
+        fig = get_fig(fig, (len(nodes), 1), xlab='t (s)', ylab=nodes)
         
         t = self.x['t']
         for node, ax in zip(nodes, fig.axes):

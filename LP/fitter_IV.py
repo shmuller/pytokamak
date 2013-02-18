@@ -13,6 +13,8 @@ try:
 except ImportError:
     import fitfun as ff
 
+import LP.mag_fit as mag_fit
+
 from sm_pyplot.contextmenupicker import ContextMenuPicker
 from sm_pyplot.observer_viewer import ToggleViewer, ToggleViewerIntegrated
 
@@ -138,6 +140,27 @@ class FitterIV(Fitter):
             raise FitterError("Negative n")
         if Te < 0. or Te > 0.5*self.dV:
             raise FitterError("Unrealistic Te")
+
+
+class FitterIVMag(FitterIV):
+    def __init__(self, V, I, **kw):
+        FitterIV.__init__(self, V, I, **kw)
+
+        self.Ifit = np.zeros_like(self.I)
+
+        self.c_params = np.array([5e18, 18., 1e-8, 12., 18., 1e-8, 180., 0., 
+            0., 0., 0.0009, -1., 2., 1., 2., 0., 1., 0.0016/2, 0., 0.], 'd')
+
+        self.do_var = np.array([1, 1, 0, 1, 1, 1, 1, 1, 
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], 'i')
+
+    def fit(self):
+        c_params = self.c_params.copy()
+
+        mag_fit.magfit(self.V, -self.I, self.Ifit, c_params, self.do_var)
+
+        np.negative(self.Ifit, self.Ifit)
+        return c_params[[0, 4, 1]]
 
 
 class FitterIV6(Fitter):
@@ -431,6 +454,10 @@ class IV:
         self.PP = self._fit_const(FitterIV, **kw)
         return self
 
+    def fitmag(self, **kw):
+        self.PPmag = self._fit_const(FitterIVMag, **kw)
+        return self
+
     def fit6(self, **kw):
         self.PP6 = self._fit_linear(FitterIV6, **kw)
         return self
@@ -452,6 +479,11 @@ class IV:
         print "Calculating PP..."
         return self._fit_const(FitterIV)
 
+    @memoized_property
+    def PPmag(self):
+        print "Calculating PPmag..."
+        return self._fit_const(FitterIVMag)
+    
     @memoized_property
     def PP6(self):
         print "Calculating PP6..."
