@@ -3,6 +3,8 @@
 
 #include "../mag_fit.h"
 
+int mag_doppel2(double *vpr, double *strom, int n_vpr, double *params);
+
 
 static PyObject* meth_quick_075(PyObject *self, PyObject *args)
 {
@@ -42,7 +44,7 @@ static PyObject* meth_mag_doppel(PyObject *self, PyObject *args)
     double *yfit = PyArray_DATA(p[1]);
     double *pars = PyArray_DATA(p[2]);
 
-    mag_doppel(x, yfit, n_x, pars);
+    mag_doppel2(x, yfit, n_x, pars);
 
     Py_RETURN_NONE;
 }
@@ -79,7 +81,7 @@ static PyObject* meth_magfit(PyObject *self, PyObject *args)
 
     for (i=0; i<n_x; ++i) sig[i] = 1.;
 
-    rc = magfit(mag_doppel, x, y, sig, yfit, &n_x, pars, do_var, 
+    rc = magfit(mag_doppel2, x, y, sig, yfit, &n_x, pars, do_var, 
                 &n_pars, nb_values, nb_const, 
                 &chi_sqr, &iter_max, &eps_abs, &eps_rel, &verbose);
 
