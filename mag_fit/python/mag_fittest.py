@@ -7,15 +7,16 @@ from sm_pyplot.tight_figure import get_fig, show
 XPR = probe_xpr.ProbeXPR(shn=20326)
 
 S = XPR['tip2']
+#S = XPR['tip1+tip2']
 
-i0 = 126
-#i0 = 201
+#i0 = 126
+i0 = 201
 
 S0 = S[S.V.iE[i0]:S.V.iE[i0+1] + 1]
 
 x, y = S0.V.x, -S0.x
 
-c_params0 = np.array([5e18, 18., 0., 12., 18., 1e-8, 
+c_params0 = np.array([5e18, 18., 1e-8, 12., 18., 1e-8, 
     np.pi/2, 0., 0., 0., 0.0009, -1., 2., 1., 2., 0., 1., 0.0016/2, 0., 0.])
 
 """
