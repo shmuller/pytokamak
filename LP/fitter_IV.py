@@ -148,16 +148,21 @@ class FitterIVMag(FitterIV):
 
         self.Ifit = np.zeros_like(self.I)
 
-        self.c_params = np.array([5e18, 18., 1e-8, 12., 18., 1e-8, 180., 0., 
-            0., 0., 0.0009, -1., 2., 1., 2., 0., 1., 0.0016/2, 0., 0.], 'd')
+        self.c_params = np.array([5e18, 18., 1e-8, 12., 18., 1e-8, 
+            180., 0., 0., 0., 0.0009, -1., 2., 1., 2., 0., 1., 0.0016/2, 0., 0.], 'd')
 
-        self.do_var = np.array([1, 1, 0, 1, 1, 1, 1, 1, 
-            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], 'i')
+        self.do_var = np.array([1, 1, 1, 1, 1, 1, 
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], 'i')
 
     def fit(self):
         c_params = self.c_params.copy()
 
         mag_fit.magfit(self.V, -self.I, self.Ifit, c_params, self.do_var)
+
+        #Ifit = np.zeros_like(self.V)
+        #mag_fit.mag_doppel(self.V, Ifit, c_params)
+
+        #print Ifit - self.Ifit
 
         np.negative(self.Ifit, self.Ifit)
         return c_params[[0, 4, 1]]

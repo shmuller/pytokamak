@@ -3,6 +3,51 @@
 
 #include "../mag_fit.h"
 
+
+static PyObject* meth_quick_075(PyObject *self, PyObject *args)
+{
+    PyObject *p[2];
+	
+	if (!PyArg_ParseTuple(args, "OO", p, p+1)) {
+        return NULL;
+    }
+
+    int n_x   = PyArray_DIM(p[0], 0);
+    double *x = PyArray_DATA(p[0]);
+    double *y = PyArray_DATA(p[1]);
+
+    int i;
+
+    init_quick_075();
+
+    for (i=n_x; i--; ) {
+        *y++ = quick_075(*x++);
+    }
+
+    Py_RETURN_NONE;
+}
+
+
+static PyObject* meth_mag_doppel(PyObject *self, PyObject *args)
+{
+    PyObject *p[3];
+	
+	if (!PyArg_ParseTuple(args, "OOO", p, p+1, p+2)) {
+        return NULL;
+    }
+
+    int n_x      = PyArray_DIM(p[0], 0);
+
+    double *x    = PyArray_DATA(p[0]);
+    double *yfit = PyArray_DATA(p[1]);
+    double *pars = PyArray_DATA(p[2]);
+
+    mag_doppel(x, yfit, n_x, pars);
+
+    Py_RETURN_NONE;
+}
+
+
 static PyObject* meth_magfit(PyObject *self, PyObject *args)
 {
 	PyObject *p[5];
@@ -11,37 +56,36 @@ static PyObject* meth_magfit(PyObject *self, PyObject *args)
         return NULL;
     }
     
-    int n_x          = PyArray_DIM(p[0], 0);
-    int n_params     = PyArray_DIM(p[3], 0);
+    int n_x        = PyArray_DIM(p[0], 0);
+    int n_pars     = PyArray_DIM(p[3], 0);
 
-    double *x        = PyArray_DATA(p[0]);
-    double *y        = PyArray_DATA(p[1]);
-    double *yfit     = PyArray_DATA(p[2]);
-    double *c_params = PyArray_DATA(p[3]);
-    int    *do_var   = PyArray_DATA(p[4]);
+    double *x      = PyArray_DATA(p[0]);
+    double *y      = PyArray_DATA(p[1]);
+    double *yfit   = PyArray_DATA(p[2]);
+    double *pars   = PyArray_DATA(p[3]);
+    int    *do_var = PyArray_DATA(p[4]);
     
     int i, rc;
-    static int mag_infos = 0;
+    static int verbose = 0;
 
     double chi_sqr = 0., eps_abs = 0., eps_rel = 1e-4;
     int iter_max = 200;
 
-    int n_pars = 20;
-    void *mem = calloc((n_x+2*n_pars)*sizeof(double), 1);
+    void *mem = calloc((n_x + 2*n_pars)*sizeof(double), 1);
 
-    double *w = (double*) mem;
-    double *c_nb_val = w + n_x;
-    double *c_nb_cst = c_nb_val + n_pars;
+    double *sig = (double*) mem;
+    double *nb_values = sig + n_x;
+    double *nb_const = nb_values + n_pars;
 
-    for (i=0; i<n_x; ++i) w[i] = 1.;
+    for (i=0; i<n_x; ++i) sig[i] = 1.;
 
-    rc = magfit(mag_doppel, x, y, w, yfit, &n_x,
-			    c_params, do_var, &n_pars, c_nb_val, c_nb_cst,
-	            &chi_sqr, &iter_max, &eps_abs, &eps_rel, &mag_infos);
+    rc = magfit(mag_doppel, x, y, sig, yfit, &n_x, pars, do_var, 
+                &n_pars, nb_values, nb_const, 
+                &chi_sqr, &iter_max, &eps_abs, &eps_rel, &verbose);
 
     free(mem);
 
-    Py_RETURN_NONE;
+    return Py_BuildValue("iidd", rc, iter_max, eps_abs, eps_rel);
 }
 
 
@@ -136,6 +180,8 @@ static PyObject* meth_call_magfit(PyObject *self, PyObject *args)
 
 
 static PyMethodDef methods[] = {
+    {"quick_075", meth_quick_075, METH_VARARGS, "Tabulated values of x^0.75"},
+    {"mag_doppel", meth_mag_doppel, METH_VARARGS, "Fit function"},
     {"magfit", meth_magfit, METH_VARARGS, "Interface to mag_fit library"},
     {"call_magfit", meth_call_magfit, METH_VARARGS, "IDL interface replication"},
     {NULL, NULL, 0, NULL}
