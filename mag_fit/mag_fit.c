@@ -559,7 +559,7 @@ int mag_doppel(vpr, strom, n_vpr, params)
            params[3] = -log_invbeta;
            n_changes++;
            }
-        else if (log_alpha1 > 5.) {
+        else if (log_invbeta > 5.) {
            log_invbeta = 5.;
            params[3] = -log_invbeta;
            n_changes++;

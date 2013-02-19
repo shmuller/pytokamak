@@ -148,10 +148,10 @@ class FitterIVMag(FitterIV):
 
         self.Ifit = np.zeros_like(self.I)
 
-        self.c_params = np.array([5e18, 18., 1e-8, 12., 18., 1e-8, 
-            180., 0., 0., 0., 0.0009, -1., 2., 1., 2., 0., 1., 0.0016/2, 0., 0.], 'd')
+        self.c_params = np.array([5e18, 18., 0., 12., 18., 1e-8, 
+            np.pi/2, 0., 0., 0., 0.0009, -1., 2., 1., 2., 0., 1., 0.0016/2, 0., 0.])
 
-        self.do_var = np.array([1, 1, 1, 1, 1, 1, 
+        self.do_var = np.array([1, 1, 0, 1, 1, 1, 
             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], 'i')
 
     def fit(self):

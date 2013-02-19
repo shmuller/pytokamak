@@ -61,17 +61,15 @@ int mag_doppel2(double *vpr, double *strom, int n_vpr, double *params)
     static double	n_e=1., log_ne=0;
     static double	t_e=1., log_te=0;
     static double	inv_beta=1., log_invbeta=0.;
-    static double 	alpha1=1., log_alpha1=0.;
     static double	alpha2=1., log_alpha2=0.;
     
-    static double	cos1=0., cos1_sqr=0., sin1=1., tan1=1.;
-    static double	cos2=0., cos2_sqr=0., sin2=1., tan2=1.;
+    static double	cos1=0., cos1_sqr=0., sin1=1.;
     
     double 	dv;
     double 	a_height, a_width, p_height, a_mass, a_proj_area, a_sonde_perp;
     double 	a_z, a_b_loc, a_tau;
     double 	delta_phi; 
-    double	j_isat, I_isat, log_j_quot, c_i_bohm;
+    double	j_isat, I_isat, c_i_bohm;
     double	ld_sqr;
     double 	bfac;
     double	temp;
@@ -82,7 +80,7 @@ int mag_doppel2(double *vpr, double *strom, int n_vpr, double *params)
     int 	verbose=0;
 
     /* here we are ... */
-    if (verbose) printf("Beginn mag_doppel\n");
+    if (verbose) printf("Beginn mag_doppel2\n");
 
     /* Zuordnung der Fit-Variablen */
     /* Ueberpruefung auf unsinnige Fit-Parameter:
@@ -123,21 +121,6 @@ int mag_doppel2(double *vpr, double *strom, int n_vpr, double *params)
         n_e = exp(log_ne);
     }
        
-    if (log_alpha1 != params[2]) {
-        log_alpha1 = params[2];
-        // Bereichsueberpruefung
-        if (log_alpha1 < -50) {
-            log_alpha1 = -50;
-            params[2] = log_alpha1;
-            n_changes++;
-        } else if (log_alpha1 > 5.) {
-            log_alpha1 = 5.;
-            params[2] = log_alpha1;
-            n_changes++;
-        }
-        alpha1 = exp(log_alpha1);
-    }
-       
     if (log_invbeta != -params[3]) {
         log_invbeta = -params[3];
         // Bereichsueberpruefung
@@ -145,7 +128,7 @@ int mag_doppel2(double *vpr, double *strom, int n_vpr, double *params)
             log_invbeta = -5;
             params[3] = -log_invbeta;
             n_changes++;
-        } else if (log_alpha1 > 5.) {
+        } else if (log_invbeta > 5.) {
             log_invbeta = 5.;
             params[3] = -log_invbeta;
             n_changes++;
@@ -181,25 +164,8 @@ int mag_doppel2(double *vpr, double *strom, int n_vpr, double *params)
         // abgeleitete Groessen
         cos1_sqr = cos1*cos1;
         sin1     = sqrt(1. - cos1_sqr);
-        tan1     = sin1/cos1;
     }
         
-    if (cos2 != params[7]) {    
-        cos2 = params[7];
-        // Bereichsueberpruefung
-        if (cos2 < 1.e-6) {
-            params[7] = cos2 = 1.e-6;
-            n_changes++;
-        } else if (cos2 > 1.) {
-            params[7] = cos2 = 1.;
-            n_changes++;
-        }
-        // abgeleitete Groessen
-        cos2_sqr = cos2*cos2;
-        sin2     = sqrt(1. - cos2_sqr);
-        tan2     = sin2/cos2;
-    }
-
     
     // Abbruch, da keine sinnvollen Input-Parameter?
     if (verbose) {
@@ -218,39 +184,35 @@ int mag_doppel2(double *vpr, double *strom, int n_vpr, double *params)
 	}
 
 
-    /* ab hier kann einfach ausgelesen werden, keine Umwandlung mehr noetig */    
+    // ab hier kann einfach ausgelesen werden, keine Umwandlung mehr noetig
         
-    /* wichtige Sonden-Dimensionen */
+    // wichtige Sonden-Dimensionen
     a_width  = params[10]; 
     a_height = params[11]; 
     p_height = params[17];
 
-    /* projezierte Flaeche einer flush mounted Sonde */
-    a_proj_area  = a_width*a_height*cos1;	/* <= 0, wenn nicht definiert */
+    // projezierte Flaeche einer flush mounted Sonde
+    a_proj_area  = a_width*a_height*cos1;	// <= 0, wenn nicht definiert
 
-    /* projezierte Flaeche einer pin probe */
-    a_sonde_perp = a_width*p_height*sin1;	/* <= 0, wenn nicht definiert */
+    // projezierte Flaeche einer pin probe
+    a_sonde_perp = a_width*p_height*sin1;	// <= 0, wenn nicht definiert
     
-    /* Massenzahl des Fuellgases, meist Deuterium */
-    if ( params[12] < 1. ) a_mass = params[12] = 2. ;
-    		else a_mass = params[12];
+    // Massenzahl des Fuellgases, meist Deuterium
+    if (params[12] < 1.) params[12] = 2.;
+    a_mass = params[12];
     
-    /* Kernladungszahl, Fuellgas meist Wassertoff-Isotop */
-    if ( params[13] < 1.) a_z = params[13]=1.;
-    		else a_z  = params[13];
-
+    // Kernladungszahl, Fuellgas meist Wassertoff-Isotop
+    if (params[13] < 1.) params[13] = 1.;
+    a_z = params[13];
     
-    /* Betrag des lokalen Magnetfelds am Ort der Sonde */
-    /* Standard: |B_t| = 2.0T */
-    if ( fabs(params[14]) < 0.6 ) a_b_loc = params[14] = 2.;
-   		else a_b_loc  = fabs(params[14]); 
+    // Betrag des lokalen Magnetfelds am Ort der Sonde
+    // Standard: |B_t| = 2.0T
+    if (fabs(params[14]) < 0.6) params[14] = 2.;
+   	a_b_loc = fabs(params[14]); 
 
-    /* T_i / T_e,  Ionen- und Elektronentemperatur sind postiv */
-    if ( params[16] < 0.05 ) a_tau = params[16] = 1.;
-    		else a_tau = params[16];
-
-     
-
+    // T_i / T_e,  Ionen- und Elektronentemperatur sind postiv
+    if (params[16] < 0.05) params[16] = 1.;
+    a_tau = params[16];
 
 
     /* Berechnung der Ionensaettigungsstromdichte 
@@ -276,11 +238,9 @@ int mag_doppel2(double *vpr, double *strom, int n_vpr, double *params)
     c_i_bohm = sqrt( (3.*a_tau+a_z)* c_e * t_e/ a_mass /c_mp );
     j_isat = n_e * c_e * c_i_bohm;
 
-    /* log_j_quot = log(j_quot); */
-    log_j_quot = 1.922443023 + 0.5*log(a_mass/(a_z+3.*a_tau));
 
-    /* Debye-Laenge vor Schichten */
-    ld_sqr = t_e * c_eps0 / n_e / c_e ;
+    // Debye-Laenge vor Schichten
+    ld_sqr = t_e * c_eps0 / n_e / c_e;
    
         
     /* ---------------------------------------------------------------------
@@ -300,52 +260,43 @@ int mag_doppel2(double *vpr, double *strom, int n_vpr, double *params)
        setzt sich additiv aus beiden Teilen zusammen.
        --------------------------------------------------------------------- */
 
-    printf("a_sonde_perp = %e\n", a_sonde_perp);
 
     if (a_sonde_perp > 0.0)
 	{
 
-        /* Initialisierung, falls n"otig */
+        // Initialisierung, falls n"otig
         if (a_proj_area <= 0.) {
-            for ( ind=0; ind<n_vpr; strom[ind++]=0.0); 
+            for (ind=0; ind<n_vpr; strom[ind++] = 0.0);
 	    }
 
-        /* Kennlinie einer Doppelsonde mit Potentialverschiebung und
-	   Fl"achenverh"altnis beta */
+        // Kennlinie einer Doppelsonde mit Potentialverschiebung und
+	    // Fl"achenverh"altnis beta
         I_isat = a_sonde_perp * j_isat;
         bfac = alpha2 * sqrt(ld_sqr) / a_width; 
 
 
         for ( ind=0; ind < n_vpr; ind++ ) 
 	    {
-
-            /* Spannung an Doppelsonde: phi_sonde */
+            // Spannung an Doppelsonde: phi_sonde
             delta_phi = (dv - vpr[ind]) / t_e;
 
-            /* Nichts"attigungsverhalten im Elektronenast? */
-            /* Berechnung des Strom-Vektors */
-            /* *ptr_strom++ +=  I_isat * 
-		(1. + bfac * quick_075(delta_phi) - temp) / (inv_beta+temp); */
-
-	    if ( delta_phi < -300. ) {
-                strom[ind] +=  I_isat * (1.+bfac*quick_075(delta_phi))
-                                   / inv_beta  ;
-		}
-	    else if ( delta_phi > 300. ) {
-                strom[ind] +=  - I_isat ;
-	        }
-	    else { 
-	        temp = exp( delta_phi );
+	        if (delta_phi < -300.) {
                 strom[ind] +=  I_isat * 
-		       (1.+ bfac*quick_075(delta_phi) - temp) / (inv_beta+temp);
-		}
+                    (1. + bfac*quick_075(delta_phi)) / inv_beta;
+		    } else if (delta_phi > 300.) {
+                strom[ind] += -I_isat;
+	        } else { 
+	            temp = exp(delta_phi);
+                strom[ind] +=  I_isat * 
+                    (1. + bfac*quick_075(delta_phi) - temp) / (inv_beta + temp);
+		    }
 	    }
 
 
-	}	/* if (a_sonde_perp > 0.0) .....    */
+    }
 
-    return 0 ;
+    return 0;
 
-    }		 /* mag_doppel */
+}		 // mag_doppel
 
 
