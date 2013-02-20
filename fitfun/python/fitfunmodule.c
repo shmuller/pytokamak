@@ -316,6 +316,70 @@ double IV6i_rms(data *D)
 }
 
 
+double pow_075(double x) 
+{
+    double tmp;
+    if (x >= 0.) return 0.0;
+
+    tmp = sqrt(1. - x - x);
+    return (tmp + 2.)*sqrt(tmp - 1.);
+}
+
+void IVdbl(data *D)
+{
+    int i;
+    double arg, exp_arg;
+    double *P = D->P, *x = D->x, *y = D->y;
+    double P0 = P[0], P1 = P[1], iP2 = 1./P[2], P3 = P[3], P4 = P[4];
+    double A = exp(P3), B = exp(P4);
+
+    for (i=D->m; i--; ) {
+        arg = (P1 - *x++)*iP2;
+        exp_arg = exp(arg);
+        *y++ = P0*(exp_arg - 1. - A*pow_075(arg)) / (exp_arg + B);
+    }
+}
+
+void IVdbl_diff(data *D)
+{
+    int i;
+    double arg, exp_arg;
+    double *P = D->P, *x = D->x, *y = D->y, *ydata = D->ydata;
+    double P0 = P[0], P1 = P[1], iP2 = 1./P[2], P3 = P[3], P4 = P[4];
+    double A = exp(P3), B = exp(P4);
+
+    for (i=D->m; i--; ) {
+        arg = (P1 - *x++)*iP2;
+        exp_arg = exp(arg);
+        *y++ = P0*(exp_arg - 1. - A*pow_075(arg)) / (exp_arg + B) - *ydata++;
+    }
+}
+
+void IVdbl_fit(data *D)
+{
+    leastsq(IVdbl_diff, D);
+}
+
+double IVdbl_rms(data *D)
+{
+    int i;
+    double arg, exp_arg;
+    double *P = D->P, *x = D->x, *y = D->y;
+    double P0 = P[0], P1 = P[1], iP2 = 1./P[2], P3 = P[3], P4 = P[4];
+    double A = fabs(P3), B = fabs(P4);
+    double dy2 = 0., dy;
+
+    for (i=D->m; i--; ) {
+        arg = (P1 - *x++)*iP2;
+        exp_arg = exp(arg);
+        dy = P0*(exp_arg - 1. - A*pow_075(arg)) / (exp_arg + B) - *y++;
+        dy2 += dy*dy;
+    }
+    return sqrt(dy2) / D->m;
+}
+
+
+
 #define get_arr(args, i) PyArray_DATA(PyTuple_GET_ITEM(args, i))
 
 void parse_args(PyObject *args, data *D)
@@ -400,6 +464,11 @@ meth_template_passthru(IV6i_diff, parse_args_ydata_a, 2)
 meth_template_passthru(IV6i_fit, parse_args_ydata_a, 0)
 meth_template_double(IV6i_rms, parse_args_a)
 
+meth_template_passthru(IVdbl, parse_args, 2)
+meth_template_passthru(IVdbl_diff, parse_args_ydata, 2)
+meth_template_passthru(IVdbl_fit, parse_args_ydata, 0)
+meth_template_double(IVdbl_rms, parse_args)
+
 
 static PyMethodDef methods[] = {
     {"e2", meth_e2, METH_VARARGS, "Exp with 2 parameters"},
@@ -426,6 +495,10 @@ static PyMethodDef methods[] = {
     {"IV6i_diff", meth_IV6i_diff, METH_VARARGS, "Difference to IV curve with 6 parameters*"},
     {"IV6i_fit", meth_IV6i_fit, METH_VARARGS, "Fit IV curve with 6 parameters*"},
     {"IV6i_rms", meth_IV6i_rms, METH_VARARGS, "rms for IV curve with 6 parameters*"},
+    {"IVdbl", meth_IVdbl, METH_VARARGS, "Double probe IV curve"},
+    {"IVdbl_diff", meth_IVdbl_diff, METH_VARARGS, "Difference to double probe IV curve"},
+    {"IVdbl_fit", meth_IVdbl_fit, METH_VARARGS, "Fit double probe IV curve"},
+    {"IVdbl_rms", meth_IVdbl_rms, METH_VARARGS, "rms for double probe IV curve"},
     {NULL, NULL, 0, NULL}
 };
  

@@ -82,13 +82,13 @@ class FitterIV(Fitter):
         Vf = np.mean((V[i0] + V[i0+1])/2)
         Te = (V[self.im]-Vf)/np.log(1-I[self.im]/I0)
 
-        self.P0 = np.array([I0, Vf, Te])
+        self.P0 = np.array((I0, Vf, Te))
 
     def LP_unnormalize(self, P):
         a = 2./self.dI
         b = -(self.Im*a+1)
 
-        p = np.empty_like(P)
+        p = P.copy()
         p[0] = (P[0]-b)/a
         p[1] = (P[1]+P[2]*np.log(1.-b/P[0]))*self.dV+self.Vm
         p[2] = P[2]*self.dV
@@ -98,14 +98,14 @@ class FitterIV(Fitter):
         a = 2./self.dI
         b = -(self.Im*a+1)
 
-        P = np.empty_like(p)
+        P = p.copy()
         P[0] = a*p[0]+b
         P[1] = (p[1]-p[2]*np.log(1.-b/P[0])-self.Vm)/self.dV
         P[2] = p[2]/self.dV
         return P
 
-    @staticmethod
-    def fitfun(P, X):
+    @classmethod
+    def fitfun(cls, P, X):
         iP2 = 1./P[2]
         return P[0]*(1.-np.exp((X-P[1])*iP2))
 
@@ -135,37 +135,75 @@ class FitterIV(Fitter):
         return self.p
 
     def check_Te(self):
-        n, Vf, Te = self.p
+        n, Vf, Te = self.p[:3]
         if n < 0.:
             raise FitterError("Negative n")
         if Te < 0. or Te > 0.5*self.dV:
             raise FitterError("Unrealistic Te")
 
 
-class FitterIVMag(FitterIV):
-    def __init__(self, V, I, **kw):
-        FitterIV.__init__(self, V, I, **kw)
+class FitterIVDbl(Fitter):
+    def __init__(self, V, I, mask=None, **kw):
+        Fitter.__init__(self, V, I, **kw)
 
-        self.Ifit = np.zeros_like(self.I)
+    def get_ind(self):
+        return np.arange(self.x.size)
 
-        self.c_params = np.array([5e18, 18., 0., 12., 18., 1e-8, 
-            np.pi/2, 0., 0., 0., 0.0009, -1., 2., 1., 2., 0., 1., 0.0016/2, 0., 0.])
+    def set_guess(self):
+        self.P0 = np.array((0.3, 18., 18., -5., -5.))
+        
+    @classmethod
+    def pow_075(cls, x):
+        cnd = x < 0.
+        y = np.zeros_like(x)
+        tmp = np.sqrt(1. - 2.*x[cnd])
+        y[cnd] = (tmp + 2.)*np.sqrt(tmp - 1.)
+        return y
+
+    @classmethod
+    def fitfun(cls, P, X):
+        iP2 = 1./P[2]
+        A, B = np.exp(P[3:5])
+        arg = (P[1] - X)*iP2
+        exp_arg = np.exp(arg)
+        return P[0]*(exp_arg - 1. - A*cls.pow_075(arg)) / (exp_arg + B)
+
+    custom_engine = ff.IVdbl_fit
+    fitfun_fast = ff.IVdbl
+    fitfun_diff = ff.IVdbl_diff
+    fitfun_rms = ff.IVdbl_rms
+
+
+class FitterIVMag(Fitter):
+    def __init__(self, V, I, mask=None, **kw):
+        Fitter.__init__(self, V, I, **kw)
+        
+        self.engine = self.magfit
 
         self.do_var = np.array([1, 1, 0, 1, 1, 1, 
             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], 'i')
 
-    def fit(self):
-        c_params = self.c_params.copy()
+        self.yfit = np.zeros_like(self.y)
 
-        mag_fit.magfit(self.V, -self.I, self.Ifit, c_params, self.do_var)
+    def get_ind(self):
+        return np.arange(self.x.size)
 
-        #Ifit = np.zeros_like(self.V)
-        #mag_fit.mag_doppel(self.V, Ifit, c_params)
+    def set_guess(self):
+        self.P0 = np.array([5e18, 18., 0., 12., 18., 1e-8, 
+            np.pi/2, 0., 0., 0., 0.0009, -1., 2., 1., 2., 0., 1., 0.0016/2, 0., 0.])
 
-        #print Ifit - self.Ifit
+    @classmethod
+    def fitfun(cls, P, X):
+        do_var = np.zeros(P.shape[0], 'i')
+        Y = np.zeros_like(X)
 
-        np.negative(self.Ifit, self.Ifit)
-        return c_params[[0, 4, 1]]
+        mag_fit.magfit(X, Y.copy(), Y, P[:,0].copy(), do_var)
+        return -Y
+
+    def magfit(self, p0, x, y):
+        p = p0.copy()
+        mag_fit.magfit(x, -y, self.yfit, p, self.do_var)
+        return p
 
 
 class FitterIV6(Fitter):
@@ -191,8 +229,8 @@ class FitterIV6(Fitter):
     def set_guess(self):
         self.P0 = self.p0 / self.fact
 
-    @staticmethod
-    def fitfun(p, V, a):
+    @classmethod
+    def fitfun(cls, p, V, a):
         Is = p[0] + a*(p[3]-p[0])
         Vf = p[1] + a*(p[4]-p[1])
         Te = p[2] + a*(p[5]-p[2])
@@ -205,8 +243,8 @@ class FitterIV6(Fitter):
 
 
 class FitterIV6i(FitterIV6):
-    @staticmethod
-    def fitfun(p, V, a):
+    @classmethod
+    def fitfun(cls, p, V, a):
         Is = p[0] + a*(p[3]-p[0])
         Vf = p[1] + a*(p[4]-p[1])
         iTe = 1./p[2] + a*(1./p[5]-1./p[2])
@@ -387,8 +425,8 @@ class IV:
         shift = -(n // (2*incr))
         return sl, sr, i0, i1, ind, out, shift
 
-    def _fit_const(self, FitterIVClass, n=1, incr=1, mask=None, **kw):
-        sl, sr, i0, i1, ind, out, shift = self._prepare(n, incr, 3)
+    def _fit_const(self, FitterIVClass, n=1, incr=1, mask=None, nvars=3, **kw):
+        sl, sr, i0, i1, ind, out, shift = self._prepare(n, incr, nvars)
         
         S = self.S
         V, I, t = S.V.x, S.x, S.t
@@ -409,8 +447,8 @@ class IV:
                 pass
         return PiecewisePolynomialEndpoints(out[None], t, i0=i0, i1=i1, shift=shift)
 
-    def _fit_linear(self, FitterIVClass, n=5, incr=1, use_mask=True, **kw):
-        sl, sr, i0, i1, ind, out, shift = self._prepare(n, incr, 6)
+    def _fit_linear(self, FitterIVClass, n=5, incr=1, use_mask=True, nvars=6, **kw):
+        sl, sr, i0, i1, ind, out, shift = self._prepare(n, incr, nvars)
 
         S = self.S
         V, I, t = S.V.x, S.x, S.t
@@ -459,8 +497,12 @@ class IV:
         self.PP = self._fit_const(FitterIV, **kw)
         return self
 
+    def fitdbl(self, **kw):
+        self.PPdbl = self._fit_const(FitterIVDbl, nvars=5, **kw)
+        return self
+
     def fitmag(self, **kw):
-        self.PPmag = self._fit_const(FitterIVMag, **kw)
+        self.PPmag = self._fit_const(FitterIVMag, nvars=20, **kw)
         return self
 
     def fit6(self, **kw):
@@ -485,9 +527,14 @@ class IV:
         return self._fit_const(FitterIV)
 
     @memoized_property
+    def PPdbl(self):
+        print "Calculating PPdbl..."
+        return self._fit_const(FitterIVDbl, nvars=5)
+
+    @memoized_property
     def PPmag(self):
         print "Calculating PPmag..."
-        return self._fit_const(FitterIVMag)
+        return self._fit_const(FitterIVMag, nvars=20)
     
     @memoized_property
     def PP6(self):
@@ -512,10 +559,22 @@ class IV:
     def get_PP(self, PP='PP'):
         return getattr(self, PP)
 
+    @classmethod
+    def fitfun(cls, P, X):
+        nvars = P.shape[0]
+        if nvars == 3:
+            return FitterIV.fitfun(P, X)
+        elif nvars == 5:
+            return FitterIVDbl.fitfun(P, X)
+        elif nvars == 20:
+            return FitterIVMag.fitfun(P, X)
+        else:
+            raise Exception("No matching fit function")
+
     def get_Sfit(self, PP='PP'):
         t, V = self.S.t, self.S.V
         p = getattr(self, PP)(t).T
-        Ifit = FitterIV.fitfun(p, V.x)
+        Ifit = self.fitfun(p, V.x)
         #mask = V.x > p[1] + p[2]
         Ifit_masked = ma.masked_array(Ifit, ~self.mask)
         return CurrentSignal(Ifit_masked, t, V=V)
@@ -527,7 +586,7 @@ class IV:
         S = self.S
         V, I, t = S.V.x[s], S.x[s], S.t[s]
         
-        Ifit = FitterIV.fitfun(p.T, V)
+        Ifit = self.fitfun(p.T, V)
         Ifit = ma.masked_array(Ifit, ~self.mask[s])
         return V, I, Ifit, t
 

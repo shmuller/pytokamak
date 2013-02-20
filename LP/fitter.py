@@ -52,8 +52,8 @@ class Fitter:
     def set_guess(self):
         self.P0 = 0.
 
-    @staticmethod
-    def fitfun(P, X):
+    @classmethod
+    def fitfun(cls, P, X):
         pass
 
     # fitfunction factories
