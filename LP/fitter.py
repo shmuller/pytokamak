@@ -74,18 +74,41 @@ class Fitter:
             return dy.dot(dy)/dy.size
         return fun_rms
 
-    # fitting engines
-    def fit_fmin(self, p0, *args):
-        return opt.fmin(self.fun_rms, p0, args=args, disp=False)
+    def _factory_engine(wrap_engine, fun_name):
+        def engine(self, p0, *args):
+            fun = getattr(self, fun_name)
 
-    def fit_odr(self, p0, x, y, *args):
-        return odr.odr(self.fun, p0, y, x, extra_args=args)[0]
+            if self.do_var is None:
+                return wrap_engine(self, fun, p0, *args)
+            else:
+                do_var = self.do_var.astype(bool)
 
-    def fit_leastsq(self, p0, *args):
-        return opt.leastsq(self.fun_diff, p0, args=args)[0]
+                p = p0.copy()
+                def fun_do_var(p_var, *args):
+                    p[do_var] = p_var
+                    return fun(p, *args)
+            
+                p[do_var] = wrap_engine(self, fun_do_var, p0[do_var], *args)
+                return p
+        return engine
 
-    def fit_leastsq2(self, p0, x, *args):
-        return mp.leastsq(self.fitfun_diff, (p0.copy(), x, self.buf[:x.size]) + args)
+    # wrappers for fitting engines
+    def wrap_fmin(self, fun, p0, *args):
+        return opt.fmin(fun, p0, args=args, disp=False)
+
+    def wrap_odr(self, fun, p0, x, y, *args):
+        return odr.odr(fun, p0, y, x, extra_args=args)[0]
+
+    def wrap_leastsq(self, fun, p0, *args):
+        return opt.leastsq(fun, p0, args=args)[0]
+
+    def wrap_leastsq2(self, fun, p0, x, *args):
+        return mp.leastsq(fun, (p0.copy(), x, self.buf[:x.size]) + args)
+
+    fit_fmin     = _factory_engine(wrap_fmin, 'fun_rms')
+    fit_odr      = _factory_engine(wrap_odr, 'fun')
+    fit_leastsq  = _factory_engine(wrap_leastsq, 'fun_diff')
+    fit_leastsq2 = _factory_engine(wrap_leastsq2, 'fitfun_diff')
 
     def fit_custom(self, p0, x, *args, **kw):
         if self.do_var is not None:
