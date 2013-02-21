@@ -19,6 +19,7 @@ class Fitter:
         self.X = self.Y = None
         self.P = self.P0 = None
         self.p = self.p0 = None
+        self.do_var = None
 
         self.buf = np.empty_like(x)
 
@@ -86,8 +87,10 @@ class Fitter:
     def fit_leastsq2(self, p0, x, *args):
         return mp.leastsq(self.fitfun_diff, (p0.copy(), x, self.buf[:x.size]) + args)
 
-    def fit_custom(self, p0, x, *args):
-        return self.custom_engine(p0.copy(), x, self.buf[:x.size], *args)
+    def fit_custom(self, p0, x, *args, **kw):
+        if self.do_var is not None:
+            kw.setdefault('do_var', self.do_var)
+        return self.custom_engine(p0.copy(), x, self.buf[:x.size], *args, **kw)
 
     def set_engine(self, engine):
         self.engine = getattr(self, 'fit_' + engine)

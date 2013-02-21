@@ -1,7 +1,6 @@
 #include <Python.h>
 #include <numpy/arrayobject.h>
 
-//#include "../fitfun.h"
 #include <math.h>
 
 #include <minpack.h>
@@ -26,11 +25,6 @@ void e2_diff(data *D)
     for (i=D->m; i--; ) {
         *y++ = P0*exp(-P1*(*x++)) - *ydata++;
     }
-}
-
-void e2_fit(data *D)
-{
-    leastsq(e2_diff, D);
 }
 
 double e2_rms(data *D)
@@ -67,11 +61,6 @@ void IV3_diff(data *D)
     for (i=D->m; i--; ) {
         *y++ = P0*(1. - exp((*x++ - P1)*iP2)) - *ydata++;
     }
-}
-
-void IV3_fit(data *D)
-{
-    leastsq(IV3_diff, D);
 }
 
 double IV3_rms(data *D)
@@ -116,11 +105,6 @@ void IV4_diff(data *D)
         P0i = P0 + ai*dP0;
         *y++ = P0i*(1. - exp((*x++ - P1)*iP2)) - *ydata++;
     }
-}
-
-void IV4_fit(data *D)
-{
-    leastsq(IV4_diff, D);
 }
 
 double IV4_rms(data *D)
@@ -171,11 +155,6 @@ void IV5_diff(data *D)
         P1i = P1 + ai*dP1;
         *y++ = P0i*(1. - exp((*x++ - P1i)*iP2)) - *ydata++;
     }
-}
-
-void IV5_fit(data *D)
-{
-    leastsq(IV5_diff, D);
 }
 
 double IV5_rms(data *D)
@@ -231,11 +210,6 @@ void IV6_diff(data *D)
     }
 }
 
-void IV6_fit(data *D)
-{
-    leastsq(IV6_diff, D);
-}
-
 double IV6_rms(data *D)
 {
     int i;
@@ -251,65 +225,6 @@ double IV6_rms(data *D)
         P1i = P1 + ai*dP1;
         P2i = P2 + ai*dP2;
         dy = P0i*(1. - exp((*x++ - P1i)/P2i)) - *y++;
-        dy2 += dy*dy;
-    }
-    return sqrt(dy2) / D->m;
-}
-
-void IV6i(data *D)
-{
-    int i;
-    double *P = D->P, *x = D->x, *y = D->y, *a = D->a;
-    double P0 = P[0], P1 = P[1], iP2 = 1./P[2];
-    double dP0 = P[3]-P0, dP1 = P[4]-P1, diP2 = 1./P[5]-iP2;
-    double ai, P0i, P1i, iP2i;
-
-    for (i=D->m; i--; ) {
-        ai = *a++;
-        P0i = P0 + ai*dP0;
-        P1i = P1 + ai*dP1;
-        iP2i = iP2 + ai*diP2;
-        *y++ = P0i*(1. - exp((*x++ - P1i)*iP2i));
-    }
-}
-
-void IV6i_diff(data *D)
-{
-    int i;
-    double *P = D->P, *x = D->x, *y = D->y, *a = D->a, *ydata = D->ydata;
-    double P0 = P[0], P1 = P[1], iP2 = 1./P[2];
-    double dP0 = P[3]-P0, dP1 = P[4]-P1, diP2 = 1./P[5]-iP2;
-    double ai, P0i, P1i, iP2i;
-
-    for (i=D->m; i--; ) {
-        ai = *a++;
-        P0i = P0 + ai*dP0;
-        P1i = P1 + ai*dP1;
-        iP2i = iP2 + ai*diP2;
-        *y++ = P0i*(1. - exp((*x++ - P1i)*iP2i)) - *ydata++;
-    }
-}
-
-void IV6i_fit(data *D)
-{
-    leastsq(IV6i_diff, D);
-}
-
-double IV6i_rms(data *D)
-{
-    int i;
-    double *P = D->P, *x = D->x, *y = D->y, *a = D->a;
-    double P0 = P[0], P1 = P[1], iP2 = 1./P[2];
-    double dP0 = P[3]-P0, dP1 = P[4]-P1, diP2 = 1./P[5]-iP2;
-    double ai, P0i, P1i, iP2i;
-    double dy2 = 0., dy;
-
-    for (i=D->m; i--; ) {
-        ai = *a++;
-        P0i = P0 + ai*dP0;
-        P1i = P1 + ai*dP1;
-        iP2i = iP2 + ai*diP2;
-        dy = P0i*(1. - exp((*x++ - P1i)*iP2i)) - *y++;
         dy2 += dy*dy;
     }
     return sqrt(dy2) / D->m;
@@ -355,11 +270,6 @@ void IVdbl_diff(data *D)
     }
 }
 
-void IVdbl_fit(data *D)
-{
-    leastsq(IVdbl_diff, D);
-}
-
 double IVdbl_rms(data *D)
 {
     int i;
@@ -378,6 +288,18 @@ double IVdbl_rms(data *D)
     return sqrt(dy2) / D->m;
 }
 
+
+#define fit_template(name)   \
+void name##_fit(data *D) {   \
+    leastsq(name##_diff, D); \
+}
+
+fit_template(e2)
+fit_template(IV3)
+fit_template(IV4)
+fit_template(IV5)
+fit_template(IV6)
+fit_template(IVdbl)
 
 
 #define get_arr(args, i) PyArray_DATA(PyTuple_GET_ITEM(args, i))
@@ -418,7 +340,7 @@ void parse_args_ydata_a(PyObject *args, data *D)
 
 #define meth_template_passthru(fun, parser, i)                \
 static PyObject* meth_##fun(PyObject *self, PyObject *args) { \
-    data D;                                                   \
+    data D = {0};                                             \
     parser(args, &D);                                         \
     fun(&D);                                                  \
     PyObject *obj = PyTuple_GET_ITEM(args, i);                \
@@ -428,77 +350,87 @@ static PyObject* meth_##fun(PyObject *self, PyObject *args) { \
 
 #define meth_template_double(fun, parser)                     \
 static PyObject* meth_##fun(PyObject *self, PyObject *args) { \
-    data D;                                                   \
+    data D = {0};                                             \
     parser(args, &D);                                         \
     double d = fun(&D);                                       \
     return Py_BuildValue("d", d);                             \
 }
 
+#define meth_template_passthru_fit(fun, parser, i)                          \
+static PyObject* meth_##fun(PyObject *self, PyObject *args, PyObject *kw) { \
+    PyObject *obj;                                                          \
+    data D = {0};                                                           \
+    parser(args, &D);                                                       \
+    if ((obj = PyDict_GetItemString(kw, "do_var")))                         \
+        D.do_var = PyArray_DATA(obj);                                       \
+    fun(&D);                                                                \
+    obj = PyTuple_GET_ITEM(args, i);                                        \
+    Py_INCREF(obj);                                                         \
+    return obj;                                                             \
+}
+
 meth_template_passthru(e2, parse_args, 2)
 meth_template_passthru(e2_diff, parse_args_ydata, 2)
-meth_template_passthru(e2_fit, parse_args_ydata, 0)
+meth_template_passthru_fit(e2_fit, parse_args_ydata, 0)
 meth_template_double(e2_rms, parse_args)
 
 meth_template_passthru(IV3, parse_args, 2)
 meth_template_passthru(IV3_diff, parse_args_ydata, 2)
-meth_template_passthru(IV3_fit, parse_args_ydata, 0)
+meth_template_passthru_fit(IV3_fit, parse_args_ydata, 0)
 meth_template_double(IV3_rms, parse_args)
 
 meth_template_passthru(IV4, parse_args_a, 2)
 meth_template_passthru(IV4_diff, parse_args_ydata_a, 2)
-meth_template_passthru(IV4_fit, parse_args_ydata_a, 0)
+meth_template_passthru_fit(IV4_fit, parse_args_ydata_a, 0)
 meth_template_double(IV4_rms, parse_args_a)
 
 meth_template_passthru(IV5, parse_args_a, 2)
 meth_template_passthru(IV5_diff, parse_args_ydata_a, 2)
-meth_template_passthru(IV5_fit, parse_args_ydata_a, 0)
+meth_template_passthru_fit(IV5_fit, parse_args_ydata_a, 0)
 meth_template_double(IV5_rms, parse_args_a)
 
 meth_template_passthru(IV6, parse_args_a, 2)
 meth_template_passthru(IV6_diff, parse_args_ydata_a, 2)
-meth_template_passthru(IV6_fit, parse_args_ydata_a, 0)
+meth_template_passthru_fit(IV6_fit, parse_args_ydata_a, 0)
 meth_template_double(IV6_rms, parse_args_a)
-
-meth_template_passthru(IV6i, parse_args_a, 2)
-meth_template_passthru(IV6i_diff, parse_args_ydata_a, 2)
-meth_template_passthru(IV6i_fit, parse_args_ydata_a, 0)
-meth_template_double(IV6i_rms, parse_args_a)
 
 meth_template_passthru(IVdbl, parse_args, 2)
 meth_template_passthru(IVdbl_diff, parse_args_ydata, 2)
-meth_template_passthru(IVdbl_fit, parse_args_ydata, 0)
+meth_template_passthru_fit(IVdbl_fit, parse_args_ydata, 0)
 meth_template_double(IVdbl_rms, parse_args)
 
 
 static PyMethodDef methods[] = {
     {"e2", meth_e2, METH_VARARGS, "Exp with 2 parameters"},
     {"e2_diff", meth_e2_diff, METH_VARARGS, "Difference to Exp with 2 parameters"},
-    {"e2_fit", meth_e2_fit, METH_VARARGS, "Fit Exp with 2 parameters"},
     {"e2_rms", meth_e2_rms, METH_VARARGS, "rms for Exp with 2 parameters"},
+    {"e2_fit", (PyCFunction) meth_e2_fit, METH_VARARGS|METH_KEYWORDS, 
+        "Fit Exp with 2 parameters"},
     {"IV3", meth_IV3, METH_VARARGS, "IV curve with 3 parameters"},
     {"IV3_diff", meth_IV3_diff, METH_VARARGS, "Difference to IV curve with 3 parameters"},
-    {"IV3_fit", meth_IV3_fit, METH_VARARGS, "Fit IV curve with 3 parameters"},
     {"IV3_rms", meth_IV3_rms, METH_VARARGS, "rms for IV curve with 3 parameters"},
+    {"IV3_fit", (PyCFunction) meth_IV3_fit, METH_VARARGS|METH_KEYWORDS, 
+        "Fit IV curve with 3 parameters"},
     {"IV4", meth_IV4, METH_VARARGS, "IV curve with 4 parameters"},
     {"IV4_diff", meth_IV4_diff, METH_VARARGS, "Difference to IV curve with 4 parameters"},
-    {"IV4_fit", meth_IV4_fit, METH_VARARGS, "Fit IV curve with 4 parameters"},
     {"IV4_rms", meth_IV4_rms, METH_VARARGS, "rms for IV curve with 4 parameters"},
+    {"IV4_fit", (PyCFunction) meth_IV4_fit, METH_VARARGS|METH_KEYWORDS, 
+        "Fit IV curve with 4 parameters"},
     {"IV5", meth_IV5, METH_VARARGS, "IV curve with 5 parameters"},
     {"IV5_diff", meth_IV5_diff, METH_VARARGS, "Difference to IV curve with 5 parameters"},
-    {"IV5_fit", meth_IV5_fit, METH_VARARGS, "Fit IV curve with 5 parameters"},
     {"IV5_rms", meth_IV5_rms, METH_VARARGS, "rms for IV curve with 5 parameters"},
+    {"IV5_fit", (PyCFunction) meth_IV5_fit, METH_VARARGS|METH_KEYWORDS, 
+        "Fit IV curve with 5 parameters"},
     {"IV6", meth_IV6, METH_VARARGS, "IV curve with 6 parameters"},
     {"IV6_diff", meth_IV6_diff, METH_VARARGS, "Difference to IV curve with 6 parameters"},
-    {"IV6_fit", meth_IV6_fit, METH_VARARGS, "Fit IV curve with 6 parameters"},
     {"IV6_rms", meth_IV6_rms, METH_VARARGS, "rms for IV curve with 6 parameters"},
-    {"IV6i", meth_IV6i, METH_VARARGS, "IV curve with 6 parameters*"},
-    {"IV6i_diff", meth_IV6i_diff, METH_VARARGS, "Difference to IV curve with 6 parameters*"},
-    {"IV6i_fit", meth_IV6i_fit, METH_VARARGS, "Fit IV curve with 6 parameters*"},
-    {"IV6i_rms", meth_IV6i_rms, METH_VARARGS, "rms for IV curve with 6 parameters*"},
+    {"IV6_fit", (PyCFunction) meth_IV6_fit, METH_VARARGS|METH_KEYWORDS, 
+        "Fit IV curve with 6 parameters"},
     {"IVdbl", meth_IVdbl, METH_VARARGS, "Double probe IV curve"},
     {"IVdbl_diff", meth_IVdbl_diff, METH_VARARGS, "Difference to double probe IV curve"},
-    {"IVdbl_fit", meth_IVdbl_fit, METH_VARARGS, "Fit double probe IV curve"},
     {"IVdbl_rms", meth_IVdbl_rms, METH_VARARGS, "rms for double probe IV curve"},
+    {"IVdbl_fit", (PyCFunction) meth_IVdbl_fit, METH_VARARGS|METH_KEYWORDS, 
+        "Fit double probe IV curve"},
     {NULL, NULL, 0, NULL}
 };
  
