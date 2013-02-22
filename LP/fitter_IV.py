@@ -19,8 +19,10 @@ from sm_pyplot.contextmenupicker import ContextMenuPicker
 from sm_pyplot.observer_viewer import ToggleViewer, ToggleViewerIntegrated
 
 
-class FitterIV(Fitter):
-    def __init__(self, V, I, mask=None, **kw):
+class FitterIVBase(Fitter):
+    def __init__(self, V, I, mask=None, cut_at_min=False, **kw):
+        self.cut_at_min = cut_at_min
+
         self.mask_ind = np.arange(V.size)
         if mask is not None:
             self.mask_ind = self.mask_ind[mask]
@@ -31,16 +33,17 @@ class FitterIV(Fitter):
         self.V, self.I = V[self.ind], I[self.ind]
         
         self.im = self.I.argmin()
-        self.Vm, self.VM = self.V[0], self.V[-1]
-        self.Im, self.IM = self.I[self.im], median(self.I[:self.I.size/2])
-        self.dV = self.VM - self.Vm
-        self.dI = self.IM - self.Im
+        self.Vm = Vm = self.V[0]
+        self.VM = VM = self.V[-1]
+        self.Im = Im = self.I[self.im]
+        self.IM = IM = median(self.I[:self.I.size/2])
+        self.dV = dV = VM - Vm
+        self.dI = dI = IM - Im
+
+        self.abcd = (2./dI, -(2.*Im/dI + 1.), 1./dV, -Vm/dV)
 
         self.M = self.V.size
 
-        self.cut_at_min = kw.pop('cut_at_min', True)
-        self.r = kw.pop('r', 0.95)
-        
         Fitter.__init__(self, self.V, self.I, **kw)
 
     def get_ind(self):
@@ -64,13 +67,32 @@ class FitterIV(Fitter):
     def set_norm(self):
         if self.cut_at_min:
             self.M = self.im+1
-        self.X = (self.V[:self.M].astype('d') - self.Vm)/self.dV
-        self.Y = (self.I[:self.M].astype('d') - self.Im)/self.dI*2 - 1
+        a, b, c, d = self.abcd
+        self.X = c*self.V[:self.M].astype('d') + d
+        self.Y = a*self.I[:self.M].astype('d') + b
 
     def set_unnorm(self):
-        '''self.p0 commented out for now (should only be calculated on-demand)'''
-        #self.p0 = self.LP_unnormalize(self.P0)
-        self.p  = self.LP_unnormalize(self.P )
+        self.p = self.LP_unnormalize(self.P)
+
+    def fit(self):
+        Fitter.fit(self)
+        self.check()
+        return self.p
+
+    def check(self):
+        n, Vf, Te = self.p[:3]
+        if n < 0.:
+            raise FitterError("Negative n")
+        if Te < 0. or Te > 0.5*self.dV:
+            raise FitterError("Unrealistic Te")
+
+
+class FitterIV(FitterIVBase):
+    def __init__(self, V, I, r=0.95, **kw):
+        self.r = r
+
+        kw.setdefault('cut_at_min', True)
+        FitterIVBase.__init__(self, V, I, **kw)
 
     def set_guess(self):
         def zero_crossings(x):
@@ -85,23 +107,21 @@ class FitterIV(Fitter):
         self.P0 = np.array((I0, Vf, Te))
 
     def LP_unnormalize(self, P):
-        a = 2./self.dI
-        b = -(self.Im*a+1)
+        a, b, c, d = self.abcd
 
         p = P.copy()
         p[0] = (P[0]-b)/a
-        p[1] = (P[1]+P[2]*np.log(1.-b/P[0]))*self.dV+self.Vm
-        p[2] = P[2]*self.dV
+        p[1] = (P[1]+P[2]*np.log(1.-b/P[0]) - d)/c
+        p[2] = P[2]/c
         return p
 
     def LP_normalize(self, p):
-        a = 2./self.dI
-        b = -(self.Im*a+1)
+        a, b, c, d = self.abcd
 
         P = p.copy()
         P[0] = a*p[0]+b
-        P[1] = (p[1]-p[2]*np.log(1.-b/P[0])-self.Vm)/self.dV
-        P[2] = p[2]/self.dV
+        P[1] = c*(p[1]-p[2]*np.log(1.-b/P[0])) + d
+        P[2] = c*p[2]
         return P
 
     @classmethod
@@ -131,29 +151,43 @@ class FitterIV(Fitter):
             self.X, self.Y = save
             
         self.set_unnorm()
-        self.check_Te()
+        self.check()
         return self.p
 
-    def check_Te(self):
-        n, Vf, Te = self.p[:3]
-        if n < 0.:
-            raise FitterError("Negative n")
-        if Te < 0. or Te > 0.5*self.dV:
-            raise FitterError("Unrealistic Te")
 
-
-class FitterIVDbl(Fitter):
-    def __init__(self, V, I, mask=None, **kw):
-        Fitter.__init__(self, V, I, **kw)
+class FitterIVDbl(FitterIVBase):
+    def __init__(self, V, I, **kw):
+        FitterIVBase.__init__(self, V, I, **kw)
 
         self.do_var = np.array((1, 1, 1, 0, 1), 'i')
 
-    def get_ind(self):
-        return np.arange(self.x.size)
+    def LP_unnormalize(self, P):
+        a, b, c, d = self.abcd
+
+        p = P.copy()
+        p[0] = (P[0] - b)/a
+        p[4] = (P[0] - b)*P[4]/(P[0] + b*P[4])
+        p[1] = (P[1] + P[2]*np.log(1. - b*(1.+p[4])/P[0]) - d)/c
+        p[2] = P[2]/c
+        return p
 
     def set_guess(self):
+        def zero_crossings(x):
+            return np.flatnonzero(np.diff(np.sign(x)))
+
+        V, I = self.get_norm()
+        I0 = B = 1.
+        i0 = zero_crossings(I)
+        Vf = np.mean((V[i0] + V[i0+1])/2)
+        Te = (V[self.im]-Vf)/np.log(1-I[self.im]/I0)
+
+        self.P0 = np.array((I0, Vf, Te, 0., B))
+
+    """
+    def set_guess(self):
         self.P0 = np.array((0.3, 18., 18., -5., -5.))
-        
+    """
+
     @classmethod
     def pow_075(cls, x):
         cnd = x < 0.
@@ -165,7 +199,7 @@ class FitterIVDbl(Fitter):
     @classmethod
     def fitfun(cls, P, X):
         iP2 = 1./P[2]
-        A, B = np.exp(P[3:5])
+        A, B = P[3:5]
         arg = (P[1] - X)*iP2
         exp_arg = np.exp(arg)
         return P[0]*(exp_arg - 1. - A*cls.pow_075(arg)) / (exp_arg + B)

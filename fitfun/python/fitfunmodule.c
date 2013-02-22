@@ -246,7 +246,7 @@ void IVdbl(data *D)
     double arg, exp_arg;
     double *P = D->P, *x = D->x, *y = D->y;
     double P0 = P[0], P1 = P[1], iP2 = 1./P[2], P3 = P[3], P4 = P[4];
-    double A = exp(P3), B = exp(P4);
+    double A = P3, B = P4;
 
     for (i=D->m; i--; ) {
         arg = (P1 - *x++)*iP2;
@@ -261,7 +261,7 @@ void IVdbl_diff(data *D)
     double arg, exp_arg;
     double *P = D->P, *x = D->x, *y = D->y, *ydata = D->ydata;
     double P0 = P[0], P1 = P[1], iP2 = 1./P[2], P3 = P[3], P4 = P[4];
-    double A = exp(P3), B = exp(P4);
+    double A = P3, B = P4;
 
     for (i=D->m; i--; ) {
         arg = (P1 - *x++)*iP2;
@@ -276,7 +276,7 @@ double IVdbl_rms(data *D)
     double arg, exp_arg;
     double *P = D->P, *x = D->x, *y = D->y;
     double P0 = P[0], P1 = P[1], iP2 = 1./P[2], P3 = P[3], P4 = P[4];
-    double A = exp(P3), B = exp(P4);
+    double A = P3, B = P4;
     double dy2 = 0., dy;
 
     for (i=D->m; i--; ) {
