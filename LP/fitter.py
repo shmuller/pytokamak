@@ -37,14 +37,14 @@ class Fitter:
         self.set_engine(engine)
 
     # overload
+    def normalize(self, x, y):
+        return x, y
+
+    def unnormalize(self, P):
+        return P
+
     def set_OK(self):
         self.OK = True
-
-    def set_norm(self):
-        self.X, self.Y = self.x, self.y
-
-    def set_unnorm(self):
-        self.p, self.p0 = self.P, self.P0
 
     def set_guess(self):
         self.P0 = 0.
@@ -117,12 +117,12 @@ class Fitter:
     # static
     @memoized_property
     def X(self):
-        self.set_norm()
+        self.X, self.Y = self.normalize(self.x, self.y)
         return self.X
 
     @memoized_property
     def Y(self):
-        self.set_norm()
+        self.X, self.Y = self.normalize(self.x, self.y)
         return self.Y
 
     @memoized_property
@@ -136,18 +136,18 @@ class Fitter:
         return self.P0
 
     @memoized_property
+    def p0(self):
+        self.p0 = self.unnormalize(self.P0)
+        return self.p0
+
+    @memoized_property
     def P(self):
         self.fit()
         return self.P
 
     @memoized_property
-    def p0(self):
-        self.set_unnorm()
-        return self.p0
-
-    @memoized_property
     def p(self):
-        self.set_unnorm()
+        self.p = self.unnormalize(self.P)
         return self.p
 
     def fit(self, P0=None):

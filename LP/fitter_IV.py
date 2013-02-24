@@ -49,6 +49,17 @@ class FitterIVBase(Fitter):
     def get_ind(self):
         return self.ind[:self.M]
 
+    def normalize(self, V, I):
+        if self.cut_at_min:
+            self.M = self.im+1
+        a, b, c, d = self.abcd
+        X = c*V[:self.M].astype('d') + d
+        Y = a*I[:self.M].astype('d') + b
+        return X, Y
+
+    def unnormalize(self, P):
+        return self.LP_unnormalize(P)
+
     def set_OK(self):
         def medianstd(x):
             xm = median(x)
@@ -64,20 +75,9 @@ class FitterIVBase(Fitter):
         cnd2 = Irm < -2*Ils
         self.OK = cnd1 & cnd2
 
-    def set_norm(self):
-        if self.cut_at_min:
-            self.M = self.im+1
-        a, b, c, d = self.abcd
-        self.X = c*self.V[:self.M].astype('d') + d
-        self.Y = a*self.I[:self.M].astype('d') + b
-
-    def set_unnorm(self):
-        self.p = self.LP_unnormalize(self.P)
-
     def fit(self):
         Fitter.fit(self)
         self.check()
-        return self.p
 
     def check(self):
         n, Vf, Te = self.p[:3]
@@ -246,15 +246,14 @@ class FitterIV6(Fitter):
 
         self.p0 = p0
 
+    def normalize(self, V, I):
+        return V/self.dV, I/self.dI
+
+    def unnormalize(self, P):
+        return P * self.fact
+
     def set_OK(self):
         self.OK = np.isfinite(self.p0).all()
-
-    def set_norm(self):
-        self.X = self.x / self.dV
-        self.Y = self.y / self.dI
-
-    def set_unnorm(self):
-        self.p = self.P * self.fact
 
     def set_guess(self):
         self.P0 = self.p0 / self.fact
@@ -279,9 +278,8 @@ class FitterIV6Perm(FitterIV6):
         FitterIV6.__init__(self, *args, **kw)
         self.fact = self.fact[self.perm]
 
-    def set_unnorm(self):
-        self.p = (self.P * self.fact)[self.iperm]
-        return self.p, self.p0
+    def unnormalize(self, P):
+        return (P * self.fact)[self.iperm]
 
     def set_guess(self):
         self.P0 = self.p0[self.perm] / self.fact
