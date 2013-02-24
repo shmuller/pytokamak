@@ -5,7 +5,7 @@ import scipy.odr as odr
 
 import minpack as mp
 
-from sig import get_axes
+from sig import memoized_property, get_axes
 
 class FitterError(Exception):
     pass
@@ -15,10 +15,6 @@ class Fitter:
             use_rms=True, use_diff=True, use_fast=True):
         self.x, self.y, self.args = x, y, args
 
-        self.OK = None
-        self.X = self.Y = None
-        self.P = self.P0 = None
-        self.p = self.p0 = None
         self.do_var = None
 
         self.buf = np.empty_like(x)
@@ -119,37 +115,47 @@ class Fitter:
         self.engine = getattr(self, 'fit_' + engine)
 
     # static
-    def is_OK(self):
-        if self.OK is None:
-            self.set_OK()
+    @memoized_property
+    def X(self):
+        self.set_norm()
+        return self.X
+
+    @memoized_property
+    def Y(self):
+        self.set_norm()
+        return self.Y
+
+    @memoized_property
+    def OK(self):
+        self.set_OK()
         return self.OK
 
-    def get_norm(self):
-        if self.X is None:
-            self.set_norm()
-        return self.X, self.Y
-
-    def get_unnorm(self):
-        if self.p is None:
-            self.set_unnorm()
-        return self.p, self.p0
-
-    def get_guess(self):
-        if self.P0 is None:
-            self.set_guess()
+    @memoized_property
+    def P0(self):
+        self.set_guess()
         return self.P0
-    
-    def fit(self, P0=None):
-        if not self.is_OK():
-            raise FitterError("Cannot fit data that failed is_OK() check")
-        
-        if P0 is None:
-            P0 = self.get_guess()
-        X, Y = self.get_norm()
-        self.P = self.engine(P0, X, Y, *self.args)
-        self.set_unnorm()
 
+    @memoized_property
+    def P(self):
+        self.fit()
+        return self.P
+
+    @memoized_property
+    def p0(self):
+        self.set_unnorm()
+        return self.p0
+
+    @memoized_property
+    def p(self):
+        self.set_unnorm()
         return self.p
+
+    def fit(self, P0=None):
+        if not self.OK:
+            raise FitterError("Cannot fit data that failed is_OK() check")
+        if P0 is None:
+            P0 = self.P0
+        self.P = self.engine(P0, self.X, self.Y, *self.args)
 
     def eval_guess_norm(self, X):
         return self.fitfun(self.P0, X, *self.args)
@@ -164,17 +170,13 @@ class Fitter:
         return self.fitfun(self.p, x, *self.args)
 
     def get_XY(self):
-        if self.is_OK(): 
-            if self.P is None:
-                self.fit()
+        if self.OK: 
             return self.X, (self.Y, self.eval_norm(self.X))
         else:
             return self.X, (self.Y,)
 
     def get_xy(self):
-        if self.is_OK(): 
-            if self.p is None:
-                self.fit()
+        if self.OK:
             return self.x, (self.y, self.eval(self.x))
         else:
             return self.x, (self.y,)

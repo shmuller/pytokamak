@@ -98,7 +98,7 @@ class FitterIV(FitterIVBase):
         def zero_crossings(x):
             return np.flatnonzero(np.diff(np.sign(x)))
 
-        V, I = self.get_norm()
+        V, I = self.X, self.Y
         I0 = 1.
         i0 = zero_crossings(I)
         Vf = np.mean((V[i0] + V[i0+1])/2)
@@ -150,9 +150,7 @@ class FitterIV(FitterIVBase):
                     break
             self.X, self.Y = save
             
-        self.set_unnorm()
         self.check()
-        return self.p
 
 
 class FitterIVDbl(FitterIVBase):
@@ -175,19 +173,15 @@ class FitterIVDbl(FitterIVBase):
         def zero_crossings(x):
             return np.flatnonzero(np.diff(np.sign(x)))
 
-        V, I = self.get_norm()
-        I0 = B = 1.
+        V, I = self.X, self.Y
+        I0 = 1.
+        B  = 1.
         i0 = zero_crossings(I)
         Vf = np.mean((V[i0] + V[i0+1])/2)
         Te = (V[self.im]-Vf)/np.log(1-I[self.im]/I0)
 
         self.P0 = np.array((I0, Vf, Te, 0., B))
-
-    """
-    def set_guess(self):
-        self.P0 = np.array((0.3, 18., 18., -5., -5.))
-    """
-
+    
     @classmethod
     def pow_075(cls, x):
         cnd = x < 0.
@@ -463,7 +457,7 @@ class IV:
             s = slice(i0[j], i1[j] + 1)
             fitter_IV = FitterIVClass(V[s], I[s], mask=get_mask(s), **kw)
             try:
-                out[j] = fitter_IV.fit()
+                out[j] = fitter_IV.p
                 self.mask[s][fitter_IV.get_ind()] = True
             except FitterError:
                 pass
@@ -505,7 +499,7 @@ class IV:
 
             fitter_IV = FitterIVClass(Vj, Ij, aj, p[j], **kw)
             try:
-                out[j] = fitter_IV.fit()
+                out[j] = fitter_IV.p
             except FitterError:
                 pass
 

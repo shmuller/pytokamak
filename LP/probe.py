@@ -11,12 +11,17 @@ logger = logging
 
 from pdb import set_trace
 
-from sig import *
-
-from fitter_IV import FitterIV, FitterError, IVContainer
-
 from sm_pyplot.contextmenupicker import ContextMenuPicker
 from sm_pyplot.observer_viewer import ToggleViewer, ToggleViewerIntegrated
+
+from sig import *
+
+import fitter_IV
+reload(fitter_IV)
+
+FitterIV = fitter_IV.FitterIV
+FitterError = fitter_IV.FitterError
+IVContainer = fitter_IV.IVContainer
 
 
 class ArrayView(np.ndarray):
