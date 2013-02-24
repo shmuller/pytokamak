@@ -46,6 +46,10 @@ class FitterIVBase(Fitter):
 
         Fitter.__init__(self, self.V, self.I, **kw)
 
+    @classmethod
+    def zero_crossings(cls, x):
+        return np.flatnonzero(np.diff(np.sign(x)))
+
     def get_ind(self):
         return self.ind[:self.M]
 
@@ -95,14 +99,20 @@ class FitterIV(FitterIVBase):
         FitterIVBase.__init__(self, V, I, **kw)
 
     def set_guess(self):
-        def zero_crossings(x):
-            return np.flatnonzero(np.diff(np.sign(x)))
+        if not self.OK:
+            raise FitterError("Cannot compute guess for data that failed OK check")
 
         V, I = self.X, self.Y
         I0 = 1.
-        i0 = zero_crossings(I)
+        i0 = self.zero_crossings(I)
         Vf = np.mean((V[i0] + V[i0+1])/2)
-        Te = (V[self.im]-Vf)/np.log(1-I[self.im]/I0)
+        
+        #I1 = 0.5*I0
+        #i1 = self.zero_crossings(I - I1)
+        #V1 = np.mean((V[i1] + V[i1+1])/2)
+        V1, I1 = V[self.im], I[self.im]
+
+        Te = (V1-Vf)/np.log(1-I1/I0)
 
         self.P0 = np.array((I0, Vf, Te))
 
@@ -170,15 +180,20 @@ class FitterIVDbl(FitterIVBase):
         return p
 
     def set_guess(self):
-        def zero_crossings(x):
-            return np.flatnonzero(np.diff(np.sign(x)))
+        if not self.OK:
+            raise FitterError("Cannot compute guess for data that failed OK check")
 
         V, I = self.X, self.Y
-        I0 = 1.
-        B  = 1.
-        i0 = zero_crossings(I)
+        I0, B = 1., 1.
+        
+        i0 = self.zero_crossings(I)
         Vf = np.mean((V[i0] + V[i0+1])/2)
-        Te = (V[self.im]-Vf)/np.log(1-I[self.im]/I0)
+        
+        I1 = 0.5*I0
+        i1 = self.zero_crossings(I - I1)
+        V1 = np.mean((V[i1] + V[i1+1])/2)
+        
+        Te = (V1-Vf)/np.log((1-I1/I0)/(1+B))
 
         self.P0 = np.array((I0, Vf, Te, 0., B))
     

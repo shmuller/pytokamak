@@ -152,7 +152,7 @@ class Fitter:
 
     def fit(self, P0=None):
         if not self.OK:
-            raise FitterError("Cannot fit data that failed is_OK() check")
+            raise FitterError("Cannot fit data that failed OK check")
         if P0 is None:
             P0 = self.P0
         self.P = self.engine(P0, self.X, self.Y, *self.args)
