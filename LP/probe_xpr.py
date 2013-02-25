@@ -232,19 +232,19 @@ class ProbeXPR(Probe):
                 meas.Vf = Vf[i]
                 meas.Te = Te[i]
 
-    def calc_res(self, PP='PP'):
+    def calc_res(self, ID='IV'):
         tips = self.config.head.tips
 
         A = (0.5*tips[0].area, 0.5*tips[1].area, tips[2].area)
 
         try:
-            PP_j  = self.IV['tip1+tip2'].get_PP(PP).copy()
-            PP_jp = self.IV['tip1'].get_PP(PP)[0].copy()
-            PP_jm = self.IV['tip2'].get_PP(PP)[0].copy()
+            PP_j  = self.IV['tip1+tip2'].PP[ID][:3].copy()
+            PP_jp = self.IV['tip1'].PP[ID][0].copy()
+            PP_jm = self.IV['tip2'].PP[ID][0].copy()
             PP_jt = PP_j[0].copy()
             A_j = A[0] + A[1]
         except KeyError:
-            PP_j  = self.IV['tip3'].get_PP(PP).copy()
+            PP_j  = self.IV['tip3'].PP[ID][:3].copy()
             PP_jp = self.S['tip1'].as_PP(PP_j)
             PP_jm = self.S['tip2'].as_PP(PP_j)
             PP_jt = self.S['tip1+tip2'].as_PP(PP_j)
@@ -259,7 +259,7 @@ class ProbeXPR(Probe):
         c = np.dstack((PP_j.c, PP_jp.c, PP_jm.c, PP_jt.c))
 
         try:
-            PP_j3 = self.IV['tip3'].get_PP(PP)[0].copy()
+            PP_j3 = self.IV['tip3'].PP[ID][0].copy()
             PP_j3.c /= A[2]
 
             keys.append('j3')

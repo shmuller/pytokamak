@@ -257,16 +257,13 @@ class FitterIVMag(Fitter):
         return p
 
 
-class FitterIV6(Fitter):
+class FitterIVLinear(Fitter):
     linear = True
-    nvars = 6
     def __init__(self, V, I, a, p0, **kw):
         Fitter.__init__(self, V, I, args=(a,), **kw)
 
-        self.dV = dV = V.ptp()
-        self.dI = dI = I.ptp()
-        self.fact = np.array((dI, dV, dV, dI, dV, dV))
-
+        self.dV = V.ptp()
+        self.dI = I.ptp()
         self.p0 = p0
 
     def normalize(self, V, I):
@@ -280,6 +277,15 @@ class FitterIV6(Fitter):
 
     def set_guess(self):
         self.P0 = self.p0 / self.fact
+
+
+class FitterIV6(FitterIVLinear):
+    nvars, base_ID = 6, 'IV'
+    def __init__(self, *args, **kw):
+        FitterIVLinear.__init__(self, *args, **kw)
+
+        dV, dI = self.dV, self.dI
+        self.fact = np.array((dI, dV, dV, dI, dV, dV))
 
     @classmethod
     def fitfun(cls, p, V, a):
@@ -332,13 +338,42 @@ class FitterIV4(FitterIV6Perm):
     fitfun_rms = ff.IV4_rms
 
 
+class FitterIVDbl2(FitterIVLinear):
+    nvars, base_ID = 10, 'IVdbl'
+    def __init__(self, *args, **kw):
+        FitterIVLinear.__init__(self, *args, **kw)
+
+        dV, dI = self.dV, self.dI
+        self.fact = np.array((dI, dV, dV, 1., 1., dI, dV, dV, 1., 1.))
+
+        self.do_var = np.array((1, 1, 1, 0, 1, 1, 1, 1, 0, 1), 'i')
+    
+    @classmethod
+    def fitfun(cls, p, V, a):
+        Is = p[0] + a*(p[5]-p[0])
+        Vf = p[1] + a*(p[6]-p[1])
+        Te = p[2] + a*(p[7]-p[2])
+        p3 = p[3] + a*(p[8]-p[3])
+        p4 = p[4] + a*(p[9]-p[4])
+        A, B = p3, p4
+        arg = (Vf - V)/Te
+        exp_arg = np.exp(arg)
+        return Is*(exp_arg - 1. - A*FitterIVDbl.pow_075(arg)) / (exp_arg + B)
+
+    custom_engine = ff.IVdbl2_fit
+    fitfun_fast = ff.IVdbl2
+    fitfun_diff = ff.IVdbl2_diff
+    fitfun_rms = ff.IVdbl2_rms
+
+
 FitterIVClasses = dict(
-        IV    = FitterIV,
-        IVdbl = FitterIVDbl,
-        IVmag = FitterIVMag,
-        IV6   = FitterIV6,
-        IV5   = FitterIV5,
-        IV4   = FitterIV4)
+        IV     = FitterIV,
+        IVdbl  = FitterIVDbl,
+        IVmag  = FitterIVMag,
+        IV6    = FitterIV6,
+        IV5    = FitterIV5,
+        IV4    = FitterIV4,
+        IVdbl2 = FitterIVDbl2)
 
 
 class IVViewer(ToggleViewer):
@@ -476,7 +511,7 @@ class IV:
         return PiecewisePolynomialEndpoints(out[None], t, i0=i0, i1=i1, shift=shift)
 
     def _fit_linear(self, FitterIVClass, n=5, incr=1, use_mask=True, **kw):
-        nvars = FitterIVClass.nvars
+        nvars, base_ID = FitterIVClass.nvars, FitterIVClass.base_ID
         sl, sr, i0, i1, ind, out, shift = self._prepare(n, incr, nvars)
 
         S = self.S
@@ -484,14 +519,15 @@ class IV:
         t0, t1 = t[i0], t[i1]
         dt = t1 - t0
 
+        PP = self.PP[base_ID]
         try:
             # try fast version first
-            c = self.PP['IV'].c[0]
+            c = PP.c[0]
             p_knots = np.concatenate((c[:1], 0.5*(c[:-1] + c[1:]), c[-1:]), axis=0)
             p = np.concatenate((p_knots[sl], p_knots[sr]), axis=1)
         except:
             # fallback to full evaluation
-            p = np.concatenate((self.PP['IV'](t0), self.PP['IV'](t1)), axis=1)
+            p = np.concatenate((PP(t0), PP(t1)), axis=1)
 
         #Sfit = self.get_Sfit()
         #mask = ~Sfit.x.mask
@@ -516,7 +552,7 @@ class IV:
             except FitterError:
                 pass
 
-        c = np.swapaxes(out.reshape((-1, 2, 3)), 0, 1)[::-1].copy()
+        c = np.swapaxes(out.reshape((-1, 2, nvars/2)), 0, 1)[::-1].copy()
         c[0] -= c[1]
         c[0] /= dt[:, None]
 

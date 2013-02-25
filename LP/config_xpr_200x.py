@@ -42,7 +42,7 @@ def_LPS_old = dict(dig='LPS_old', amp_default=amp_default_unity, lines=dict(LPS=
 E = campaign.add_experiment(date="20050621")
 
 E.add(20326, "Standard Ohmic, Maximos fitting demo",
-        head = head,
+        head = head_V2,
         descr = """\
             Nice shot. Sinusoidal sweep. Isat slanting visible.""",
         stars = '****', **def_LPS_old)
