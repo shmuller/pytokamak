@@ -104,6 +104,19 @@ class DictView(MutableMapping):
         return self.__class__.__name__ + " with: " + self.valid_keys.__repr__()
 
 
+class GeneratorDict(dict):
+    def __init__(self, *args, **kw):
+        self.generator = kw.pop('generator')
+        dict.__init__(self, *args, **kw)
+
+    def __getitem__(self, indx):
+        try:
+            return dict.__getitem__(self, indx)
+        except KeyError:
+            self[indx] = result = self.generator(indx)
+            return result
+
+
 class Container(Iterable):
     def __init__(self):
         self.x = OrderedDict()

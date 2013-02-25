@@ -4,7 +4,8 @@ import numpy.ma as ma
 from itertools import cycle
 
 from sig import median, memoized_property, get_fig, get_tfig
-from sig import DictView, Container, CurrentSignal, PiecewisePolynomialEndpoints
+from sig import DictView, GeneratorDict, Container, \
+        CurrentSignal, PiecewisePolynomialEndpoints
 
 from fitter import Fitter, FitterError
 
@@ -20,6 +21,8 @@ from sm_pyplot.observer_viewer import ToggleViewer, ToggleViewerIntegrated
 
 
 class FitterIVBase(Fitter):
+    linear = False
+    nvars = 3
     def __init__(self, V, I, mask=None, cut_at_min=False, **kw):
         self.cut_at_min = cut_at_min
 
@@ -164,6 +167,7 @@ class FitterIV(FitterIVBase):
 
 
 class FitterIVDbl(FitterIVBase):
+    nvars = 5
     def __init__(self, V, I, **kw):
         FitterIVBase.__init__(self, V, I, **kw)
 
@@ -220,6 +224,8 @@ class FitterIVDbl(FitterIVBase):
 
 
 class FitterIVMag(Fitter):
+    linear = False
+    nvars = 20
     def __init__(self, V, I, mask=None, **kw):
         Fitter.__init__(self, V, I, **kw)
         
@@ -252,6 +258,8 @@ class FitterIVMag(Fitter):
 
 
 class FitterIV6(Fitter):
+    linear = True
+    nvars = 6
     def __init__(self, V, I, a, p0, **kw):
         Fitter.__init__(self, V, I, args=(a,), **kw)
 
@@ -324,15 +332,24 @@ class FitterIV4(FitterIV6Perm):
     fitfun_rms = ff.IV4_rms
 
 
+FitterIVClasses = dict(
+        IV    = FitterIV,
+        IVdbl = FitterIVDbl,
+        IVmag = FitterIVMag,
+        IV6   = FitterIV6,
+        IV5   = FitterIV5,
+        IV4   = FitterIV4)
+
+
 class IVViewer(ToggleViewer):
-    def __init__(self, IV, PP='PP'):
-        self.IV, self.PP = IV, PP
+    def __init__(self, IV, ID='IV'):
+        self.IV, self.ID = IV, ID
 
         ToggleViewer.__init__(self, 'IV viewer')
 
     def plotfun(self, event):
         t_event = event.xdata
-        res = self.IV.get_Sfit_at_event(t_event, PP=self.PP)
+        res = self.IV.get_Sfit_at_event(t_event, ID=self.ID)
         if not isinstance(res, list):
             res = [res]
 
@@ -355,14 +372,14 @@ class IVViewer(ToggleViewer):
 
 
 class IVViewerIt(ToggleViewer):
-    def __init__(self, IV, PP='PP'):
-        self.IV, self.PP = IV, PP
+    def __init__(self, IV, ID='IV'):
+        self.IV, self.ID = IV, ID
 
         ToggleViewer.__init__(self, 'I(t) viewer')
 
     def plotfun(self, event):
         t_event = event.xdata
-        res = self.IV.get_Sfit_at_event(t_event, PP=self.PP)
+        res = self.IV.get_Sfit_at_event(t_event, ID=self.ID)
         if not isinstance(res, list):
             res = [res]
         
@@ -381,20 +398,20 @@ class IVViewerIt(ToggleViewer):
         self.ax = fig.axes[0]
         self.ax.set_ylabel("I (A)")
 
-        self.ax.set_xlim(self.IV.plot_range_dt(self.PP))
+        self.ax.set_xlim(self.IV.plot_range_dt(self.ID))
         self.ax.set_ylim(self.IV.plot_range_I())
         self.colors = ('b', 'g', 'r', 'c')
 
 
 class IVViewerItIntegrated(ToggleViewerIntegrated):
-    def __init__(self, IV, PP='PP'):
-        self.IV, self.PP = IV, PP
+    def __init__(self, IV, ID='IV'):
+        self.IV, self.ID = IV, ID
 
         ToggleViewerIntegrated.__init__(self, 'I(t) integrated viewer')
 
     def plotfun(self, event):
         t_event = event.xdata
-        V, I, Ifit, t = self.IV.get_Sfit_at_event(t_event, PP=self.PP)
+        V, I, Ifit, t = self.IV.get_Sfit_at_event(t_event, ID=self.ID)
 
         self.clear()
         lines = self.ax.plot(t, I, 'k-')
@@ -402,29 +419,10 @@ class IVViewerItIntegrated(ToggleViewerIntegrated):
         return lines + lines_fit
 
 
-# method factories for IV and IVContainer
-def _plot_factory(plotfun, PP):
-    def plot(self, **kw):
-        return getattr(self, plotfun)(PP=PP, **kw)
-    return plot
-
-def _plot_range_factory(rangefun):
-    def plot_range(self, *args):
-        r = np.array([getattr(x, rangefun)(*args) for x in self])
-        return r[:,0].min(), r[:,1].max()
-    return plot_range
-
-def _forall_factory(method):
-    def forall(self, *args, **kw):
-        for x in self:
-            getattr(x, method)(*args, **kw)
-        return self
-    return forall
-
-
 class IV:
     def __init__(self, S, R):
         self.S, self.R = S, R
+        self.PP = GeneratorDict(generator=self._fit)
 
     @staticmethod
     def _slices(N, n, incr):
@@ -454,7 +452,8 @@ class IV:
         shift = -(n // (2*incr))
         return sl, sr, i0, i1, ind, out, shift
 
-    def _fit_const(self, FitterIVClass, n=1, incr=1, mask=None, nvars=3, **kw):
+    def _fit_const(self, FitterIVClass, n=1, incr=1, mask=None, **kw):
+        nvars = FitterIVClass.nvars
         sl, sr, i0, i1, ind, out, shift = self._prepare(n, incr, nvars)
         
         S = self.S
@@ -476,7 +475,8 @@ class IV:
                 pass
         return PiecewisePolynomialEndpoints(out[None], t, i0=i0, i1=i1, shift=shift)
 
-    def _fit_linear(self, FitterIVClass, n=5, incr=1, use_mask=True, nvars=6, **kw):
+    def _fit_linear(self, FitterIVClass, n=5, incr=1, use_mask=True, **kw):
+        nvars = FitterIVClass.nvars
         sl, sr, i0, i1, ind, out, shift = self._prepare(n, incr, nvars)
 
         S = self.S
@@ -486,12 +486,12 @@ class IV:
 
         try:
             # try fast version first
-            c = self.PP.c[0]
+            c = self.PP['IV'].c[0]
             p_knots = np.concatenate((c[:1], 0.5*(c[:-1] + c[1:]), c[-1:]), axis=0)
             p = np.concatenate((p_knots[sl], p_knots[sr]), axis=1)
         except:
             # fallback to full evaluation
-            p = np.concatenate((self.PP(t0), self.PP(t1)), axis=1)
+            p = np.concatenate((self.PP['IV'](t0), self.PP['IV'](t1)), axis=1)
 
         #Sfit = self.get_Sfit()
         #mask = ~Sfit.x.mask
@@ -522,62 +522,17 @@ class IV:
 
         return PiecewisePolynomialEndpoints(c, t, i0=i0, i1=i1, shift=shift)
 
-    def fit(self, **kw):
-        self.PP = self._fit_const(FitterIV, **kw)
+    def _fit(self, ID='IV', **kw):
+        FitterIVClass = FitterIVClasses[ID]
+        if FitterIVClass.linear:
+            fit = self._fit_linear
+        else:
+            fit = self._fit_const
+        return fit(FitterIVClass, **kw)
+
+    def fit(self, ID='IV', **kw):
+        self.PP[ID] = self._fit(ID=ID, **kw)
         return self
-
-    def fitdbl(self, **kw):
-        self.PPdbl = self._fit_const(FitterIVDbl, nvars=5, **kw)
-        return self
-
-    def fitmag(self, **kw):
-        self.PPmag = self._fit_const(FitterIVMag, nvars=20, **kw)
-        return self
-
-    def fit6(self, **kw):
-        self.PP6 = self._fit_linear(FitterIV6, **kw)
-        return self
-
-    def fit5(self, **kw):
-        self.PP5 = self._fit_linear(FitterIV5, **kw)
-        return self
-
-    def fit4(self, **kw):
-        self.PP4 = self._fit_linear(FitterIV4, **kw)
-        return self
-
-    @memoized_property
-    def PP(self):
-        print "Calculating PP..."
-        return self._fit_const(FitterIV)
-
-    @memoized_property
-    def PPdbl(self):
-        print "Calculating PPdbl..."
-        return self._fit_const(FitterIVDbl, nvars=5)
-
-    @memoized_property
-    def PPmag(self):
-        print "Calculating PPmag..."
-        return self._fit_const(FitterIVMag, nvars=20)
-    
-    @memoized_property
-    def PP6(self):
-        print "Calculating PP6..."
-        return self._fit_linear(FitterIV6)
-
-    @memoized_property
-    def PP5(self):
-        print "Calculating PP5..."
-        return self._fit_linear(FitterIV5)
-
-    @memoized_property
-    def PP4(self):
-        print "Calculating PP4..."
-        return self._fit_linear(FitterIV4)
-
-    def get_PP(self, PP='PP'):
-        return getattr(self, PP)
 
     @classmethod
     def fitfun(cls, P, X):
@@ -591,17 +546,16 @@ class IV:
         else:
             raise Exception("No matching fit function")
 
-    def get_Sfit(self, PP='PP'):
+    def get_Sfit(self, ID='IV'):
         t, V = self.S.t, self.S.V
-        p = getattr(self, PP)(t).T
+        p = self.PP[ID](t).T
         Ifit = self.fitfun(p, V.x)
         #mask = V.x > p[1] + p[2]
         Ifit_masked = ma.masked_array(Ifit, ~self.mask)
         return CurrentSignal(Ifit_masked, t, V=V)
 
-    def get_Sfit_at_event(self, t_event, PP='PP'):
-        PP = getattr(self, PP)
-        s, p = PP.eval_at_event(t_event)
+    def get_Sfit_at_event(self, t_event, ID='IV'):
+        s, p = self.PP[ID].eval_at_event(t_event)
 
         S = self.S
         V, I, t = S.V.x[s], S.x[s], S.t[s]
@@ -610,8 +564,8 @@ class IV:
         Ifit = ma.masked_array(Ifit, ~self.mask[s])
         return V, I, Ifit, t
 
-    def plot_range_dt(self, PP='PP'):
-        PP = getattr(self, PP)
+    def plot_range_dt(self, ID='IV'):
+        PP = self.PP[ID]
         t = PP.x[[PP.i0[0], PP.i1[0]]]
         return (0, t[1] - t[0])
 
@@ -621,14 +575,14 @@ class IV:
     def plot_range_I(self, r=0):
         return self.S.plot_range(r)
 
-    def plot_raw(self, ax=None, PP='PP'):
+    def plot_raw(self, ID='IV', ax=None):
         if ax is None:
             fig = get_tfig(xlab=self.S.xlab, ylab=self.S.ylab)
             ax = fig.axes[0]
 
-            self.viewers = (IVViewer(self, PP=PP),
-                            IVViewerIt(self, PP=PP),
-                            IVViewerItIntegrated(self, PP=PP))
+            self.viewers = (IVViewer(self, ID=ID),
+                            IVViewerIt(self, ID=ID),
+                            IVViewerItIntegrated(self, ID=ID))
             
             menu_entries_ax = []
             for v in self.viewers:
@@ -638,18 +592,18 @@ class IV:
                     fig, menu_entries_ax=menu_entries_ax)
 
         self.S.plot(ax=ax)
-        self.get_Sfit(PP=PP).plot(ax=ax)
+        self.get_Sfit(ID=ID).plot(ax=ax)
         return ax
 
-    def plot(self, fig=None, PP='PP', **kw):
+    def plot(self, ID='IV', fig=None, **kw):
         if fig is None:
             xlab = 't (s)'
             ylab = ('Isat (A)', 'Vf (V)', 'Te (eV)')
             fig = get_tfig(shape=(3, 1), figsize=(10, 10),
                            xlab=xlab, ylab=ylab)
 
-            self.viewers = (IVViewer(self, PP=PP),
-                            IVViewerIt(self, PP=PP))
+            self.viewers = (IVViewer(self, ID=ID),
+                            IVViewerIt(self, ID=ID))
             
             menu_entries_ax = []
             for v in self.viewers:
@@ -658,16 +612,17 @@ class IV:
             fig.context_menu_picker = ContextMenuPicker(
                     fig, menu_entries_ax=menu_entries_ax)
 
-        for ax, p in zip(fig.axes, getattr(self, PP)):
+        for ax, p in zip(fig.axes, self.PP[ID]):
              p.plot(ax=ax, **kw)
         return fig
 
-    plot_raw6 = _plot_factory('plot_raw', 'PP6')
-    plot_raw5 = _plot_factory('plot_raw', 'PP5')
-    plot_raw4 = _plot_factory('plot_raw', 'PP4')
-    plot6 = _plot_factory('plot', 'PP6')
-    plot5 = _plot_factory('plot', 'PP5')
-    plot4 = _plot_factory('plot', 'PP4')
+
+# method factories for IVContainer
+def _plot_range_factory(rangefun):
+    def plot_range(self, *args):
+        r = np.array([getattr(x, rangefun)(*args) for x in self])
+        return r[:,0].min(), r[:,1].max()
+    return plot_range
 
 
 class IVContainer(Container):
@@ -692,27 +647,27 @@ class IVContainer(Container):
             except (ValueError, IndexError):
                 raise KeyError(indx)
 
-    def get_Sfit_at_event(self, t_event, PP='PP'):
-        return [x.get_Sfit_at_event(t_event, PP) for x in self]
+    def get_Sfit_at_event(self, t_event, ID='IV'):
+        return [x.get_Sfit_at_event(t_event, ID) for x in self]
 
     plot_range_dt = _plot_range_factory('plot_range_dt')
     plot_range_V  = _plot_range_factory('plot_range_V')
     plot_range_I  = _plot_range_factory('plot_range_I')
 
-    fit  = _forall_factory('fit')
-    fit6 = _forall_factory('fit6')
-    fit5 = _forall_factory('fit5')
-    fit4 = _forall_factory('fit4')
-
-    def plot_raw(self, fig=None, PP='PP'):
+    def fit(self, *args, **kw):
+        for x in self:
+            x.fit(*args, **kw)
+        return self
+    
+    def plot_raw(self, ID='IV', fig=None):
         if fig is None:
             xlab = self.x.values()[0].S.xlab
             ylab = [x.S.ylab for x in self]
             fig = get_tfig(shape=(len(self.x), 1), figsize=(10, 10), 
                            xlab=xlab, ylab=ylab)
 
-            self.viewers = (IVViewer(self, PP=PP),
-                            IVViewerIt(self, PP=PP))
+            self.viewers = (IVViewer(self, ID=ID),
+                            IVViewerIt(self, ID=ID))
 
             menu_entries_ax = []
             for v in self.viewers:
@@ -722,18 +677,18 @@ class IVContainer(Container):
                     fig, menu_entries_ax=menu_entries_ax)
 
         for ax, x in zip(fig.axes, self.x.values()):
-            x.plot_raw(ax=ax, PP=PP)
+            x.plot_raw(ax=ax, ID=ID)
         return fig
 
-    def plot(self, fig=None, PP='PP', **kw):
+    def plot(self, ID='IV', fig=None, **kw):
         if fig is None:
             xlab = "t (s)"
             ylab = ('Isat (A)', 'Vf (V)', 'Te (eV)')
             fig = get_tfig(shape=(3, 1), figsize=(10, 10), 
                            xlab=xlab, ylab=ylab)
 
-            self.viewers = (IVViewer(self, PP=PP),
-                            IVViewerIt(self, PP=PP))
+            self.viewers = (IVViewer(self, ID=ID),
+                            IVViewerIt(self, ID=ID))
 
             menu_entries_ax = []
             for v in self.viewers:
@@ -743,15 +698,8 @@ class IVContainer(Container):
                     fig, menu_entries_ax=menu_entries_ax)
 
         for x in self:
-            for ax, p in zip(fig.axes, getattr(x, PP)):
+            for ax, p in zip(fig.axes, x.PP[ID]):
                 p.plot(ax=ax, **kw)
         return fig
 
-    plot_raw6 = _plot_factory('plot_raw', 'PP6')
-    plot_raw5 = _plot_factory('plot_raw', 'PP5')
-    plot_raw4 = _plot_factory('plot_raw', 'PP4')
-    plot6 = _plot_factory('plot', 'PP6')
-    plot5 = _plot_factory('plot', 'PP5')
-    plot4 = _plot_factory('plot', 'PP4')
-
-
+    
