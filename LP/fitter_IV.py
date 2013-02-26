@@ -556,13 +556,28 @@ class IV:
 
         return PiecewisePolynomialEndpoints(c, t, i0=i0, i1=i1, shift=shift)
 
+    def _merge(self, ID1='IVdbl2', ID2='IV6', Te_c=10.):
+        self.fit('IVdbl', engine='odr')
+        self.fit(ID1, engine='odr')
+        self.fit('IV', r=1)
+        self.fit(ID2, engine='odr')
+
+        PP = self.PP[ID1].copy()
+        cnd = PP[2] > Te_c
+        PP.c[:,cnd,:3] = self.PP[ID2].c[:,cnd]
+        PP.c[:,cnd,3:] = 0.
+        return PP
+
     def _fit(self, ID='IV', **kw):
-        FitterIVClass = FitterIVClasses[ID]
-        if FitterIVClass.linear:
-            fit = self._fit_linear
+        if ID == 'IVhyb':
+            return self._merge(**kw)
         else:
-            fit = self._fit_const
-        return fit(FitterIVClass, **kw)
+            FitterIVClass = FitterIVClasses[ID]
+            if FitterIVClass.linear:
+                fit = self._fit_linear
+            else:
+                fit = self._fit_const
+            return fit(FitterIVClass, **kw)
 
     def fit(self, ID='IV', **kw):
         self.PP[ID] = self._fit(ID=ID, **kw)

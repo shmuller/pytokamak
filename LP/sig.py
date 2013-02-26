@@ -271,6 +271,19 @@ class PiecewisePolynomial:
     def __div__(self, other):
         return self.__array_wrap__(self.c/other)
 
+    def _cmp_factory(op):
+        def cmp(self, other):
+            i, y = self.eval()
+            return np.all(op(y.reshape((-1, 2) + self.shape), other), axis=1)
+        return cmp
+
+    __lt__ = _cmp_factory(np.less         )
+    __le__ = _cmp_factory(np.less_equal   )
+    __eq__ = _cmp_factory(np.equal        )
+    __ne__ = _cmp_factory(np.not_equal    )
+    __ge__ = _cmp_factory(np.greater_equal)
+    __gt__ = _cmp_factory(np.greater      )
+
     def __getitem__(self, index):
         if not isinstance(index, tuple): 
             index = (index,)

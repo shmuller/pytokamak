@@ -77,14 +77,26 @@ class Fitter:
             if self.do_var is None:
                 return wrap_engine(self, fun, p0, *args)
             else:
-                do_var = self.do_var.astype(bool)
+                do_var = self.do_var > 0
+                do_lin = self.do_var == 1
+                do_log = self.do_var == 2
+                
+                DO_LIN = do_lin[do_var]
+                DO_LOG = do_log[do_var]
 
                 p = p0.copy()
-                def fun_do_var(p_var, *args):
-                    p[do_var] = p_var
+                def FUN(P, *args):
+                    p[do_lin] = P[DO_LIN]
+                    p[do_log] = np.exp(P[DO_LOG])
                     return fun(p, *args)
             
-                p[do_var] = wrap_engine(self, fun_do_var, p0[do_var], *args)
+                P0 = p0[do_var]
+                P0[DO_LOG] = np.log(P0[DO_LOG])
+
+                P = wrap_engine(self, FUN, P0, *args)
+
+                p[do_lin] = P[DO_LIN]
+                p[do_log] = np.exp(P[DO_LOG])
                 return p
         return engine
 
