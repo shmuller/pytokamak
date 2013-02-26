@@ -108,10 +108,10 @@ double pow_075(double x)
 
 
 #define IVdbl_defs P0=P[0], P1=P[1], iP2=1./P[2], P3=P[3], P4=P[4], \
-                   A=fabs(P3), B=exp(P4), arg, exp_arg
+                   arg, exp_arg
 #define IVdbl_body arg = (P1 - *x++)*iP2; \
                    exp_arg = exp(arg);
-#define IVdbl_expr P0*(exp_arg - 1. - A*pow_075(arg)) / (exp_arg + B)
+#define IVdbl_expr P0*(exp_arg - 1. - P3*pow_075(arg)) / (exp_arg + P4)
 
 template(IVdbl, IVdbl_defs, IVdbl_body, IVdbl_expr)
 template_diff(IVdbl, IVdbl_defs, IVdbl_body, IVdbl_expr)
@@ -120,18 +120,16 @@ template_rms(IVdbl, IVdbl_defs, IVdbl_body, IVdbl_expr)
 
 #define IVdbl2_defs *a = D->a, P0=P[0], P1=P[1], P2=P[2], P3=P[3], P4=P[4],          \
                     dP0=P[5]-P0, dP1=P[6]-P1, dP2=P[7]-P2, dP3=P[8]-P3, dP4=P[9]-P4, \
-                    ai, P0i, P1i, P2i, P3i, P4i, A, B, arg, exp_arg
+                    ai, P0i, P1i, P2i, P3i, P4i, arg, exp_arg
 #define IVdbl2_body ai = *a++;              \
                     P0i = P0 + ai*dP0;      \
                     P1i = P1 + ai*dP1;      \
                     P2i = P2 + ai*dP2;      \
                     P3i = P3 + ai*dP3;      \
                     P4i = P4 + ai*dP4;      \
-                    A = fabs(P3i);          \
-                    B = exp(P4i);           \
                     arg = (P1i - *x++)/P2i; \
                     exp_arg = exp(arg);
-#define IVdbl2_expr P0i*(exp_arg - 1. - A*pow_075(arg)) / (exp_arg + B)
+#define IVdbl2_expr P0i*(exp_arg - 1. - P3i*pow_075(arg)) / (exp_arg + P4i)
 
 template(IVdbl2, IVdbl2_defs, IVdbl2_body, IVdbl2_expr)
 template_diff(IVdbl2, IVdbl2_defs, IVdbl2_body, IVdbl2_expr)

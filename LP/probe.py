@@ -421,8 +421,8 @@ class PhysicalResults:
         return self.plot(xkey='R', inout='out', **kw)
 
     def plot_R(self, **kw):
-        fig = self.plot_R_in(**kw)
-        return self.plot_R_out(fig=fig, **kw)
+        kw['fig'] = self.plot_R_in(**kw)
+        return self.plot_R_out(**kw)
 
 
 class ResultsIOError(Exception):
