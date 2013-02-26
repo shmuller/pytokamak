@@ -137,6 +137,9 @@ class Container(Iterable):
         self.x.update(other.x)
         return self
 
+    def __repr__(self):
+        return self.__class__.__name__ + " with: " + self.x.keys().__repr__()
+
     @staticmethod
     def _item(v, attr, cnd):
         x = np.array([getattr(v, attr)])

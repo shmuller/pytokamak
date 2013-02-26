@@ -177,10 +177,12 @@ class FitterIVDbl(FitterIVBase):
         a, b, c, d = self.abcd
 
         p = P.copy()
+        B = np.exp(P[4])
         p[0] = (P[0] - b)/a
-        p[4] = (P[0] - b)*P[4]/(P[0] + b*P[4])
+        p[4] = (P[0] - b)*B/(P[0] + b*B)
         p[1] = (P[1] + P[2]*np.log(1. - b*(1.+p[4])/P[0]) - d)/c
         p[2] = P[2]/c
+        p[4] = np.log(p[4])
         return p
 
     def set_guess(self):
@@ -199,7 +201,7 @@ class FitterIVDbl(FitterIVBase):
         
         Te = (V1-Vf)/np.log((1-I1/I0)/(1+B))
 
-        self.P0 = np.array((I0, Vf, Te, 0., B))
+        self.P0 = np.array((I0, Vf, Te, 0., np.log(B)))
     
     @classmethod
     def pow_075(cls, x):
@@ -212,7 +214,7 @@ class FitterIVDbl(FitterIVBase):
     @classmethod
     def fitfun(cls, P, X):
         iP2 = 1./P[2]
-        A, B = P[3:5]
+        A, B = np.abs(P[3]), np.exp(P[4])
         arg = (P[1] - X)*iP2
         exp_arg = np.exp(arg)
         return P[0]*(exp_arg - 1. - A*cls.pow_075(arg)) / (exp_arg + B)
@@ -347,7 +349,7 @@ class FitterIVDbl2(FitterIVLinear):
         self.fact = np.array((dI, dV, dV, 1., 1., dI, dV, dV, 1., 1.))
 
         self.do_var = np.array((1, 1, 1, 0, 1, 1, 1, 1, 0, 1), 'i')
-    
+
     @classmethod
     def fitfun(cls, p, V, a):
         Is = p[0] + a*(p[5]-p[0])
@@ -355,7 +357,7 @@ class FitterIVDbl2(FitterIVLinear):
         Te = p[2] + a*(p[7]-p[2])
         p3 = p[3] + a*(p[8]-p[3])
         p4 = p[4] + a*(p[9]-p[4])
-        A, B = p3, p4
+        A, B = np.abs(p3), np.exp(p4)
         arg = (Vf - V)/Te
         exp_arg = np.exp(arg)
         return Is*(exp_arg - 1. - A*FitterIVDbl.pow_075(arg)) / (exp_arg + B)

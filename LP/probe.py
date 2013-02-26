@@ -40,7 +40,7 @@ class IVChar:
         if out is None:
             out = np.empty(3)
         try:
-            out[:] = self.fitter_IV.fit()
+            out[:] = self.fitter_IV.p
         except FitterError:
             out[:] = np.nan
         return out
@@ -49,7 +49,7 @@ class IVChar:
         if out is None:
             out = np.empty(self.I.size, bool)
         out.fill(True)
-        if self.fitter_IV.p is not None:
+        if self.fitter_IV.OK:
             out[self.fitter_IV.get_ind()] = False
         return out
 
@@ -414,14 +414,15 @@ class PhysicalResults:
         fig.canvas.draw()
         return fig
 
-    def plot_R(self, **kw):
-        return self.plot(xkey='R', **kw)
-
     def plot_R_in(self, **kw):
-        return self.plot_R(inout='in', **kw)
+        return self.plot(xkey='R', inout='in', **kw)
 
     def plot_R_out(self, **kw):
-        return self.plot_R(inout='out', **kw)
+        return self.plot(xkey='R', inout='out', **kw)
+
+    def plot_R(self, **kw):
+        fig = self.plot_R_in(**kw)
+        return self.plot_R_out(fig=fig, **kw)
 
 
 class ResultsIOError(Exception):
@@ -618,16 +619,12 @@ class Probe:
         shn = self.digitizer.shn
         return PhysicalResults(shn, self['Rs'], i, meas)
     
-    def calc_res(self, PP='PP'):
+    def calc_res(self, ID='IV'):
         pass
 
     @memoized_property
     def res(self):
         return self.calc_res()
-
-    @memoized_property
-    def res6(self):
-        return self.calc_res(PP='PP6')
 
     @memoized_property
     def h5name_res(self):
