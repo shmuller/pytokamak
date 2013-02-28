@@ -34,18 +34,17 @@ class FitterIVBase(Fitter):
         self.ind = self.mask_ind[self.sort_ind]
 
         self.V, self.I = V[self.ind], I[self.ind]
+        self.M = self.V.size
         
         self.im = self.I.argmin()
         self.Vm = Vm = self.V[0]
         self.VM = VM = self.V[-1]
         self.Im = Im = self.I[self.im]
-        self.IM = IM = median(self.I[:self.I.size/2])
+        self.IM = IM = median(self.I[:self.M/2])
         self.dV = dV = VM - Vm
         self.dI = dI = IM - Im
 
         self.abcd = (2./dI, -(2.*Im/dI + 1.), 1./dV, -Vm/dV)
-
-        self.M = self.V.size
 
         Fitter.__init__(self, self.V, self.I, **kw)
 
@@ -151,18 +150,19 @@ class FitterIV(FitterIVBase):
         Fitter.fit(self)
 
         if self.r < 1:
-            save = self.X, self.Y
             Y0 = 0.
+            save = self.X, self.Y
             while True:
+                P_old, M_old = self.P, self.M
                 self.M *= self.r
                 self.X, self.Y = self.X[:self.M], self.Y[:self.M]
-                P_old = self.P
-                Fitter.fit(self, P0=self.P)    
+                Fitter.fit(self, P0=self.P)
+
                 if np.any(self.P > P_old) or (self.eval_norm(self.X[-1]) > Y0):
-                    self.P = P_old
+                    self.P, self.M = P_old, M_old
                     break
             self.X, self.Y = save
-            
+
         self.check()
 
 
@@ -288,10 +288,10 @@ class FitterIV6(FitterIVLinear):
 
     @classmethod
     def fitfun(cls, p, V, a):
-        Is = p[0] + a*(p[3]-p[0])
-        Vf = p[1] + a*(p[4]-p[1])
-        Te = p[2] + a*(p[5]-p[2])
-        return Is*(1.-np.exp((V-Vf)/Te))
+        n = cls.nvars/2
+        pp = p[:,None]
+        pj = pp[:n] + a[None]*(pp[n:] - pp[:n])
+        return FitterIV.fitfun(pj, V)
 
     custom_engine = ff.IV6_fit
     fitfun_fast = ff.IV6
@@ -349,14 +349,10 @@ class FitterIVDbl2(FitterIVLinear):
     
     @classmethod
     def fitfun(cls, p, V, a):
-        Is = p[0] + a*(p[5]-p[0])
-        Vf = p[1] + a*(p[6]-p[1])
-        Te = p[2] + a*(p[7]-p[2])
-        p3 = p[3] + a*(p[8]-p[3])
-        p4 = p[4] + a*(p[9]-p[4])
-        arg = (Vf - V)/Te
-        exp_arg = np.exp(arg)
-        return Is*(exp_arg - 1. - p3*FitterIVDbl.pow_075(arg)) / (exp_arg + p4)
+        n = cls.nvars/2
+        pp = p[:,None]
+        pj = pp[:n] + a[None]*(pp[n:] - pp[:n])
+        return FitterIVDbl.fitfun(pj, V)
 
     custom_engine = ff.IVdbl2_fit
     fitfun_fast = ff.IVdbl2
@@ -491,7 +487,7 @@ class IV:
         
         S = self.S
         V, I, t = S.V.x, S.x, S.t
-        self.mask = np.zeros(V.size, bool)
+        out_mask = np.zeros(V.size, bool)
 
         if mask is None:
             def get_mask(s): return None
@@ -503,10 +499,13 @@ class IV:
             fitter_IV = FitterIVClass(V[s], I[s], mask=get_mask(s), **kw)
             try:
                 out[j] = fitter_IV.p
-                self.mask[s][fitter_IV.get_ind()] = True
+                out_mask[s][fitter_IV.get_ind()] = True
             except FitterError:
                 pass
-        return PiecewisePolynomialEndpoints(out[None], t, i0=i0, i1=i1, shift=shift)
+
+        PP = PiecewisePolynomialEndpoints(out[None], t, i0=i0, i1=i1, shift=shift)
+        PP.mask = out_mask
+        return PP
 
     def _fit_linear(self, FitterIVClass, n=5, incr=1, use_mask=True, **kw):
         nvars, base_ID = FitterIVClass.nvars, FitterIVClass.base_ID
@@ -517,22 +516,20 @@ class IV:
         t0, t1 = t[i0], t[i1]
         dt = t1 - t0
 
-        PP = self.PP[base_ID]
+        base_PP = self.PP[base_ID]
         try:
             # try fast version first
-            c = PP.c[0]
+            c = base_PP.c[0]
             p_knots = np.concatenate((c[:1], 0.5*(c[:-1] + c[1:]), c[-1:]), axis=0)
             p = np.concatenate((p_knots[sl], p_knots[sr]), axis=1)
         except:
             # fallback to full evaluation
-            p = np.concatenate((PP(t0), PP(t1)), axis=1)
+            p = np.concatenate((base_PP(t0), base_PP(t1)), axis=1)
 
-        #Sfit = self.get_Sfit()
-        #mask = ~Sfit.x.mask
         if use_mask:
-            mask = self.mask
+            mask = base_PP.mask
         else:
-            mask = np.ones_like(self.mask)
+            mask = np.ones(V.size, bool)
 
         for j in ind:
             s = slice(i0[j], i1[j] + 1)
@@ -554,7 +551,9 @@ class IV:
         c[0] -= c[1]
         c[0] /= dt[:, None]
 
-        return PiecewisePolynomialEndpoints(c, t, i0=i0, i1=i1, shift=shift)
+        PP = PiecewisePolynomialEndpoints(c, t, i0=i0, i1=i1, shift=shift)
+        PP.mask = mask
+        return PP
 
     def _merge(self, ID1='IVdbl2', ID2='IV6', Te_c=10.):
         self.fit('IVdbl', engine='odr')
@@ -597,20 +596,22 @@ class IV:
 
     def get_Sfit(self, ID='IV'):
         t, V = self.S.t, self.S.V
-        p = self.PP[ID](t).T
+        PP = self.PP[ID]
+        p = PP(t).T
         Ifit = self.fitfun(p, V.x)
         #mask = V.x > p[1] + p[2]
-        Ifit_masked = ma.masked_array(Ifit, ~self.mask)
+        Ifit_masked = ma.masked_array(Ifit, ~PP.mask)
         return CurrentSignal(Ifit_masked, t, V=V)
 
     def get_Sfit_at_event(self, t_event, ID='IV'):
-        s, p = self.PP[ID].eval_at_event(t_event)
+        PP = self.PP[ID]
+        s, p = PP.eval_at_event(t_event)
 
         S = self.S
         V, I, t = S.V.x[s], S.x[s], S.t[s]
         
         Ifit = self.fitfun(p.T, V)
-        Ifit = ma.masked_array(Ifit, ~self.mask[s])
+        Ifit = ma.masked_array(Ifit, ~PP.mask[s])
         return V, I, Ifit, t
 
     def plot_range_dt(self, ID='IV'):
