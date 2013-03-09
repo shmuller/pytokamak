@@ -13,6 +13,7 @@ tip3 = TipXPR(number=3, pos='upper', V_keys='ampV2', I_keys='ampI2')
 
 head = HeadXPR(tips=(tip1, tip2, tip3), R_keys='ampR')
 
+
 tip1_20130130 = CylindricalTip(r=0.0005, z=0.00303,
         number=1, pos='lower left', V_keys='ampV1', I_keys='ampI3')
 tip2_20130130 = CylindricalTip(r=0.0005, z=0.00304,
@@ -21,6 +22,17 @@ tip3_20130130 = CylindricalTip(r=0.0005, z=0.00183,
         number=3, pos='upper', V_keys='ampV2', I_keys='ampI2')
 
 head_20130130 = HeadXPR(tips=(tip1_20130130, tip2_20130130, tip3_20130130), R_keys='ampR')
+
+
+tip1_20130306 = CylindricalTip(r=0.0005, z=0.0026,
+        number=1, pos='lower left', V_keys='ampV1', I_keys='ampI3')
+tip2_20130306 = CylindricalTip(r=0.0005, z=0.0026,
+        number=2, pos='lower right', V_keys='ampV1', I_keys='ampI1')
+tip3_20130306 = CylindricalTip(r=0.0005, z=0.002,
+        number=3, pos='upper', V_keys='ampV2', I_keys='ampI2')
+
+head_20130306 = HeadXPR(tips=(tip1_20130306, tip2_20130306, tip3_20130306), R_keys='ampR')
+
 
 fact = 4 * 5.54630/27. / 2**16
 offs = -47578968*fact - 0.105
@@ -139,15 +151,19 @@ E.rep(29310, 29309, "400 kA, B = 1.4 T, 0.8 MW, Mach -200 V, 50 ms later, sweep 
 E.rep(29311, 29310, "600 kA, B = 1.8 T, 1.0 MW, sweep at 0.7 kHz",
         times = 3.35,
         posit = 0.34,
-        descr = "Already in H-mode again, nice data almost until dwell.",
-        stars = '****')
+        descr = """\
+            Already in H-mode again, nice data almost until dwell. LFS density
+            drop marks onset of coherent oscillations.""",
+        stars = '*****')
 
 E.rep(29312, 29311, "Repeat, plunge 50 ms earlier, sweep at 1 kHz",
         times = 3.30,
         posit = 0.34,
         descr = """\
-            Arced again, L-mode data complimentory to H-mode data in previous shot.""",
-        stars = '***')
+            Arced again, L-mode data complimentory to H-mode data in previous shot.
+            Single tip still got L-H transition on HFS! Strong drop in HFS density at
+            transition""",
+        stars = '*****')
 
 # Gregor Birkenmeier
 E.rep(29313, 29312, "2.1 MW at 3.0 s, so plunge at 2.7 s",
@@ -397,6 +413,102 @@ E.rep(29443, 29442, "No plunge, but standing at waiting position",
         descr = """\
             Tip 1 resistive, arcs even before plasma.""",
         stars = '')
+
+
+############################################
+E = campaign.add_experiment(date="20130307")
+
+# new probe head test
+E.add(29676, "New probe head!",
+        times = 6.5,
+        posit = 0.05,
+        head = head_20130306,
+        ampI1 = CurrentProbe1[20],
+        ampI2 = CurrentProbe2[20],
+        ampI3 = CurrentProbe3[20], 
+        descr = """\
+            All signals there. Lots of arcs due to dirt.""",
+        stars = '', **def_XPR_pos)
+
+E.rep(29681, 29676, "Same test as before.", 
+        times = 6.8,
+        descr = """\
+            Plasma died before plunge.""",
+        stars = '')
+
+E.rep(29683, 29681, "Go to 1 s", 
+        times = 1.0,
+        descr = """\
+            Good. No arcs.""",
+        stars = '**')
+
+
+############################################
+E = campaign.add_experiment(date="20130308")
+
+# arc protection tests
+E.add(29690, "Single tip current signal passes thru arc protection box",
+        head = head_20130306,
+        ampI1 = CurrentProbe1[20],
+        ampI2 = CurrentProbe2[20],
+        ampI3 = CurrentProbe3[20], 
+        descr = """\
+            Compared to 29681, current signal S2 jumped up by 4 mV 
+            and is a bit noisier.""",
+        stars = '', **def_XPR_pos)
+
+E.rep(29691, 29690, "Single tip signal directly on S2",
+        descr = "Offset remained, noise level back to previous levels.",
+        stars = '')
+
+E.rep(29692, 29691, "Single tip signal teed outside arc box, all tips on 4 A Kepco",
+        descr = """\
+            Voltage calibration correct. Lower noise level on S2 if teed before
+            arc box.""",
+        stars = '')
+
+# Std H-mode
+E.rep(29693, 29692, "Single tip back on 1 A Kepco",
+        times = 1.0,
+        posit = 0.15,
+        descr = """\
+            Good data. Arc box switched off prematurely, failed to switch back
+            on several times, but eventually succeeded.""",
+        stars = '**')
+
+E.rep(29694, 29693, "Repeat, go all the way thru",
+        times = 1.0,
+        posit = 0.34,
+        descr = """\
+            Arc box switched off at different conditions again. Real arcs on I2.
+            Otherwise good data.""",
+        stars = '***')
+
+# Martin Oberkofler
+E.rep(29695, 29694, "Full plunge at 3.8 s, arc box on I3 triggered by I2",
+        times = 3.8,
+        posit = 0.34,
+        descr = """\
+            No arcs on Mach probe. Arc box switched off I3 for no apparent reason.""",
+        stars = '***')
+
+E.rep(29696, 29695, "No plunge. Arc box switches 9 V battery on S7",
+        times = (),
+        posit = (),
+        descr = "Arc box did not switch.",
+        stars = '')
+
+E.rep(29697, 29696, "Plunge again, arc box switches 9 V battery on S8",
+        times = 3.8,
+        posit = 0.34,
+        descr = "Nice data, no arcs. Arc box switched twice.",
+        stars = '****')
+
+E.rep(29698, 29697, "Repeat",
+        times = 3.8,
+        posit = 0.34,
+        descr = "Arcs on single tip on way out.",
+        stars = '****')
 
 
 

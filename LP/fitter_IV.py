@@ -9,10 +9,14 @@ from sig import DictView, GeneratorDict, Container, \
 
 from fitter import Fitter, FitterError
 
-try:
-    import LP.fitfun as ff
-except ImportError:
-    import fitfun as ff
+import fitfun as ff
+#import fitfun_ctypes as ff
+#import fitfun_cython as ff
+
+#try:
+#    import LP.fitfun as ff
+#except ImportError:
+#    import fitfun as ff
 
 import LP.mag_fit as mag_fit
 
@@ -23,8 +27,8 @@ from sm_pyplot.observer_viewer import ToggleViewer, ToggleViewerIntegrated
 class FitterIVBase(Fitter):
     linear = False
     nvars = 3
-    def __init__(self, V, I, mask=None, cut_at_min=False, **kw):
-        self.cut_at_min = cut_at_min
+    def __init__(self, V, I, mask=None, cut_at_min=False, r=1, **kw):
+        self.cut_at_min, self.r = cut_at_min, r
 
         self.mask_ind = np.arange(V.size)
         if mask is not None:
@@ -81,8 +85,27 @@ class FitterIVBase(Fitter):
         cnd2 = Irm < -2*Ils
         self.OK = cnd1 & cnd2
 
+    def is_old_better(self, P_old):
+        return np.any(self.P > P_old)
+        #return np.any(self.P > P_old) or (self.eval_norm(self.X[-1]) > 0.)
+
     def fit(self):
         Fitter.fit(self)
+
+        if self.r < 1:
+            Y0 = 0.
+            save = self.X, self.Y
+            while True:
+                P_old, M_old = self.P, self.M
+                self.M *= self.r
+                self.X, self.Y = self.X[:self.M], self.Y[:self.M]
+                Fitter.fit(self)
+
+                if self.is_old_better(P_old) or (self.Y[-1] > Y0):
+                    self.P, self.M = P_old, M_old
+                    break
+            self.X, self.Y = save
+
         self.check()
 
     def check(self):
@@ -94,10 +117,9 @@ class FitterIVBase(Fitter):
 
 
 class FitterIV(FitterIVBase):
-    def __init__(self, V, I, r=0.95, **kw):
-        self.r = r
-
+    def __init__(self, V, I, **kw):
         kw.setdefault('cut_at_min', True)
+        kw.setdefault('r', 0.95)
         FitterIVBase.__init__(self, V, I, **kw)
 
     def set_guess(self):
@@ -136,34 +158,19 @@ class FitterIV(FitterIVBase):
         P[2] = c*p[2]
         return P
 
+    def is_old_better(self, P_old):
+        dP = self.P - P_old
+        return np.any(dP[[0, 2]] > 0)
+
     @classmethod
     def fitfun(cls, P, X):
         iP2 = 1./P[2]
         return P[0]*(1.-np.exp((X-P[1])*iP2))
 
-    custom_engine = ff.IV3_fit
-    fitfun_fast = ff.IV3
-    fitfun_diff = ff.IV3_diff
-    fitfun_rms = ff.IV3_rms
-
-    def fit(self):
-        Fitter.fit(self)
-
-        if self.r < 1:
-            Y0 = 0.
-            save = self.X, self.Y
-            while True:
-                P_old, M_old = self.P, self.M
-                self.M *= self.r
-                self.X, self.Y = self.X[:self.M], self.Y[:self.M]
-                Fitter.fit(self, P0=self.P)
-
-                if np.any(self.P > P_old) or (self.eval_norm(self.X[-1]) > Y0):
-                    self.P, self.M = P_old, M_old
-                    break
-            self.X, self.Y = save
-
-        self.check()
+    custom_engine = staticmethod(ff.IV3_fit)
+    fitfun_fast = staticmethod(ff.IV3)
+    fitfun_diff = staticmethod(ff.IV3_diff)
+    fitfun_rms = staticmethod(ff.IV3_rms)
 
 
 class FitterIVDbl(FitterIVBase):
@@ -216,10 +223,10 @@ class FitterIVDbl(FitterIVBase):
         exp_arg = np.exp(arg)
         return P[0]*(exp_arg - 1. - P[3]*cls.pow_075(arg)) / (exp_arg + P[4])
 
-    custom_engine = ff.IVdbl_fit
-    fitfun_fast = ff.IVdbl
-    fitfun_diff = ff.IVdbl_diff
-    fitfun_rms = ff.IVdbl_rms
+    custom_engine = staticmethod(ff.IVdbl_fit)
+    fitfun_fast = staticmethod(ff.IVdbl)
+    fitfun_diff = staticmethod(ff.IVdbl_diff)
+    fitfun_rms = staticmethod(ff.IVdbl_rms)
 
 
 class FitterIVMag(Fitter):
@@ -293,10 +300,10 @@ class FitterIV6(FitterIVLinear):
         pj = pp[:n] + a[None]*(pp[n:] - pp[:n])
         return FitterIV.fitfun(pj, V)
 
-    custom_engine = ff.IV6_fit
-    fitfun_fast = ff.IV6
-    fitfun_diff = ff.IV6_diff
-    fitfun_rms = ff.IV6_rms
+    custom_engine = staticmethod(ff.IV6_fit)
+    fitfun_fast = staticmethod(ff.IV6)
+    fitfun_diff = staticmethod(ff.IV6_diff)
+    fitfun_rms = staticmethod(ff.IV6_rms)
 
 
 class FitterIV6Perm(FitterIV6):
@@ -319,10 +326,10 @@ class FitterIV5(FitterIV6Perm):
         self.iperm = np.array((0,1,2,3,4,2))
         FitterIV6Perm.__init__(self, *args, **kw)
 
-    custom_engine = ff.IV5_fit
-    fitfun_fast = ff.IV5
-    fitfun_diff = ff.IV5_diff
-    fitfun_rms = ff.IV5_rms
+    custom_engine = staticmethod(ff.IV5_fit)
+    fitfun_fast = staticmethod(ff.IV5)
+    fitfun_diff = staticmethod(ff.IV5_diff)
+    fitfun_rms = staticmethod(ff.IV5_rms)
 
 
 class FitterIV4(FitterIV6Perm):
@@ -331,10 +338,10 @@ class FitterIV4(FitterIV6Perm):
         self.iperm = np.array((0,1,2,3,1,2))
         FitterIV6Perm.__init__(self, *args, **kw)
 
-    custom_engine = ff.IV4_fit
-    fitfun_fast = ff.IV4
-    fitfun_diff = ff.IV4_diff
-    fitfun_rms = ff.IV4_rms
+    custom_engine = staticmethod(ff.IV4_fit)
+    fitfun_fast = staticmethod(ff.IV4)
+    fitfun_diff = staticmethod(ff.IV4_diff)
+    fitfun_rms = staticmethod(ff.IV4_rms)
 
 
 class FitterIVDbl2(FitterIVLinear):
@@ -354,10 +361,10 @@ class FitterIVDbl2(FitterIVLinear):
         pj = pp[:n] + a[None]*(pp[n:] - pp[:n])
         return FitterIVDbl.fitfun(pj, V)
 
-    custom_engine = ff.IVdbl2_fit
-    fitfun_fast = ff.IVdbl2
-    fitfun_diff = ff.IVdbl2_diff
-    fitfun_rms = ff.IVdbl2_rms
+    custom_engine = staticmethod(ff.IVdbl2_fit)
+    fitfun_fast = staticmethod(ff.IVdbl2)
+    fitfun_diff = staticmethod(ff.IVdbl2_diff)
+    fitfun_rms = staticmethod(ff.IVdbl2_rms)
 
 
 FitterIVClasses = dict(

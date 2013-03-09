@@ -402,8 +402,11 @@ class PiecewisePolynomialEndpoints(PiecewisePolynomial):
 
     def _shiftind(self, ind, shift):
         if isinstance(ind, slice):
-            ind = np.arange(*ind.indices(ind.stop))
-        ind += shift
+            args = ind.indices(ind.stop)
+            ind = np.arange(args[0] + shift, args[1] + shift, args[2])
+        else:
+            # making a copy is necessary!
+            ind = ind + shift
         indm = max(0, shift)
         indM = min(0, shift) + self.N - 1
 
@@ -463,6 +466,39 @@ class PiecewisePolynomialEndpoints(PiecewisePolynomial):
     def plot_ext(self, *args, **kw):
         return self.plot(*args, pad=True, ext=True, **kw)
 
+
+def PP_test():
+    def test_plot(PP, ax=None):
+        ax = PP.plot(ax=ax)
+
+        w = np.array([[5], [8]])
+        PP.plot(ax=ax, w=w, linewidth=2)
+
+        xi = np.linspace(-1., 12., 200)
+        yi = PP(xi)
+        ax.plot(xi, yi)
+        return ax
+
+    x = np.arange(12.)
+    c = (np.arange(1., 8.), np.arange(0., 7.))
+
+    i0 = np.arange(8)
+
+    PP = PiecewisePolynomial(c, x, i0=i0)
+
+    ax = test_plot(PP)
+
+    i0 = np.arange(7)
+    i1 = i0 + 5
+
+    PPE = PiecewisePolynomialEndpoints(c, x, i0=i0, i1=i1, shift=-2)
+
+    ax = None
+    #ax = PPE.plot_ext()
+    ax = PPE.plot(ax=ax, shift=0)
+
+    test_plot(PPE, ax=ax)
+    
 
 class IOH5:
     def __init__(self, h5name="test.h5"):
