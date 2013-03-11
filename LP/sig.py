@@ -467,11 +467,50 @@ class PiecewisePolynomialEndpoints(PiecewisePolynomial):
         return self.plot(*args, pad=True, ext=True, **kw)
 
 
+class PiecewisePolynomialEndpoints2(PiecewisePolynomial):
+    def __init__(self, *args, **kw):
+        PiecewisePolynomial.__init__(self, *args, **kw)
+
+        self.shift = kw.get('shift', 0)
+        self.i1 = kw.get('i1')
+        
+        self._add_tail()
+        self._shift()
+        
+    def _add_tail(self):
+        ind = np.flatnonzero(self.i1 > self.i0[-1])
+        rep = [-1]*(ind.size - 1)
+        i0_new = self.i1[ind]
+        dX = self.x[i0_new[:-1]] - self.x[self.i0[-1]]
+
+        c = self.c[:,rep]
+        c_new = np.zeros_like(c)
+
+        self.NI.calc_c_vect(dX, c, c_new)
+
+        self.i0 = np.concatenate((self.i0, i0_new))
+        self.i1 = np.concatenate((self.i1, self.i1[rep]))
+        self.c  = np.concatenate((self.c, c_new), axis=1)
+        self.N = self.c.shape[1]
+
+    def _shift(self):
+        shift = -self.shift
+        i0 = self.i0[:-1]
+        base = np.concatenate((np.zeros(shift, np.int_), np.arange(self.N-shift)))
+
+        dX = self.x[i0] - self.x[i0[base]]
+        c = self.c[:,base]
+        self.c = np.zeros_like(c)
+        self.NI.calc_c_vect(dX, c, self.c)
+
+    def plot_ext(self, *args, **kw):
+        return self.plot(*args, **kw)
+        
+
 def PP_test():
-    def test_plot(PP, ax=None):
+    def test_plot(PP, w, ax=None):
         ax = PP.plot(ax=ax)
 
-        w = np.array([[5], [8]])
         PP.plot(ax=ax, w=w, linewidth=2)
 
         xi = np.linspace(-1., 12., 200)
@@ -484,20 +523,26 @@ def PP_test():
 
     i0 = np.arange(8)
 
+    w = np.array([[5], [8]])
+
     PP = PiecewisePolynomial(c, x, i0=i0)
 
-    ax = test_plot(PP)
+    ax = test_plot(PP, w)
 
     i0 = np.arange(7)
     i1 = i0 + 5
 
-    PPE = PiecewisePolynomialEndpoints(c, x, i0=i0, i1=i1, shift=-2)
+    PPE = PiecewisePolynomialEndpoints2(c, x, i0=i0, i1=i1, shift=-2)
 
     ax = None
-    #ax = PPE.plot_ext()
-    ax = PPE.plot(ax=ax, shift=0)
+    ax = PPE.plot_ext(ax=ax)
+    ax = PPE.plot_ext(ax=ax, w=w, linewidth=1.5)
 
-    test_plot(PPE, ax=ax)
+    #ax = PPE.plot(ax=ax, shift=0)
+
+    test_plot(PPE, w, ax=ax)
+
+    return PP, PPE
     
 
 class IOH5:
