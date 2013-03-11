@@ -1,12 +1,11 @@
 import numpy as np
 import numpy.ma as ma
 
-import probe_xpr
 from sig import memoized_property, Digitizer
 
 from sm_pyplot.tight_figure import get_fig, get_axes
 
-from probe_xpr import TdiError, IOMdsAUG, IOFileAUG
+from probe_xpr import TdiError, IOMdsAUG, IOFileAUG, ProbeXPR
 
 
 class DigitizerAUG(Digitizer):
@@ -35,7 +34,7 @@ class AUGOverview:
             FPG = ('Wmhd',),
             MAC = ('Ipolsola', 'Ipolsoli'))
 
-        self.XPR = probe_xpr.ProbeXPR(shn=shn)
+        self.XPR = ProbeXPR(shn=shn)
 
         self.def_plots = ('power', 'density', 'XPR_I', 'XPR_R', 'Ipolsol')
 

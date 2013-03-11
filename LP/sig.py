@@ -318,7 +318,7 @@ class PiecewisePolynomial:
 
     def eval_at_event(self, x_event):
         ind = self._findind(np.array([x_event]))[0]
-        s = slice(self.i0[ind], self.i0[ind + 1])
+        s = slice(self.i0[ind], self.i1[ind])
         x = self.x[s]
         y = self._polyval(x, ind.repeat(x.size))
         return s, y
@@ -326,10 +326,6 @@ class PiecewisePolynomial:
     @memoized_property
     def T(self):
         return self.__class__(self.c.swapaxes(2,3), self.x, **self.kw)
-
-    @memoized_property
-    def savefields(self):
-        return DictView(self.__dict__, ('c', 'x', 'i0'))
 
     def add_nodes(self, xi):
         c, x = self.NI.add_nodes(self.c, self.x, xi)
@@ -419,13 +415,6 @@ class PiecewisePolynomialEndpoints(PiecewisePolynomial):
             shift = self.shift
         ind = np.searchsorted(self.xi, X, side) - 1
         return self._shiftind(ind, shift)
-
-    def eval_at_event(self, x_event):
-        ind = self._findind(np.array([x_event]))[0]
-        s = slice(self.i0[ind], self.i1[ind])
-        x = self.x[s]
-        y = self._polyval(x, ind.repeat(x.size))
-        return s, y
 
     def eval(self, w=None, pad=False, ext=False, shift=None):
         if shift is None:
@@ -532,7 +521,7 @@ def PP_test():
     i0 = np.arange(7)
     i1 = i0 + 5
 
-    PPE = PiecewisePolynomialEndpoints2(c, x, i0=i0, i1=i1, shift=-2)
+    PPE = PiecewisePolynomialEndpoints(c, x, i0=i0, i1=i1, shift=-2)
 
     ax = None
     ax = PPE.plot_ext(ax=ax)
