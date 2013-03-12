@@ -546,7 +546,7 @@ class Probe:
 
     def corr_capa(self):
         for I in self.I.itervalues():
-            I.x[:] -= I.I_capa()
+            I.x[:] -= I.I_capa
 
     def calc_IV_series(self, n=1, **kw):
         II = self.I.values()

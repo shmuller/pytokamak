@@ -24,6 +24,7 @@ CurrentProbe1 = {
     10: Amp(fact=0.5*10/10), 
     20: Amp(fact=0.5*20/10),
     50: Amp(fact=0.5*50/10),
+   100: Amp(fact=0.5*100/10),
   5000: Amp(fact=0.5*5000/10)}
 
 CurrentProbe2 = {
@@ -32,6 +33,7 @@ CurrentProbe2 = {
     10: Amp(fact=0.5*10/10),
     20: Amp(fact=0.5*20/10),
     50: Amp(fact=0.5*50/10),
+   100: Amp(fact=0.5*100/10),
   5000: Amp(fact=0.5*5000/10)}
 
 CurrentProbe3 = {
@@ -40,6 +42,16 @@ CurrentProbe3 = {
     10: Amp(fact=0.5*10/10),
     20: Amp(fact=0.5*20/10),
     50: Amp(fact=0.5*50/10),
+   100: Amp(fact=0.5*100/10),
+  5000: Amp(fact=0.5*5000/10)}
+
+CurrentProbe4 = {
+     1: Amp(fact=0.5*1/10), # mA/mV = A/V (0.5 from missing 50 Ohm term.)
+     5: Amp(fact=0.5*5/10),
+    10: Amp(fact=0.5*10/10),
+    20: Amp(fact=0.5*20/10),
+    50: Amp(fact=0.5*50/10),
+   100: Amp(fact=0.5*100/10),
   5000: Amp(fact=0.5*5000/10)}
 
 
@@ -67,6 +79,7 @@ amp_default_unity = dict(
             ampI1 = ampUnity,
             ampI2 = ampUnity,
             ampI3 = ampUnity,
+            ampI4 = ampUnity,
             ampVF = ampUnity)
 
 amp_default = dict(
@@ -76,6 +89,7 @@ amp_default = dict(
             ampI1 = ampUnity,
             ampI2 = ampUnity,
             ampI3 = ampUnity,
+            ampI4 = ampUnity,
             ampVF = ampVF)
 
 amp_XPR = dict(

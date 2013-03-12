@@ -34,6 +34,12 @@ tip3_20130306 = CylindricalTip(r=0.0005, z=0.002,
 head_20130306 = HeadXPR(tips=(tip1_20130306, tip2_20130306, tip3_20130306), R_keys='ampR')
 
 
+tip4_20130312 = CylindricalTip(r=0.0005, z=0.0052,
+        number=4, pos='lower', V_keys='ampV1', I_keys='ampI4')
+
+head_20130312 = HeadXPR(tips=head_20130306.tips + (tip4_20130312,), R_keys='ampR')
+
+
 fact = 4 * 5.54630/27. / 2**16
 offs = -47578968*fact - 0.105
 
@@ -49,7 +55,8 @@ mapping_XPR_pos = dict(
             ampI1 = 'S4',
             ampI2 = 'S2',
             ampI3 = 'S6',
-            ampVF = 'S6')
+            ampVF = 'S6',
+            ampI4 = 'S7')
 
 lines_XPR_pos = dict(amp=amp_XPR_pos, mapping=mapping_XPR_pos)
 
@@ -511,5 +518,115 @@ E.rep(29698, 29697, "Repeat",
         stars = '****')
 
 
+############################################
+E = campaign.add_experiment(date="20130312")
+
+# probe test
+E.add(29699, "Arc box switches 4 A Kepco (Mach tips), triggered by I2 at 1.9 V",
+        head = head_20130306,
+        ampI1 = CurrentProbe1[20],
+        ampI2 = CurrentProbe2[20],
+        ampI3 = CurrentProbe3[20], 
+        descr = "Everything looks OK.",
+        stars = '', **def_XPR_pos)
+
+# Std H-mode
+E.rep(29700, 29699, "15 cm at 1 s",
+        times = 1.0,
+        posit = 0.15,
+        descr = "All signals good. No arcs. Arc box didn't switch.",
+        stars = '**')
+
+# Std H-mode
+E.rep(29701, 29700, "Go to 25 cm",
+        times = 1.0,
+        posit = 0.25,
+        descr = "Single tip arcs, I2 very high. Arc box didn't switch.",
+        stars = '**')
+
+# Std H-mode
+E.rep(29702, 29701, "Go to 18 cm",
+        times = 1.0,
+        posit = 0.18,
+        descr = """\
+            Additionally 1 MW ECRH at 0.9 s. Arcs from I1, which is *not*
+            monitored. Positive currents still present after leaving plasma,
+            negatives missing. Curious.""",
+        stars = '*')
+
+# rt-ECCD FB for disruption avoidance
+E.rep(29703, 29702, "Check if everything still works",
+        times = 1.0,
+        posit = 0.05,
+        descr = "All signals still there.",
+        stars = '**')
+
+# Andrea Scarabosio
+E.rep(29708, 29703, "Two full plunges, all on sweeps at 17.0 Vpp at 1 kHz",
+        times = (2.0, 4.0),
+        posit = (0.34, 0.34),
+        descr = """\
+            First plunge excellent, second in accidental gas puff. Arc protection
+            switched. Currents flowing between Mach tips in disconnected mode!""",
+        stars = '****')
+
+E.rep(29709, 29708, "Repeat w/o density increase, 2nd plunge at 3.9 s (didn't run)",
+        times = (2.0, 3.9),
+        posit = (0.34, 0.34),
+        descr = "Didn't run",
+        stars = '')
+
+E.rep(29710, 29709, "Repeat",
+        times = (2.0, 3.9),
+        posit = (0.34, 0.34),
+        descr = """\
+            Both plunges excellent.""",
+        stars = '*****')
+
+E.rep(29711, 29710, "More gas puff, single tip on VF, I3 on total current from 4 A Kepco",
+        times = (2.0, 3.9),
+        posit = (0.34, 0.34),
+        descr = """\
+            First plunge excellent. Plasma starving during 2nd plunge.""",
+        stars = '*****')
+
+E.rep(29713, 29711, "I3 on 50 mA/div, no plunge",
+        times = (),
+        posit = (),
+        ampI3 = CurrentProbe3[50],
+        descr = "",
+        stars = '')
+
+E.add(29715, "Even higher n, config as before, total Mach currents on I4",
+        times = (2.0, 3.9),
+        posit = (0.34, 0.34),
+        head = head_20130312,
+        ampI1 = CurrentProbe1[20],
+        ampI2 = CurrentProbe2[20],
+        ampI3 = CurrentProbe3[20],
+        ampI4 = CurrentProbe4[50],
+        descr = "",
+        stars = '', **def_XPR_pos)
+
+E.rep(29717, 29715, "Ramp n from medium to high",
+        descr = "",
+        stars = '')
+
+E.rep(29721, 29717, "Change sensitivity to avoid saturation",
+        ampI1 = CurrentProbe1[50],
+        ampI2 = CurrentProbe2[50],
+        ampI3 = CurrentProbe3[50],
+        ampI4 = CurrentProbe4[100],
+        descr = "",
+        stars = '')
+
+# Patrick Simon
+E.rep(29722, 29721, "Limiter shot for GAM studies",
+        ampI1 = CurrentProbe1[20],
+        ampI2 = CurrentProbe2[20],
+        ampI3 = CurrentProbe3[20],
+        ampI4 = CurrentProbe4[50],
+        descr = "Almost nothing down there.",
+        stars = '')
 
 

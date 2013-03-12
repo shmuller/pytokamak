@@ -404,7 +404,7 @@ class IVViewer(ToggleViewer):
         self.ax.set_ylabel("I (A)")
         self.ax.set_xlim(self.IV.plot_range_V())
         self.ax.set_ylim(self.IV.plot_range_I())
-        self.colors = ('b', 'g', 'r', 'c')
+        self.colors = ('b', 'g', 'r', 'c', 'm')
 
 
 class IVViewerIt(ToggleViewer):
@@ -436,7 +436,7 @@ class IVViewerIt(ToggleViewer):
 
         self.ax.set_xlim(self.IV.plot_range_dt(self.ID))
         self.ax.set_ylim(self.IV.plot_range_I())
-        self.colors = ('b', 'g', 'r', 'c')
+        self.colors = ('b', 'g', 'r', 'c', 'm')
 
 
 class IVViewerItIntegrated(ToggleViewerIntegrated):
