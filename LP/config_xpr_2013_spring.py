@@ -621,7 +621,9 @@ E.rep(29721, 29717, "Change sensitivity to avoid saturation",
         stars = '')
 
 # Patrick Simon
-E.rep(29722, 29721, "Limiter shot for GAM studies",
+E.rep(29722, 29721, "Limiter shot for GAM studies, sweeps at 13.5 Vpp",
+        times = 1.7,
+        posit = 0.34,
         ampI1 = CurrentProbe1[20],
         ampI2 = CurrentProbe2[20],
         ampI3 = CurrentProbe3[20],
@@ -629,4 +631,76 @@ E.rep(29722, 29721, "Limiter shot for GAM studies",
         descr = "Almost nothing down there.",
         stars = '')
 
+
+############################################
+E = campaign.add_experiment(date="20130314")
+
+# probe test
+E.add(29727, "I1 on 1 A Kepco, I2 on 4 A Kepco (13.5 Vpp at 1 kHz), single tip VF",
+        head = head_20130312,
+        ampI1 = CurrentProbe1[20],
+        ampI2 = CurrentProbe2[20],
+        ampI3 = CurrentProbe3[20], 
+        ampI4 = CurrentProbe4[50],
+        descr = """\
+            Voltage of 1 A Kepco on I1. 
+            Arc box on I2 (clicking started at 3.08 Vpp).
+            I4 measures from 4 A Kepco into arc box.""",
+        stars = '', **def_XPR_pos)
+
+# Std H-Mode
+E.rep(29728, 29727, "Test plunge at 10 cm",
+        times = 1.0,
+        posit = 0.1,
+        descr = "Didn't run.",
+        stars = '')
+
+E.rep(29729, 29728, "Repeat",
+        times = 1.0,
+        posit = 0.1,
+        descr = "Wimpy plasma. Not enough el. current.",
+        stars = '**')
+
+# Martin Oberkofler
+E.rep(29730, 29729, "No plunge",
+        times = (),
+        posit = (),
+        descr = "",
+        stars = '')
+
+E.rep(29731, 29730, "Full stroke at 3.8 s.",
+        times = 3.8,
+        posit = 0.34,
+        descr = "",
+        stars = '')
+
+# Stefan Muller
+E.rep(29733, 29731, "Full stroke at 1.1 and 2.7 s",
+        times = (1.1, 2.7),
+        posit = (0.34, 0.34),
+        descr = """\
+            Arc box on I4 at 4.5 Vpp. Arc box didn't trigger.""",
+        stars = '')
+
+E.rep(29734, 29733, "Full stroke at 1.1 and 4.3 s",
+        times = (1.1, 4.3),
+        posit = (0.34, 0.34),
+        descr = """\
+            Arc box on I4 at 3.4 Vpp.""",
+        stars = '')
+
+E.rep(29735, 29734, "Density 3e19, 3 strokes, 20 ms earlier",
+        times = (1.12, 2.72, 4.32),
+        posit = (0.34, 0.34, 0.34),
+        descr = """\
+            Arc box on I4 at 2.36 Vpp.""",
+        stars = '')
+
+# Tests
+E.rep(29745, 29735, "I4 measures current in ground on I2",
+        times = (),
+        posit = (),
+        descr = """\
+            """,
+        stars = '')
 

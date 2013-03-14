@@ -14,5 +14,7 @@ class DigitizerMEM(Digitizer):
 
         self.IO_mds = IOMdsAUG(shn, sock, diag='MHC', raw=raw)
         self.IO_file = IOFileAUG(shn, suffix='_MEM')
-        self.nodes = ('Usat_m09', 'Isat_m09', 'I_m07', 't')
+        self.nodes = ('Usat_m09', 'Isat_m09', 'I_m07', 
+                      'Ufl_m03', 'Ufl_m08', 'I_0', 'I_1', 't')
+
 
