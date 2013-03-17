@@ -182,7 +182,9 @@ E.rep(29313, 29312, "2.1 MW at 3.0 s, so plunge at 2.7 s",
 E.rep(29315, 29313, "Repeat 29313",
         times = 2.70,
         posit = 0.34,
-        descr = "Nice L-mode data all the way through.",
+        descr = """\
+            Nice L-mode data up to dwell. 
+            Then I2 and I3 creep up to saturation.""",
         stars = '****')
 
 
@@ -200,46 +202,55 @@ E.add(29319, "Mach DC, single 1 kHz, 13.5 Vpp, DAQ 5 s",
         stars = '', **def_XPR_pos)
 
 # Daniel Carralero
-E.rep(29320, 29319, "3 plunges",
+E.rep(29320, 29319, "3 plunges, Mach at -200 V",
         times = (2.4, 3.1, 3.8),
         posit = (0.34, 0.34, 0.34),
         descr = """\
-            Plasma was in H-mode and probe pulled it back
-            to L-mode.""",
-        stars = '**')
+            Plasma was in H-mode and probe pulled it back to L-mode.
+            Oscillations are present in all 3 H-mode phases.
+            Unfortunately, probe arced before H-L transition.""",
+        stars = '***')
 
 E.rep(29321, 29320, "1 plunge, all on sweeps",
         times = 3.8,
         posit = 0.34,
         descr = """\
-            Arcs at PF region.""",
-        stars = '**')
+            H-L back-transition on LFS divertor leg, but with swept Mach probes.
+            Arcs when entering the HFS.""",
+        stars = '***')
 
 E.rep(29322, 29321, "Less density",
         descr = """\
-            Arcs similar to last shot. Density wasn't really lower.""",
-        stars = '**')
+            Arcs similar to last shot. Still some H-mode like behavior on way in.
+            Divertor currents and Tdiv modulated with core MHD.""",
+        stars = '***')
 
 E.rep(29323, 29322, "Less density now",
         descr = """\
-            Very low density. No arcs, but not enough positive Voltage.""",
+            Very low density. No arcs, but not enough positive Voltage.
+            No perturbation of the probe visible in DCN and Tdiv.""",
         stars = '****')
 
 E.rep(29324, 29323, "n = 2.5e19, Mach at -200 V",
         descr = """\
             Tip 1 arcs at 28 cm. Nice fluctuation data before that.
-            Profiles also OK up to the same positions.""",
-        stars = '***')
+            Profiles also OK up to the same positions.
+            Extremely low fluctuation amplitude.
+            Clear non-saturation of Isat on HFS.""",
+        stars = '****')
 
 E.rep(29325, 29324, "n = 6e19, All swept at 14 Vpp (more pos)",
         descr = """\
-            Didn'r run.""",
+            Didn't run.""",
         stars = '')
 
 E.rep(29326, 29325, "Repeat",
         descr = """\
-            Nice high density data. Too high Mach numbers again.""",
-        stars = '****')
+            Nice high density data. Lower density on HFS!
+            Too high Mach numbers again.
+            I1 goes from 1.5 A on LFS to almost 0 on HFS, and back to 1.5 A on way out!
+            Probably a very good demonstration that these low currents are real!""",
+        stars = '*****')
 
 # DAQ test
 E.rep(29336, 29326, "DAQ test",
@@ -263,8 +274,8 @@ E.rep(29338, 29337, "Mach at -200 V, single swept at 14.5 Vpp, 1 kHz",
 E.rep(29339, 29338, "Increase sweep amplitude to 15.5 Vpp, 1 kHz",
         descr = """\
             Good data again. 15.5 Vpp was too high, since Kepco starts
-            oscillating. Similar to last shot, but HFS density twice as much
-            as on previous shot.""",
+            oscillating. Similar to last shot, but Te significantly higher
+            on LFS and density higher on HFS.""",
         stars = '*****')
 
 
@@ -358,16 +369,18 @@ E.rep(29407, 29406, "Repeat of 29315, 34 cm, 2.9 s, Mach -200 V",
         times = 2.9,
         posit = 0.34,
         descr = """\
-            Unfortunately arc on Mach tip 1 already pretty early.""",
+            Unfortunately arc on Mach tip 1 already pretty early.
+            Should be L-mode, but it's not very clear.""",
         stars = '***')
 
 E.rep(29408, 29407, "Repeat with more power, 2.725 s, all on sweeps",
         times = 2.725,
         posit = 0.34,
         descr = """\
-            Missed H-mode, very nice L-mode data on way in and out.
-            No arcs.""",
-        stars = '****')
+            Missed H-mode, very nice L-mode data on way in and out. No arcs.
+            Mach numbers not higher than 1 on HFS. Profile match exactly
+            on way in and out.""",
+        stars = '*****')
 
 
 ############################################
@@ -605,20 +618,23 @@ E.add(29715, "Even higher n, config as before, total Mach currents on I4",
         ampI2 = CurrentProbe2[20],
         ampI3 = CurrentProbe3[20],
         ampI4 = CurrentProbe4[50],
-        descr = "",
-        stars = '', **def_XPR_pos)
+        descr = """\
+            First plunge good on way in. Second plunge in starving plasma.""",
+        stars = '****', **def_XPR_pos)
 
 E.rep(29717, 29715, "Ramp n from medium to high",
-        descr = "",
-        stars = '')
+        descr = """\
+            Both plunges good on way in.""",
+        stars = '****')
 
 E.rep(29721, 29717, "Change sensitivity to avoid saturation",
         ampI1 = CurrentProbe1[50],
         ampI2 = CurrentProbe2[50],
         ampI3 = CurrentProbe3[50],
         ampI4 = CurrentProbe4[100],
-        descr = "",
-        stars = '')
+        descr = """\
+            Again both plunges good on way in.""",
+        stars = '****')
 
 # Patrick Simon
 E.rep(29722, 29721, "Limiter shot for GAM studies, sweeps at 13.5 Vpp",

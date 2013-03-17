@@ -11,9 +11,12 @@ class FitterError(Exception):
     pass
 
 class Fitter:
-    def __init__(self, x, y, args=(), engine='custom', 
+    def __init__(self, x, y, args=(), ignore_OK=False, engine='custom', 
             use_rms=True, use_diff=True, use_fast=True):
         self.x, self.y, self.args = x, y, args
+
+        if ignore_OK:
+            self.OK = True
 
         self.do_var = None
 

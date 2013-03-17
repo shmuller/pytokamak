@@ -9,11 +9,11 @@ from probe_xpr import TdiError, IOMdsAUG, IOFileAUG, ProbeXPR
 
 
 class DigitizerAUG(Digitizer):
-    def __init__(self, shn, diag, nodes, sock=None):
-        Digitizer.__init__(self, shn, sock, name=diag)
+    def __init__(self, shn, diag, nodes, sock=None, name=""):
+        Digitizer.__init__(self, shn, sock, name=name)
 
         self.IO_mds = IOMdsAUG(shn, sock, diag=diag, raw=False)
-        self.IO_file = IOFileAUG(shn, suffix='_AUG', group=diag)
+        self.IO_file = IOFileAUG(shn, suffix='_AUG', group=name + '/' + diag)
         self.nodes = nodes + ('t',)
 
     def load(self):
@@ -23,46 +23,46 @@ class DigitizerAUG(Digitizer):
             return {node: 0. for node in self.nodes}
 
 
+AUG_diags = dict(
+    dens = dict(diag='DCN', nodes=('H-1', 'H-2', 'H-3', 'H-4', 'H-5')),
+    pnbi = dict(diag='NIS', nodes=('PNI',)),
+    pech = dict(diag='ECS', nodes=('PECRH',)),
+    wmhd = dict(diag='FPG', nodes=('Wmhd',)),
+    isol = dict(diag='MAC', nodes=('Ipolsola', 'Ipolsoli')),
+    tdiv = dict(diag='MAC', nodes=('Tdiv',)))
+
+
 class AUGOverview:
     def __init__(self, shn):
         self.shn = shn
 
-        self.chn = dict(
-            DCN = ('H-1', 'H-2', 'H-3', 'H-4', 'H-5'),
-            ECS = ('PECRH',),
-            NIS = ('PNI',),
-            FPG = ('Wmhd',),
-            MAC = ('Ipolsola', 'Ipolsoli'))
-
         self.XPR = ProbeXPR(shn=shn)
 
-        self.def_plots = ('power', 'density', 'XPR_I', 'XPR_R', 'Ipolsol')
+        self.def_plots = ('power', 'density', 'XPR_I', 'XPR_R', 'Ipolsol', 'Tdiv')
 
     @memoized_property
     def S(self):
-        return {k: DigitizerAUG(self.shn, k, v) for k, v in self.chn.iteritems()}
+        return {k: DigitizerAUG(self.shn, name=k, **v) for k, v in AUG_diags.iteritems()}
 
     def plot_power(self, ax):
+        S = self.S
         ax = get_axes(ax)
         ax.set_ylabel('Power (MW)')
-        S_ECRH = self.S['ECS']
-        S_NI   = self.S['NIS']
-        S_WMHD = self.S['FPG']
-
-        ax.plot(S_ECRH['t'], 1e-6*S_ECRH['PECRH'], label="ECRH")
-        ax.plot(S_NI['t'], 1e-6*S_NI['PNI'], label="NBI")
-        ax.plot(S_WMHD['t'], 1e-5*S_WMHD['Wmhd'], label="WMHD (x10)")
+        
+        ax.plot(S['pech']['t'], 1e-6*S['pech']['PECRH'], label="ECRH")
+        ax.plot(S['pnbi']['t'], 1e-6*S['pnbi']['PNI'], label="NBI")
+        ax.plot(S['wmhd']['t'], 1e-5*S['wmhd']['Wmhd'], label="WMHD (x10)")
         ax.legend()
         return ax
 
     def plot_density(self, ax):
+        S = self.S
         ax = get_axes(ax)
         ax.set_ylabel('n (10$^{\mathdefault{19}}$ m$^{\mathdefault{-3}}$)')
-        S_DCN  = self.S['DCN']
         
-        t = S_DCN['t']
+        t = S['dens']['t']
         for c in ('H-1', 'H-4', 'H-5'):
-            n = S_DCN[c]
+            n = S['dens'][c]
             n[n < 0] = np.nan
             ax.plot(t, 1e-19*n, label=c)
         ax.legend()
@@ -93,16 +93,26 @@ class AUGOverview:
         return ax
 
     def plot_Ipolsol(self, ax):
+        S = self.S
         ax = get_axes(ax)
         ax.set_ylabel('Current (kA)')
-        S_MAC = self.S['MAC']
 
-        t = S_MAC['t']
-        Ia = ma.masked_array(S_MAC['Ipolsola'], t > 6.)
-        Ii = ma.masked_array(S_MAC['Ipolsoli'], t > 6.)
+        t = S['isol']['t']
+        Ia = ma.masked_array(S['isol']['Ipolsola'], t > 6.)
+        Ii = ma.masked_array(S['isol']['Ipolsoli'], t > 6.)
 
         ax.plot(t, 1e-3*Ia, label='Ipolsola')
         ax.plot(t, 1e-3*Ii, label='Ipolsoli')
+        ax.legend()
+        return ax
+
+    def plot_Tdiv(self, ax):
+        S = self.S
+        ax = get_axes(ax)
+        ax.set_ylabel('Temp (eV)')
+
+        t = S['tdiv']['t']
+        ax.plot(t, S['tdiv']['Tdiv'], label='Tdiv')
         ax.legend()
         return ax
 
