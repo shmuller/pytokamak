@@ -684,39 +684,92 @@ E.rep(29730, 29729, "No plunge",
         descr = "",
         stars = '')
 
-E.rep(29731, 29730, "Full stroke at 3.8 s.",
+E.rep(29731, 29730, "Full stroke at 3.8 s",
         times = 3.8,
         posit = 0.34,
-        descr = "",
-        stars = '')
+        descr = """\
+            Very similar data to 29697. So it didn't matter whether the two tips
+            are connected to the same or to different power supplies. Arc box on
+            I2 triggered twice: I2 goes to 0 and I1 is unaffected, as hoped.""",
+        stars = '*****')
 
 # Stefan Muller
-E.rep(29733, 29731, "Full stroke at 1.1 and 2.7 s",
+E.rep(29733, 29731, "Full stroke at 1.1 and 2.7 s for 1st and 2nd L-H transition",
         times = (1.1, 2.7),
         posit = (0.34, 0.34),
         descr = """\
-            Arc box on I4 at 4.5 Vpp. Arc box didn't trigger.""",
-        stars = '')
+            Arc box on I4 at 4.5 Vpp. Arc box didn't trigger.
+            First plunge: L-H and H-L transition while probe is on HFS.
+            Coherent oscillations appear only in H-mode.""",
+        stars = '*****')
 
-E.rep(29734, 29733, "Full stroke at 1.1 and 4.3 s",
+E.rep(29734, 29733, "Full stroke at 1.1 and 4.3 s for 1st and 3rd L-H transition",
         times = (1.1, 4.3),
         posit = (0.34, 0.34),
         descr = """\
-            Arc box on I4 at 3.4 Vpp.""",
-        stars = '')
+            Arc box on I4 at 3.4 Vpp. Arc box didn't trigger.
+            L-H transitions less clear than on previous shot.""",
+        stars = '*****')
 
 E.rep(29735, 29734, "Density 3e19, 3 strokes, 20 ms earlier",
         times = (1.12, 2.72, 4.32),
         posit = (0.34, 0.34, 0.34),
         descr = """\
-            Arc box on I4 at 2.36 Vpp.""",
-        stars = '')
+            Arc box on I4 at 2.36 Vpp. Arc box triggered correctly!
+            Clearer L-H transitions, but more problems with arcing, as expected.
+            Arc box saved nice L-H transitions data on plunge 1.""",
+        stars = '*****')
 
 # Tests
-E.rep(29745, 29735, "I4 measures current in ground on I2",
+E.rep(29745, 29735, "I4 measures current in ground on I2, no plunge",
         times = (),
         posit = (),
         descr = """\
-            """,
+            No currents on ground. (Found out later that the manipulator
+            is not connected with the tokamak, so clearly no currents
+            can flow in these grounds.)""",
         stars = '')
+
+
+############################################
+E = campaign.add_experiment(date="20130319")
+
+# Remove ground connection and digital position signal from
+# measurement rack, so that it is only grounded via the tips.
+E.add(29755, "Mach -200 V, single tip swept at 1 kHz at 13.5 Vpp.",
+        head = head_20130312,
+        ampI1 = CurrentProbe1[20],
+        ampI2 = CurrentProbe2[20],
+        ampI3 = CurrentProbe3[20], 
+        ampI4 = CurrentProbe4[50],
+        descr = """\
+            Arc box setting as on previous experiment on 2013/03/14.
+            No surprises. Noise level probably even lower than usual.""",
+        stars = '', **def_XPR_pos)
+
+E.rep(29756, 29755, "Std H-mode with removed rack grounding, 15 cm at 1 s",
+        times = 1.0,
+        posit = 0.15,
+        descr = """\
+            Total measured current was 0!""",
+        stars = '')
+
+# Garrard Conway
+E.rep(29780, 29756, "Grounds reconnected, full stroke at 3.8 s",
+        times = 3.8,
+        posit = 0.34,
+        descr = """\
+            No I-phase. Good data except for switched-off arcs on LFS divertor
+            leg.""",
+        stars = '****')
+
+E.rep(29781, 29780, "Repeat 29779, plunge at 2.9 s",
+        times = 3.9,
+        posit = 0.34,
+        descr = """\
+            Probably I-phase. Looks like L-mode where coherent oscillations appear
+            intermittently. No arcs on way in.""",
+        stars = '*****')
+
+
 
