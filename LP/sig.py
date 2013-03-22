@@ -15,8 +15,20 @@ fft = scipy.fftpack.fft
 try:
     import bottleneck as bn
     median = bn.median
+    movefuns = dict(
+        median  = bn.move_median,
+        nanmean = bn.move_nanmean,
+        nanstd  = bn.move_nanstd,
+        nanmin  = bn.move_nanmin,
+        nanmax  = bn.move_nanmax)
 except ImportError:
     median = np.median
+    movefuns = dict(
+        median  = None,
+        nanmean = None,
+        nanstd  = None,
+        nanmin  = None,
+        nanmax  = None)
 
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
@@ -776,6 +788,8 @@ class Signal:
     __div__  = _op_factory(np.divide  , 'wapply')
     __idiv__ = _op_factory(np.divide  , 'iapply')
 
+    __pow__  = _op_factory(np.power   , 'wapply')
+
     def __neg__(self):
         return self.__array_wrap__(-self.x)
 
@@ -853,6 +867,18 @@ class Signal:
 
     def despike(self, w=2):
         return self.mediansmooth(w)
+
+    def _move_factory(name):
+        movefun = movefuns[name]
+        def move(self, w=100):
+            return self.__array_wrap__(np.roll(movefun(self.x, 2*w+1), -w))
+        return move
+
+    move_median = _move_factory('median')
+    move_mean = _move_factory('nanmean')
+    move_std  = _move_factory('nanstd')
+    move_min  = _move_factory('nanmin')
+    move_max  = _move_factory('nanmax')
 
     def deriv(self, name=""):
         delta = lambda x: np.r_[x[1]-x[0], x[2:]-x[:-2], x[-1]-x[-2]]

@@ -772,4 +772,100 @@ E.rep(29781, 29780, "Repeat 29779, plunge at 2.9 s",
         stars = '*****')
 
 
+############################################
+E = campaign.add_experiment(date="20130322")
+
+# Matthias Bernert
+E.add(29811, "Mach -200 V, single tip swept at 1 kHz at 13.5 Vpp.",
+        times = 0.5,
+        posit = 0.05,
+        head = head_20130312,
+        ampI1 = CurrentProbe1[20],
+        ampI2 = CurrentProbe2[20],
+        ampI3 = CurrentProbe3[20], 
+        ampI4 = CurrentProbe4[50],
+        descr = "ELM data, but camera didn't see us.",
+        stars = '**', **def_XPR_pos)
+
+E.rep(29812, 29811, "Go in at 0.35 s, dwell for 200 ms",
+        times = 0.35,
+        posit = 0.05,
+        descr = """\
+            Large type I ELMs. Nice flow data! Low density, high Te""",
+        stars = '****')
+
+E.rep(29813, 29812, "Go to 7.5 cm, stay for 300 ms",
+        times = 0.35,
+        posit = 0.075,
+        descr = """\
+            Lots of coherent oscillations plus ELMs. Some arcs that were
+            switched off nicely. Again low density, high Te.""",
+        stars = '****')
+
+E.rep(29814, 29813, "Go back to 5 cm, dwell for 200 ms",
+        times = 0.35,
+        posit = 0.05,
+        descr = """\
+            Good L-H transition data again. Fewer arcs.""",
+        stars = '***')
+
+E.rep(29815, 29814, "Repeat",
+        times = 0.35,
+        posit = 0.05,
+        descr = """\
+            Similar data again.""",
+        stars = '***')
+
+E.rep(29816, 29815, "Repeat",
+        times = 0.35,
+        posit = 0.05,
+        descr = """\
+            Similar again.""",
+        stars = '***')
+
+# Tim Happel
+E.rep(29817, 29816, "All the way thru at 0.34 s",
+        times = 3.4,
+        posit = 0.34,
+        descr = """\
+            High density. LFS measurements good up to 15 cm, then arc box
+            in constant action. On way out good data again.""",
+        stars = '***')
+
+E.rep(29818, 29817, "Go to 20 cm",
+        times = 3.4,
+        posit = 0.2,
+        descr = """\
+            L-mode on way in, apparently H-mode with coherent oscillations on
+            way out. Arc box switches on LFS divertor leg. Nice L-H transition
+            in PF region!""",
+        stars = '*****')
+
+E.rep(29819, 29818, "Plasma lower",
+        times = 3.4,
+        posit = 0.2,
+        descr = """\
+            Much worse than previous shot, since plasma was sitting more in
+            divertor. Sum signal I4 does not go to 0 after shot, but
+            I1 and I2 do!""",
+        stars = '***')
+
+# Test acquisition between 29819 and 29820: Sweeps everywhere.
+# Test shot 03200: Everything seems OK
+
+E.rep(29820, 29819, "USN, all the way thru",
+        times = 3.4,
+        posit = 0.34,
+        descr = """\
+            Good data!""",
+        stars = '***')
+
+E.rep(29821, 29820, "USN, all the way thru, twice",
+        times = (2.4, 3.4),
+        posit = (0.34, 0.34),
+        descr = """\
+            Good data, similar to last shot.""",
+        stars = '***')
+
+
 
