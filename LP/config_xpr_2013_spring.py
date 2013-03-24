@@ -40,13 +40,21 @@ tip4_20130312 = CylindricalTip(r=0.0005, z=0.0052,
 head_20130312 = HeadXPR(tips=head_20130306.tips + (tip4_20130312,), R_keys='ampR')
 
 
+tip1_20130314 = CylindricalTip(r=0.0005, z=0.0026,
+        number=1, pos='lower left', V_keys='ampV3', I_keys='ampI3')
+
+head_20130314 = HeadXPR(tips=(tip1_20130314, tip2_20130306, tip3_20130306, tip4_20130312), 
+                        R_keys='ampR')
+
+
 fact = 4 * 5.54630/27. / 2**16
 offs = -47578968*fact - 0.105
 
 amp_XPR_pos = dict(
             ampR  = Amp(fact=fact, offs=offs),
             ampV1 = Amp(fact=100., offs=-68.48),
-            ampV2 = Amp(fact=100., offs=-68.13))
+            ampV2 = Amp(fact=100., offs=-68.13),
+            ampV3 = Amp(fact=100., offs=-68.13))
 
 mapping_XPR_pos = dict(
             ampR  = 'Pos', 
@@ -56,7 +64,8 @@ mapping_XPR_pos = dict(
             ampI2 = 'S2',
             ampI3 = 'S6',
             ampVF = 'S6',
-            ampI4 = 'S7')
+            ampI4 = 'S7',
+            ampV3 = 'S8')
 
 lines_XPR_pos = dict(amp=amp_XPR_pos, mapping=mapping_XPR_pos)
 
@@ -505,26 +514,29 @@ E.rep(29694, 29693, "Repeat, go all the way thru",
         stars = '***')
 
 # Martin Oberkofler
-E.rep(29695, 29694, "Full plunge at 3.8 s, arc box on I3 triggered by I2",
+E.rep(29695, 29694, "No N2, full plunge at 3.8 s, arc box on I3 triggered by I2",
         times = 3.8,
         posit = 0.34,
         descr = """\
             No arcs on Mach probe. Arc box switched off I3 for no apparent reason.""",
         stars = '***')
 
-E.rep(29696, 29695, "No plunge. Arc box switches 9 V battery on S7",
+E.rep(29696, 29695, "N2, no plunge. Arc box switches 9 V battery on S7",
         times = (),
         posit = (),
         descr = "Arc box did not switch.",
         stars = '')
 
-E.rep(29697, 29696, "Plunge again, arc box switches 9 V battery on S8",
+E.rep(29697, 29696, "N2, plunge, arc box switches 9 V battery on S8",
         times = 3.8,
         posit = 0.34,
-        descr = "Nice data, no arcs. Arc box switched twice.",
-        stars = '****')
+        descr = """\
+            Nice data, no arcs. Arc box switched twice.
+            Compare this shot with 29731, where Mach tips were on separate power
+            supplies.""",
+        stars = '*****')
 
-E.rep(29698, 29697, "Repeat",
+E.rep(29698, 29697, "No N2, plunge",
         times = 3.8,
         posit = 0.34,
         descr = "Arcs on single tip on way out.",
@@ -653,7 +665,7 @@ E = campaign.add_experiment(date="20130314")
 
 # probe test
 E.add(29727, "I1 on 1 A Kepco, I2 on 4 A Kepco (13.5 Vpp at 1 kHz), single tip VF",
-        head = head_20130312,
+        head = head_20130314,
         ampI1 = CurrentProbe1[20],
         ampI2 = CurrentProbe2[20],
         ampI3 = CurrentProbe3[20], 
@@ -694,14 +706,19 @@ E.rep(29731, 29730, "Full stroke at 3.8 s",
         stars = '*****')
 
 # Stefan Muller
-E.rep(29733, 29731, "Full stroke at 1.1 and 2.7 s for 1st and 2nd L-H transition",
+E.add(29733, "Full stroke at 1.1 and 2.7 s for 1st and 2nd L-H transition",
         times = (1.1, 2.7),
         posit = (0.34, 0.34),
+        head = head_20130312,
+        ampI1 = CurrentProbe1[20],
+        ampI2 = CurrentProbe2[20],
+        ampI3 = CurrentProbe3[20], 
+        ampI4 = CurrentProbe4[50],
         descr = """\
             Arc box on I4 at 4.5 Vpp. Arc box didn't trigger.
             First plunge: L-H and H-L transition while probe is on HFS.
             Coherent oscillations appear only in H-mode.""",
-        stars = '*****')
+        stars = '*****', **def_XPR_pos)
 
 E.rep(29734, 29733, "Full stroke at 1.1 and 4.3 s for 1st and 3rd L-H transition",
         times = (1.1, 4.3),
