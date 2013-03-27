@@ -68,7 +68,7 @@ class AUGOverview:
         ax.legend()
         return ax
 
-    def plot_XPR_I(self, ax):
+    def plot_XPR_I(self, ax, no_Mach=False, no_single=False):
         ax = get_axes(ax)
         ax.set_ylabel('Current (A)')
         XPR = self.XPR
@@ -79,9 +79,11 @@ class AUGOverview:
         #I1 = ma.masked_array(I1, I1 < 0)
         #I2 = ma.masked_array(I2, I2 < 0)
 
-        ax.plot(t, I1, label='Mach tip 1')
-        ax.plot(t, I2, label='Mach tip 2')
-        ax.plot(t, I3, label='Single tip')
+        if not no_Mach:
+            ax.plot(t, I1, label='Mach tip 1')
+            ax.plot(t, I2, label='Mach tip 2')
+        if not no_single:
+            ax.plot(t, I3, label='Single tip')
         ax.legend()
         return ax
 

@@ -772,7 +772,13 @@ E.rep(29756, 29755, "Std H-mode with removed rack grounding, 15 cm at 1 s",
         stars = '')
 
 # Garrard Conway
-E.rep(29780, 29756, "Grounds reconnected, full stroke at 3.8 s",
+E.rep(29779, 29756, "Grounds reconnected, no plunge",
+        times = (),
+        posit = (),
+        descr = "",
+        stars = '')
+
+E.rep(29780, 29779, "Grounds reconnected, full stroke at 3.8 s",
         times = 3.8,
         posit = 0.34,
         descr = """\
@@ -884,5 +890,223 @@ E.rep(29821, 29820, "USN, all the way thru, twice",
             Good data, similar to last shot.""",
         stars = '***')
 
+
+############################################
+E = campaign.add_experiment(date="20130326")
+
+# Std H-mode
+E.add(29828, "Mach -200 V, I4 on single tip shield",
+        times = 1.0,
+        posit = 0.15,
+        head = head_20130312,
+        ampI1 = CurrentProbe1[20],
+        ampI2 = CurrentProbe2[20],
+        ampI3 = CurrentProbe3[20], 
+        ampI4 = CurrentProbe4[50],
+        descr = "Up to 0.5 A of current flows in the shield.",
+        stars = '**', **def_XPR_pos)
+
+E.rep(29829, 29828, "No plunge", 
+        times = (),
+        posit = (),
+        descr = "Significant current in shield (50 Hz).",
+        stars = '')
+
+# Interrupt shields from Mach tips
+E.rep(29830, 29829, "Interrupt shields from Mach tips, no plunge", 
+        descr = "Now almost no current in single tip shield.",
+        stars = '')
+
+# Hans-Werner Mueller
+E.rep(29835, 29830, "Plunge at 1.5 s, I4 still on single tip shield", 
+        times = 1.5,
+        posit = 0.34,
+        descr = """\
+            Shot didn't run. At 27.1 cm, current through shield just reappeared, 
+            meaning that the manipulator somehow touches the torus ground. Current
+            disappears at exactly the same location.""",
+        stars = '')
+
+E.rep(29836, 29835, "Repeat, connect negative poles of both Kepcos directly", 
+        times = 1.5,
+        posit = 0.34,
+        descr = """\
+            Shot ran. OK, but 13.5 Vpp was not enough positive sweep voltage.
+            Only AC currents left in shields at 27.1 cm.""",
+        stars = '***')
+
+# Andreas Burckhard
+E.rep(29837, 29836, "No plunge, all cable shields interrupted, sweeps 15.5 Vpp", 
+        times = (),
+        posit = (),
+        descr = """\
+            Noise bursts on currents!""",
+        stars = '')
+
+E.rep(29838, 29837, "Reconnect cable shield on single tip", 
+        descr = """\
+            Noise bursts only on Mach currents.""",
+        stars = '')
+
+E.rep(29839, 29838, "Mach shield break before voltage divider", 
+        descr = """\
+            Still bursts on Mach signals.""",
+        stars = '')
+
+E.rep(29840, 29839, "Remove all shield breakers, I4 on 4 A Kepco, sweeps 13.5 Vpp", 
+        descr = """\
+            Noise burst are gone.""",
+        stars = '')
+
+# Wolfgang Suttrop
+E.rep(29841, 29840, "No plunge, same settings", 
+        descr = "",
+        stars = '')
+
+E.rep(29842, 29841, "No plunge, same settings", 
+        descr = "",
+        stars = '')
+
+E.rep(29843, 29842, "No plunge, same settings", 
+        descr = "",
+        stars = '')
+
+E.rep(29844, 29843, "Plunge at 0.6 s to 12 cm, sweeps at 13.5 Vpp", 
+        times = 0.6,
+        posit = 0.12,
+        descr = """\
+            Good data, no arcs.""",
+        stars = '***')
+
+E.rep(29845, 29844, "Plunge at 0.65 s to 15 cm, sweeps at 14.5 Vpp", 
+        times = 0.65,
+        posit = 0.15,
+        descr = """\
+            L-H transition, no arcs!""",
+        stars = '****')
+
+# Stefan Muller
+E.rep(29846, 29845, "Repeat 29779, Mach -200 V, single swept at 14.5 Vpp", 
+        times = (2.0, 3.9),
+        posit = (0.34, 0.34),
+        descr = """\
+            """,
+        stars = '')
+
+E.rep(29850, 29846, "Repeat with additional plunge at 3.0 s, single swept at 13.5 Vpp", 
+        times = (2.0, 3.0, 3.9),
+        posit = (0.34, 0.34, 0.34),
+        descr = """\
+            """,
+        stars = '')
+
+
+############################################
+E = campaign.add_experiment(date="20130327")
+
+# Checked status of tips in the morning: All tips were in good shape.
+
+# Hans-Werner Mueller
+E.add(29856, "No plunge, Mach -200 V, single swept at 15.5 Vpp",
+        head = head_20130312,
+        ampI1 = CurrentProbe1[20],
+        ampI2 = CurrentProbe2[20],
+        ampI3 = CurrentProbe3[20], 
+        ampI4 = CurrentProbe4[50],
+        descr = "",
+        stars = '', **def_XPR_pos)
+
+E.rep(29857, 29856, "First plunge w/o MP, second w/ MP", 
+        times = (1.9, 3.45),
+        posit = (0.34, 0.34),
+        descr = """\
+            """,
+        stars = '*****')
+
+E.rep(29858, 29857, "Same settings", 
+        times = (2.4, 3.9),
+        posit = (0.34, 0.34),
+        descr = """\
+            ECRH stopped before 2nd plunge.""",
+        stars = '****')
+
+E.rep(29859, 29858, "Repeat", 
+        times = (2.4, 3.9),
+        posit = (0.34, 0.34),
+        descr = """\
+            No ECRH.
+            B-coil turned off during second plunge.""",
+        stars = '*****')
+
+E.rep(29860, 29859, "Repeat", 
+        times = (2.4, 3.9),
+        posit = (0.34, 0.34),
+        descr = """\
+            B-coils in plunge 2.""",
+        stars = '*****')
+
+# Steffen Potzel
+E.rep(29864, 29860, "Ref. 29778, sweeps at 13.5 Vpp", 
+        times = 1.6,
+        posit = 0.34,
+        descr = """\
+            No ECRH.""",
+        stars = '*****')
+
+E.rep(29865, 29864, "Repeat with ECRH", 
+        times = 1.6,
+        posit = 0.34,
+        descr = """\
+            Good. Flow data shifted on way out.""",
+        stars = '****')
+
+E.rep(29866, 29865, "X-point lower", 
+        times = 1.6,
+        posit = 0.34,
+        descr = """\
+            OK. Still under X-point. Overheating on HFS.""",
+        stars = '****')
+
+E.rep(29867, 29866, "Repeat with modified shape", 
+        times = 1.6,
+        posit = 0.34,
+        descr = """\
+            Exactly the same as last shot.""",
+        stars = '****')
+
+E.rep(29868, 29867, "X-point higher", 
+        times = 1.6,
+        posit = 0.34,
+        descr = """\
+            High n on HFS, arcing.""",
+        stars = '****')
+
+E.rep(29869, 29868, "X-point inward", 
+        times = 1.6,
+        posit = 0.34,
+        descr = """\
+            Early disruption before plunge.""",
+        stars = '')
+
+E.rep(29870, 29869, "Repeat", 
+        times = 1.6,
+        posit = 0.34,
+        descr = """\
+            Disrupted after probe plunge. Good data.""",
+        stars = '***')
+
+E.rep(29871, 29870, "Repeat", 
+        times = 1.6,
+        posit = 0.34,
+        descr = """\
+            Good shot.""",
+        stars = '****')
+
+E.rep(29872, 29871, "X-point outward", 
+        times = 1.6,
+        posit = 0.34,
+        descr = """\
+            Good data again.""",
+        stars = '****')
 
 

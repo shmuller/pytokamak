@@ -45,7 +45,8 @@ figure = tight_figure.pickable_linked_lod_figure
 #tfigure = tight_figure.pickable_linked_tight_figure
 #figure = tight_figure.pickable_linked_figure
 plot = plt.plot
-ion = plt.ion
+ion  = plt.ion
+show = plt.show
 
 def get_tfig(*args, **kw):
     kw.setdefault('figure', tfigure)
@@ -879,6 +880,17 @@ class Signal:
     move_std  = _move_factory('nanstd')
     move_min  = _move_factory('nanmin')
     move_max  = _move_factory('nanmax')
+
+    def remove_median(self, w=100):
+        return self - self.move_median(w)
+
+    def rms(self, w=100):
+        m = self.move_median(w)
+        return np.sqrt(((self - m)**2).move_mean(w))
+    
+    def rel_rms(self, w=100):
+        m = self.move_median(w)
+        return np.sqrt(((self - m)**2).move_mean(w)) / m
 
     def deriv(self, name=""):
         delta = lambda x: np.r_[x[1]-x[0], x[2:]-x[:-2], x[-1]-x[-2]]
