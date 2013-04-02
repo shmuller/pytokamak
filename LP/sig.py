@@ -559,18 +559,16 @@ class IOH5:
         self.h5name = h5name
 
     def save(self, d, compression="gzip"):
-        f = H5.File(self.h5name, "w")
-        for key, val in d.iteritems():
-            f.create_dataset(key, data=val, compression=compression)
-        f.close()
+        with H5.File(self.h5name, "w") as f:
+            for key, val in d.iteritems():
+                f.create_dataset(key, data=val, compression=compression)
 
     def load(self, d=None):
-        f = H5.File(self.h5name, "r")
-        if d is None: 
-            d = dict()
-        for k in f:
-            d[k] = f[k][:]
-        f.close()
+        with H5.File(self.h5name, "r") as f:
+            if d is None: 
+                d = dict()
+            for k in f:
+                d[k] = f[k].value
         return d
 
 

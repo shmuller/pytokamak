@@ -9,6 +9,8 @@ int _H5Fclose(int f);
 int _H5Dopen(int f, const char *name);
 int _H5Dclose(int d);
 
+int _ls(int f, void *cb);
+
 int _len(int d);
 void _read(int d, p_t buf);
 
@@ -30,6 +32,19 @@ int _H5Fopen(const char *name, char mode) {
 
 int _H5Fclose(int f) {
     return H5Fclose(f);
+}
+
+typedef void (callback)(const char *);
+
+herr_t op(hid_t g_id, const char *name, const H5L_info_t *info, void *op_data) {
+    callback *cb = (callback*) op_data;
+    cb(name);
+    return 0;
+}
+
+int _ls(int f, void *cb) {
+    H5Lvisit(f, H5_INDEX_NAME, H5_ITER_NATIVE, op, cb);
+    return 0;
 }
 
 int _H5Dopen(int f, const char *name) {
@@ -85,6 +100,20 @@ class File:
     def __getitem__(self, name):
         return Dataset(self.id, name)
 
+    def __iter__(self):
+        nodes = []
+        @ffi.callback("void(const char*)")
+        def python_callback(name):
+            nodes.append(ffi.string(name))
+
+        H5._ls(self.id, python_callback)
+
+        for node in nodes:
+            yield node
+
+    def ls(self):
+        return [node for node in self]
+
 
 class Dataset:
     def __init__(self, fid, name):
@@ -112,5 +141,8 @@ if __name__ == "__main__":
         print d.len()
         a = d.value
         print a[:20]
+
+        print f.ls()
+
 
 
