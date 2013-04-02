@@ -46,6 +46,8 @@ tip1_20130314 = CylindricalTip(r=0.0005, z=0.0026,
 head_20130314 = HeadXPR(tips=(tip1_20130314, tip2_20130306, tip3_20130306, tip4_20130312), 
                         R_keys='ampR')
 
+head_20130402 = head_20130314
+
 
 fact = 4 * 5.54630/27. / 2**16
 offs = -47578968*fact - 0.105
@@ -1114,7 +1116,7 @@ E.rep(29872, 29871, "X-point outward",
 ############################################
 E = campaign.add_experiment(date="20130402")
 
-# Daniel Carralero
+# Daniel Carralero - test of emissive probe
 E.add(29880, "20 cm at 4 s, Mach -200 V, single swept at 13.5 Vpp",
         head = head_20130312,
         ampI1 = CurrentProbe1[20],
@@ -1124,12 +1126,47 @@ E.add(29880, "20 cm at 4 s, Mach -200 V, single swept at 13.5 Vpp",
         times = 4.0,
         posit = 0.2,
         descr = """\
-            Didn't work so well, as expected.""",
+            Didn't work so well, as expected. Arc box failed to switch off
+            at the end.""",
         stars = '**', **def_XPR_pos)
 
 E.rep(29881, 29880, "Same, all tips floating (V1 on S8, shields on Kepco ground)",
-        descr = "",
+        head = head_20130402,
+        descr = """\
+            Plasma went into H-mode before plunge, pulled back to L-mode
+            by XPR. Lots of transitions in VF signals.""",
+        stars = '****')
+
+# Daniel Carralero
+E.rep(29884, 29881, "Mach swept at 15 Vpp (decrease gain), single floating",
+        head = head_20130312,
+        ampI1 = CurrentProbe1[50],
+        ampI2 = CurrentProbe2[50],
+        ampI3 = CurrentProbe3[50], 
+        times = 3.8,
+        posit = 0.34,
+        descr = "Ref. shot 29326. Disrupted before plunge.",
         stars = '')
+
+E.rep(29886, 29884, "Sweeps at 14 Vpp",
+        descr = "Disrupted before plunge",
+        stars = '')
+
+E.rep(29887, 29886, "Only to 20 cm",
+        times = 3.8,
+        posit = 0.2,
+        descr = """\
+            Good data up to PF region an back. Changed gas receipe apparently didn't
+            make any difference.""",
+        stars = '****')
+
+E.rep(29888, 29887, "Time with MEM stroke at 3.6 s, all the way thru",
+        times = 3.6,
+        posit = 0.34,
+        descr = """\
+            This was H-mode! ELMs all over the place. Only small arcs up
+            to dwell during ELMs, then overheating. Arc box didn't switch off.""",
+        stars = '****')
 
 
 

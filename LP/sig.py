@@ -1,8 +1,7 @@
 import numpy as np
 import numpy.ma as ma
 import os
-import h5py
-import copy
+import h5py as H5
 
 from pdb import set_trace
 
@@ -559,13 +558,13 @@ class IOH5:
         self.h5name = h5name
 
     def save(self, d, compression="gzip"):
-        f = h5py.File(self.h5name, "w")
+        f = H5.File(self.h5name, "w")
         for key, val in d.iteritems():
             f.create_dataset(key, data=val, compression=compression)
         f.close()
 
     def load(self, d=None):
-        f = h5py.File(self.h5name, "r")
+        f = H5.File(self.h5name, "r")
         if d is None: 
             d = dict()
         for k in f:
@@ -633,12 +632,12 @@ class IOFile(IO):
         self._f.create_dataset(name, data=val, compression="gzip")
 
     def load(self, *args):
-        with h5py.File(self.h5name, "r") as self._f:
+        with H5.File(self.h5name, "r") as self._f:
             x = IO.load(self, *args)
         return x
 
     def save(self, *args):
-        with h5py.File(self.h5name, "a") as self._f:
+        with H5.File(self.h5name, "a") as self._f:
             IO.save(self, *args)
 
 
@@ -816,9 +815,7 @@ class Signal:
         return self.x.size
 
     def copy(self):
-        s = copy.copy(self)
-        s.x = s.x.copy()
-        return s
+        return self.__array_wrap__(self.x.copy())
 
     def trim(self, s):
         self.x, self.t = self.x[s], self.t[s]

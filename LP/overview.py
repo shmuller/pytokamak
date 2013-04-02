@@ -87,6 +87,22 @@ class AUGOverview:
         ax.legend()
         return ax
 
+    def plot_XPR_V(self, ax, no_Mach=False, no_single=False):
+        ax = get_axes(ax)
+        ax.set_ylabel('Voltage (V)')
+        XPR = self.XPR
+
+        t = XPR['tip1'].t
+        V1, V2, V3 = XPR['tip1'].V.x, XPR['tip2'].V.x, XPR['tip3'].V.x
+
+        if not no_Mach:
+            ax.plot(t, V1, label='Mach tip 1')
+            ax.plot(t, V2, label='Mach tip 2')
+        if not no_single:
+            ax.plot(t, V3, label='Single tip')
+        ax.legend()
+        return ax
+
     def plot_XPR_R(self, ax):
         ax = get_axes(ax)
         ax.set_ylabel('Pos (cm)')
