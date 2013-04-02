@@ -1,7 +1,8 @@
 import numpy as np
 import numpy.ma as ma
 import os
-import h5py as H5
+#import h5py as H5
+import hdf5_cffi as H5
 
 from pdb import set_trace
 
