@@ -87,6 +87,13 @@ class memoized_property(object):
         return result
 
 
+class ArrayView(np.ndarray):
+    def __new__(subtype, x, fields):
+        dtype = {f: x.dtype.fields[f] for f in fields}
+        return np.ndarray.__new__(subtype, x.shape, dtype,
+                                  buffer=x, strides=x.strides)
+
+
 class DictView(MutableMapping):
     def __init__(self, base, valid_keys):
         self.base, self.valid_keys = base, valid_keys

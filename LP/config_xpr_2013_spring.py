@@ -1035,7 +1035,8 @@ E.rep(29859, 29858, "Repeat",
         posit = (0.34, 0.34),
         descr = """\
             No ECRH.
-            B-coil turned off during second plunge.""",
+            B-coil turned off during second plunge! Great comparison
+            with and without MP!""",
         stars = '*****')
 
 E.rep(29860, 29859, "Repeat", 
@@ -1108,5 +1109,27 @@ E.rep(29872, 29871, "X-point outward",
         descr = """\
             Good data again.""",
         stars = '****')
+
+
+############################################
+E = campaign.add_experiment(date="20130402")
+
+# Daniel Carralero
+E.add(29880, "20 cm at 4 s, Mach -200 V, single swept at 13.5 Vpp",
+        head = head_20130312,
+        ampI1 = CurrentProbe1[20],
+        ampI2 = CurrentProbe2[20],
+        ampI3 = CurrentProbe3[20], 
+        ampI4 = CurrentProbe4[50],
+        times = 4.0,
+        posit = 0.2,
+        descr = """\
+            Didn't work so well, as expected.""",
+        stars = '**', **def_XPR_pos)
+
+E.rep(29881, 29880, "Same, all tips floating (V1 on S8, shields on Kepco ground)",
+        descr = "",
+        stars = '')
+
 
 

@@ -210,28 +210,6 @@ class ProbeXPR(Probe):
     def calib(self):
         self.config.calib(self.digitizer.name)
 
-    def get_meas(self, Isat, Vf, Te, meas):
-        head = self.config.head
-
-        #i_up = head.get_tip_number_by_position('lower left')
-        #i_dn = head.get_tip_number_by_position('lower right')
-
-        tips = head.tips
-
-        II = self.I.values()
-        for i in xrange(len(II)):
-            num = II[i].number
-            if num > 0:
-                tip = tips[num - 1]
-                j = Isat[i] / (0.5*tip.area)
-                if tip.pos == 'lower left':
-                    meas.jp = j
-                elif tip.pos == 'lower right':
-                    meas.jm = j
-            else:
-                meas.Vf = Vf[i]
-                meas.Te = Te[i]
-
     def calc_res(self, ID='IV'):
         tips = self.config.head.tips
 
@@ -296,12 +274,10 @@ def get_dwell_params():
 
 
 if __name__ == "__main__":
-    shn = 28469
+    shn = 29859
 
     XPR = ProbeXPR(shn=shn)
-    XPR.analyze(plunge=0)
-
-    XPR.plot()
+    fig = XPR.res.plot_R(plunge=1)
     plt.show()
 
 

@@ -12,11 +12,7 @@ from fitter import Fitter, FitterError
 import fitfun as ff
 #import fitfun_ctypes as ff
 #import fitfun_cython as ff
-
-#try:
-#    import LP.fitfun as ff
-#except ImportError:
-#    import fitfun as ff
+#import fitfun_cffi as ff
 
 import LP.mag_fit as mag_fit
 
