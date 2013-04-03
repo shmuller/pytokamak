@@ -35,28 +35,11 @@ try:
 except ImportError:
     pass
 
-from sm_pyplot import tight_figure
+from sm_pyplot.tight_figure import get_fig, get_tfig, get_axes, MathSelector
 
 usetex = False
 
-math_sel = tight_figure.MathSelector(usetex=usetex)
-
-tfigure = tight_figure.pickable_linked_lod_tight_figure
-figure = tight_figure.pickable_linked_lod_figure
-#tfigure = tight_figure.pickable_linked_tight_figure
-#figure = tight_figure.pickable_linked_figure
-
-def get_tfig(*args, **kw):
-    kw.setdefault('figure', tfigure)
-    return tight_figure.get_fig(*args, **kw)
-
-def get_fig(*args, **kw):
-    kw.setdefault('figure', figure)
-    return tight_figure.get_fig(*args, **kw)
-
-def get_axes(*args, **kw):
-    kw.setdefault('figure', figure)
-    return tight_figure.get_axes(*args, **kw)
+math_sel = MathSelector(usetex=usetex)
 
 
 from mdsclient import *

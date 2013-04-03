@@ -185,7 +185,7 @@ class PhysicalResults:
             return ma.masked_array(y, mask)
 
     def plot_key(self, key, x, y, ax=None, label=None):
-        ax = get_axes(ax, figure=tfigure)
+        ax = get_axes(ax)
 
         ylab = self.make_label(key)
         ax.set_ylabel(ylab)

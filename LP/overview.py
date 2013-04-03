@@ -3,7 +3,7 @@ import numpy.ma as ma
 
 from sig import memoized_property, Digitizer
 
-from sm_pyplot.tight_figure import get_fig, get_axes
+from sm_pyplot.tight_figure import get_tfig, get_axes
 
 from probe_xpr import TdiError, IOMdsAUG, IOFileAUG, ProbeXPR, ShotNotFoundError
 
@@ -150,7 +150,7 @@ class AUGOverview:
         if plots is None:
             plots = self.def_plots
 
-        fig = get_fig(fig, shape=(len(plots), 1), figsize=(6,6), xlab='t (s)')
+        fig = get_tfig(fig, shape=(len(plots), 1), figsize=(6,6), xlab='t (s)')
         fig.axes[0].set_xlim((1,7))
 
         for p, ax in zip(plots, fig.axes):
