@@ -5,7 +5,7 @@ from sig import memoized_property, Digitizer
 
 from sm_pyplot.tight_figure import get_fig, get_axes
 
-from probe_xpr import TdiError, IOMdsAUG, IOFileAUG, ProbeXPR
+from probe_xpr import TdiError, IOMdsAUG, IOFileAUG, ProbeXPR, ShotNotFoundError
 
 
 class DigitizerAUG(Digitizer):
@@ -36,10 +36,12 @@ class AUGOverview:
     def __init__(self, shn):
         self.shn = shn
 
-        self.XPR = ProbeXPR(shn=shn)
-
-        self.def_plots = ('power', 'density', 'XPR_I', 'XPR_R', 'Ipolsol', 'Tdiv')
-
+        try:
+            self.XPR = ProbeXPR(shn=shn)
+            self.def_plots = ('power', 'density', 'XPR_I', 'XPR_R', 'Ipolsol', 'Tdiv')
+        except ShotNotFoundError:
+            self.def_plots = ('power', 'density', 'Ipolsol', 'Tdiv')
+        
     @memoized_property
     def S(self):
         return {k: DigitizerAUG(self.shn, name=k, **v) for k, v in AUG_diags.iteritems()}
@@ -71,13 +73,14 @@ class AUGOverview:
     def plot_XPR_I(self, ax, no_Mach=False, no_single=False):
         ax = get_axes(ax)
         ax.set_ylabel('Current (A)')
-        XPR = self.XPR
-
+        
+        try:
+            XPR = self.XPR
+        except AttributeError:
+            return ax
+                
         t = XPR['tip1'].t
         I1, I2, I3 = XPR['tip1'].x, XPR['tip2'].x, XPR['tip3'].x
-
-        #I1 = ma.masked_array(I1, I1 < 0)
-        #I2 = ma.masked_array(I2, I2 < 0)
 
         if not no_Mach:
             ax.plot(t, I1, label='Mach tip 1')
@@ -90,7 +93,11 @@ class AUGOverview:
     def plot_XPR_V(self, ax, no_Mach=False, no_single=False):
         ax = get_axes(ax)
         ax.set_ylabel('Voltage (V)')
-        XPR = self.XPR
+
+        try:
+            XPR = self.XPR
+        except AttributeError:
+            return ax
 
         t = XPR['tip1'].t
         V1, V2, V3 = XPR['tip1'].V.x, XPR['tip2'].V.x, XPR['tip3'].V.x
@@ -106,7 +113,12 @@ class AUGOverview:
     def plot_XPR_R(self, ax):
         ax = get_axes(ax)
         ax.set_ylabel('Pos (cm)')
-        XPR = self.XPR
+
+        try:
+            XPR = self.XPR
+        except AttributeError:
+            return ax
+
         ax.plot(XPR['R'].t, 100*XPR['R'].x)
         return ax
 

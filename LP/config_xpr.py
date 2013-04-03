@@ -1,3 +1,5 @@
+from config import ShotNotFoundError
+
 import config_xpr_200x
 reload(config_xpr_200x)
 

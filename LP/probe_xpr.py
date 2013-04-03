@@ -24,6 +24,8 @@ Amp = probe.Amp
 Probe = probe.Probe
 PhysicalResults = probe.PhysicalResults
 
+ShotNotFoundError = config.ShotNotFoundError
+
 ampUnity = Amp(fact=1., offs=0.)
 ampInv   = Amp(fact=-1., offs=0.)
 amp12Bit = Amp(fact=10./4095, offs=-5.)

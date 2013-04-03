@@ -1,8 +1,8 @@
 import numpy as np
 import numpy.ma as ma
 import os
-#import h5py as H5
-import hdf5_cffi as H5
+import h5py as H5
+#import hdf5_cffi as H5
 
 from pdb import set_trace
 
@@ -30,9 +30,10 @@ except ImportError:
         nanmin  = None,
         nanmax  = None)
 
-import matplotlib.pyplot as plt
-import matplotlib.gridspec as gridspec
-import matplotlib.mlab as mlab
+try:
+    import matplotlib.mlab as mlab
+except ImportError:
+    pass
 
 from sm_pyplot import tight_figure
 
@@ -44,9 +45,6 @@ tfigure = tight_figure.pickable_linked_lod_tight_figure
 figure = tight_figure.pickable_linked_lod_figure
 #tfigure = tight_figure.pickable_linked_tight_figure
 #figure = tight_figure.pickable_linked_figure
-plot = plt.plot
-ion  = plt.ion
-show = plt.show
 
 def get_tfig(*args, **kw):
     kw.setdefault('figure', tfigure)

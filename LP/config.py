@@ -166,30 +166,6 @@ class Shot:
     def print_descr(self):
         print self.descr
 
-    def mapsig_old(self, x, line):
-        def get_x(key):
-            return x[self.get(line, 'mapping', key)].astype('d')
-
-        self.unique_sigs = {k: get_x(k) for k in self.head.unique_keys}
-
-        t = x['t']
-        R = self.unique_sigs[self.head.R_keys]
-        S = OrderedDict(R=PositionSignal(R, t, name='R'))
-
-        for tip in self.head.tips:
-            i, keyV, keyI = tip.number, tip.V_keys, tip.I_keys
-            if keyV is None:
-                V = None
-            else:
-                V = VoltageSignal(self.unique_sigs[keyV], t, number=i, name='V%d' % i)
-            if keyI is None:
-                S[V.name] = V
-            else:
-                I = CurrentSignal(self.unique_sigs[keyI], t, V=V, number=i, name='I%d' % i) 
-                S[I.name] = I
-
-        return S
-
     def mapsig(self, x, line):
         def get_x(key):
             return x[self.get(line, 'mapping', key)].astype('d')
@@ -240,6 +216,9 @@ class Experiment(ShotContainer):
         return self.date + ":\n" + np.array(s).tostring()
 
 
+class ShotNotFoundError(Exception):
+    pass
+
 class Campaign(ShotContainer):
     def __init__(self, ExperimentClass=Experiment):
         self.ExperimentClass = ExperimentClass
@@ -256,6 +235,8 @@ class Campaign(ShotContainer):
                 return E[shn]
             except KeyError:
                 pass
+
+        raise ShotNotFoundError("No config information for shot %d" % shn)
     
     def __repr__(self):
         s = [str(v) + "\n" for v in self.x.itervalues()]
