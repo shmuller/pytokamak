@@ -1169,4 +1169,73 @@ E.rep(29888, 29887, "Time with MEM stroke at 3.6 s, all the way thru",
         stars = '****')
 
 
+############################################
+E = campaign.add_experiment(date="20130404")
+
+# Set all current measurement offsets to 0
+
+# Std H-mode
+E.add(29904, "15 cm at 1 s, Mach -200 V, single swept at 14.0 Vpp, new arc box at 1.4 V",
+        head = head_20130312,
+        ampI1 = CurrentProbe1[20],
+        ampI2 = CurrentProbe2[20],
+        ampI3 = CurrentProbe3[20], 
+        ampI4 = CurrentProbe4[50],
+        times = 1.0,
+        posit = 0.15,
+        descr = """\
+            Arc box worked. Three arcs switched off.""",
+        stars = '**', **def_XPR_pos)
+
+# Garrard Conway
+E.rep(29908, 29904, "All the way thru at 4.1 s, 2nd arc box on I3 at 1.9 V",
+        times = 4.1,
+        posit = 0.34,
+        descr = "Didn't run.",
+        stars = '')
+
+E.rep(29909, 29908, "Repeat",
+        times = 4.1,
+        posit = 0.34,
+        descr = "Didn't run.",
+        stars = '')
+
+# Tim Happel
+E.rep(29911, 29909, "USN",
+        times = 4.4,
+        posit = 0.34,
+        descr = "Nice crown data, already in rampdown.",
+        stars = '**')
+
+E.rep(29912, 29911, "LSN, sweeps 13.0 Vpp, arc box I3 at 1.95 V",
+        times = 3.9,
+        posit = 0.15,
+        descr = "Good data, ready in rampdown.",
+        stars = '**')
+
+# Leena Aho-Mantila
+E.rep(29913, 29912, "Sweeps 17.0 Vpp",
+        times = 3.9,
+        posit = 0.34,
+        descr = "Good data, two small arcs, sweeps at 17 Vpp saturated.",
+        stars = '****')
+
+E.rep(29914, 29913, "Repeat for MEM conditioning, 3 plunges, sweeps 14.5 Vpp",
+        times = (2.1, 3.1, 4.1),
+        posit = (0.34, 0.34, 0.34),
+        descr = "",
+        stars = '')
+
+E.rep(29915, 29914, "No plunge, sweeps at 15.5 Vpp",
+        times = (),
+        posit = (),
+        descr = "",
+        stars = '')
+
+E.rep(29916, 29915, "Three plunges in decreasing density",
+        times = (2.1, 3.1, 4.1),
+        posit = (0.34, 0.34, 0.34),
+        descr = "Great data, no arcs.",
+        stars = '*****')
+
 

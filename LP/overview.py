@@ -20,7 +20,7 @@ class DigitizerAUG(Digitizer):
         try:
             return Digitizer.load(self)
         except TdiError:
-            return {node: 0. for node in self.nodes}
+            return {node: np.zeros(1) for node in self.nodes}
 
 
 AUG_diags = dict(
