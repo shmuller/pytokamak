@@ -224,15 +224,28 @@ class PhysicalResults:
         fig.canvas.draw()
         return fig
 
+    def plot_R(self, **kw):
+        kw['fig'] = self.plot_R_in(**kw)
+        return self.plot_R_out(**kw)
+
     def plot_R_in(self, **kw):
         return self.plot(xkey='R', inout='in', **kw)
 
     def plot_R_out(self, **kw):
         return self.plot(xkey='R', inout='out', **kw)
 
-    def plot_R(self, **kw):
-        kw['fig'] = self.plot_R_in(**kw)
-        return self.plot_R_out(**kw)
+    def _plot_all_factory(name):
+        def plot_all(self, **kw):
+            plotfun = getattr(self, name)
+            kw['fig'] = plotfun(plunge=0, **kw)
+            for plunge in xrange(1, self.R.Nplunges):
+                plotfun(plunge=plunge, **kw)
+            return kw['fig']
+        return plot_all
+
+    plot_R_all     = _plot_all_factory('plot_R')
+    plot_R_all_in  = _plot_all_factory('plot_R_in')
+    plot_R_all_out = _plot_all_factory('plot_R_out')
 
 
 class Probe:

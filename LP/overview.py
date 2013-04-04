@@ -1,7 +1,7 @@
 import numpy as np
 import numpy.ma as ma
 
-from sig import memoized_property, Digitizer
+from sig import memoized_property, Digitizer, Signal
 
 from sm_pyplot.tight_figure import get_tfig, get_axes
 
@@ -29,7 +29,9 @@ AUG_diags = dict(
     pech = dict(diag='ECS', nodes=('PECRH',)),
     wmhd = dict(diag='FPG', nodes=('Wmhd',)),
     isol = dict(diag='MAC', nodes=('Ipolsola', 'Ipolsoli')),
-    tdiv = dict(diag='MAC', nodes=('Tdiv',)))
+    tdiv = dict(diag='MAC', nodes=('Tdiv',)),
+    elmh = dict(diag='POT', nodes=('ELMa-Han', 'ELMi-Han')),
+    gasv = dict(diag='UVS', nodes=('D_tot',)))
 
 
 class AUGOverview:
@@ -38,9 +40,11 @@ class AUGOverview:
 
         try:
             self.XPR = ProbeXPR(shn=shn)
-            self.def_plots = ('power', 'density', 'XPR_I', 'XPR_R', 'Ipolsol', 'Tdiv')
+            self.def_plots = ('power', 'density', 'XPR_I', 'XPR_R', 'Ipolsol')
         except ShotNotFoundError:
-            self.def_plots = ('power', 'density', 'Ipolsol', 'Tdiv')
+            self.def_plots = ('power', 'density', 'Ipolsol')
+
+        self.all_plots = self.def_plots + ('Tdiv', 'Da', 'gas')
         
     @memoized_property
     def S(self):
@@ -51,22 +55,20 @@ class AUGOverview:
         ax = get_axes(ax)
         ax.set_ylabel('Power (MW)')
         
-        ax.plot(S['pech']['t'], 1e-6*S['pech']['PECRH'], label="ECRH")
-        ax.plot(S['pnbi']['t'], 1e-6*S['pnbi']['PNI'], label="NBI")
-        ax.plot(S['wmhd']['t'], 1e-5*S['wmhd']['Wmhd'], label="WMHD (x10)")
+        Signal(1e-6*S['pech']['PECRH'], S['pech']['t'], name="ECRH").plot(ax)
+        Signal(1e-6*S['pnbi']['PNI'], S['pnbi']['t'], name="NBI").plot(ax)
+        Signal(1e-5*S['wmhd']['Wmhd'], S['wmhd']['t'], name="WMHD (x10)").plot(ax)
         ax.legend()
         return ax
 
     def plot_density(self, ax):
-        S = self.S
+        S = self.S['dens']
         ax = get_axes(ax)
         ax.set_ylabel('n (10$^{\mathdefault{19}}$ m$^{\mathdefault{-3}}$)')
         
-        t = S['dens']['t']
+        t = S['t']
         for c in ('H-1', 'H-4', 'H-5'):
-            n = S['dens'][c]
-            n[n < 0] = np.nan
-            ax.plot(t, 1e-19*n, label=c)
+            Signal(1e-19*S[c], t, name=c).masked(S[c] < 0).plot(ax)
         ax.legend()
         return ax
 
@@ -123,30 +125,51 @@ class AUGOverview:
         return ax
 
     def plot_Ipolsol(self, ax):
-        S = self.S
+        S = self.S['isol']
         ax = get_axes(ax)
         ax.set_ylabel('Current (kA)')
 
-        t = S['isol']['t']
-        Ia = ma.masked_array(S['isol']['Ipolsola'], t > 6.)
-        Ii = ma.masked_array(S['isol']['Ipolsoli'], t > 6.)
-
-        ax.plot(t, 1e-3*Ia, label='Ipolsola')
-        ax.plot(t, 1e-3*Ii, label='Ipolsoli')
+        t = S['t']
+        m = t > 6.
+        Signal(1e-3*S['Ipolsola'], t, name='Ipolsola').masked(m).plot(ax)
+        Signal(1e-3*S['Ipolsoli'], t, name='Ipolsoli').masked(m).plot(ax)
         ax.legend()
         return ax
 
     def plot_Tdiv(self, ax):
-        S = self.S
+        S = self.S['tdiv']
         ax = get_axes(ax)
         ax.set_ylabel('Temp (eV)')
 
-        t = S['tdiv']['t']
-        ax.plot(t, S['tdiv']['Tdiv'], label='Tdiv')
+        t = S['t']
+        Signal(S['Tdiv'], t, name='Tdiv').plot(ax)
         ax.legend()
         return ax
 
-    def plot(self, fig=None, plots=None):
+    def plot_Da(self, ax):
+        S = self.S['elmh']
+        ax = get_axes(ax)
+        ax.set_ylabel('Photons (au)')
+
+        t = S['t']
+        m = t > 6.
+        Signal(S['ELMa-Han'], t, name='Da outer').masked(m).plot(ax)
+        Signal(S['ELMi-Han'], t, name='Da inner').masked(m).plot(ax)
+        ax.legend()
+        return ax
+
+    def plot_gas(self, ax):
+        S = self.S
+        ax = get_axes(ax)
+        ax.set_ylabel('Gas (10$^{\mathdefault{21}}$ el s$^{\mathdefault{-1}}$)')
+
+        t = S['gasv']['t']
+        m = (t < 1.) | (t > 6.)
+        Signal(1e-21*S['gasv']['D_tot'], t, name='D total').masked(m).plot(ax)
+        ax.legend()
+        return ax
+
+    def plot(self, plots=None, fig=None):
         if plots is None:
             plots = self.def_plots
 
@@ -156,4 +179,7 @@ class AUGOverview:
         for p, ax in zip(plots, fig.axes):
             getattr(self, 'plot_' + p)(ax)
         return fig
+
+    def plot_all(self, **kw):
+        return self.plot(self.all_plots, **kw)
 

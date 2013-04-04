@@ -797,6 +797,15 @@ class Signal:
     def copy(self):
         return self.__array_wrap__(self.x.copy())
 
+    def masked(self, mask):
+        return self.__array_wrap__(ma.masked_array(self.x, mask))
+
+    def unmasked(self):
+        if not isinstance(self.x, ma.masked_array):
+            return self
+        else:
+            return self.__array_wrap__(self.x.data)
+
     def trim(self, s):
         self.x, self.t = self.x[s], self.t[s]
         return self
@@ -935,6 +944,7 @@ class Signal:
 
     def plot(self, ax=None, **kw):
         ax = get_axes(ax, xlab=self.xlab, ylab=self.ylab)
+        kw.setdefault('label', self.name)
         ax.plot(self.t, self.x.T, **kw)
         return ax
 
