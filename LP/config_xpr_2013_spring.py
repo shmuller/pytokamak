@@ -1239,3 +1239,72 @@ E.rep(29916, 29915, "Three plunges in decreasing density",
         stars = '*****')
 
 
+############################################
+E = campaign.add_experiment(date="20130405")
+
+# FI switch triggered when switching on power supplies. Reset all current 
+# measurement offsets to 0
+
+# Checked tip status:
+# - Single tip already slightly conical
+# - Left Mach tip (as seen thru window) slightly rounded
+# - Right Mach tip (as seen thru window) in perfect shape
+
+# Stefan Muller
+E.add(29931, "Mach -200 V, single swept at 13.5 Vpp",
+        head = head_20130312,
+        ampI1 = CurrentProbe1[20],
+        ampI2 = CurrentProbe2[20],
+        ampI3 = CurrentProbe3[20], 
+        ampI4 = CurrentProbe4[50],
+        times = (1.38, 3.38),
+        posit = (0.34, 0.34),
+        descr = """\
+            Good data for comparison with edge CXRS. Mach arc box was on 10 ms.""",
+        stars = '*****', **def_XPR_pos)
+
+E.rep(29932, 29931, "Attempt 700 ms H-mode, Mach arc box at 2 ms",
+        times = 4.38,
+        posit = 0.34,
+        descr = """\
+            H-mode with 600 kW ECRH""",
+        stars = '')
+
+E.rep(29933, 29932, "Only 400 ms H-mode, less gas",
+        times = 4.0,
+        posit = 0.34,
+        descr = """\
+           ECRH stopped after hitting cutoff at the end of 2nd H-mode. Swept
+           single probe caught high-power L-H transition by third 2.5 MW beam
+           blip: There is only a short I-phase, then ELM-free H-mode.
+           Arc box didn't trigger, Mach signals useless beyond 18.8 cm.""",
+        stars = '***')
+
+E.rep(29934, 29933, "300 ms H-mode, replace Mach arc box (at 1.4 V)",
+        times = 4.0,
+        posit = 0.34,
+        descr = """\
+           Locked mode after second plunge, no XPR data.""",
+        stars = '')
+
+E.rep(29935, 29934, "",
+        times = (2.35, 3.55),
+        posit = (0.34, 0.34),
+        descr = """\
+           Didn't run.""",
+        stars = '')
+
+E.rep(29936, 29935, "Repeat with different startup, plunge later",
+        times = (2.45, 3.65),
+        posit = (0.34, 0.34),
+        descr = """\
+           Good shot. XPR arc box didn't switch.""",
+        stars = '')
+
+E.rep(29937, 29936, "Repeat, different arc box at 1.2 V",
+        times = (2.45, 3.65),
+        posit = (0.34, 0.34),
+        descr = """\
+           Arc box switched.""",
+        stars = '')
+

@@ -18,3 +18,13 @@ class DigitizerMEM(Digitizer):
                       'Ufl_m03', 'Ufl_m08', 'I_0', 'I_1', 't')
 
 
+class DigitizerMEMCombi(Digitizer):
+    def __init__(self, shn, sock=None, raw=False):
+        Digitizer.__init__(self, shn, sock, name='MHC')
+
+        self.IO_mds = IOMdsAUG(shn, sock, diag='MHC', raw=raw)
+        self.IO_file = IOFileAUG(shn, suffix='_MEM_combi')
+        self.nodes = ('Usat_m05', 'Isat_m05', 'Usat_m10', 'Isat_m10', 
+                      'Ufl_m02', 'Ufl_m04', 'U_m03', 'I_m03', 't')
+
+

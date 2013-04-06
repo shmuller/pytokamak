@@ -31,7 +31,8 @@ AUG_diags = dict(
     isol = dict(diag='MAC', nodes=('Ipolsola', 'Ipolsoli')),
     tdiv = dict(diag='MAC', nodes=('Tdiv',)),
     elmh = dict(diag='POT', nodes=('ELMa-Han', 'ELMi-Han')),
-    gasv = dict(diag='UVS', nodes=('D_tot',)))
+    gasv = dict(diag='UVS', nodes=('D_tot',)),
+    prad = dict(diag='BPD', nodes=('Pradtot',)))
 
 
 class AUGOverview:
@@ -58,19 +59,26 @@ class AUGOverview:
         Signal(1e-6*S['pech']['PECRH'], S['pech']['t'], name="ECRH").plot(ax)
         Signal(1e-6*S['pnbi']['PNI'], S['pnbi']['t'], name="NBI").plot(ax)
         Signal(1e-5*S['wmhd']['Wmhd'], S['wmhd']['t'], name="WMHD (x10)").plot(ax)
+
+        t = S['prad']['t']
+        mask = t > 6.
+        Signal(1e-6*S['prad']['Pradtot'], t, name="Pradtot").masked(mask).plot(ax)
         ax.legend()
         return ax
 
-    def plot_density(self, ax):
+    def plot_density(self, ax, chn=('H-1', 'H-4', 'H-5')):
         S = self.S['dens']
         ax = get_axes(ax)
         ax.set_ylabel('n (10$^{\mathdefault{19}}$ m$^{\mathdefault{-3}}$)')
         
         t = S['t']
-        for c in ('H-1', 'H-4', 'H-5'):
+        for c in chn:
             Signal(1e-19*S[c], t, name=c).masked(S[c] < 0).plot(ax)
         ax.legend()
         return ax
+
+    def plot_H1(self, ax):
+        return self.plot_density(ax, chn=('H-1',))
 
     def plot_XPR_I(self, ax, no_Mach=False, no_single=False):
         ax = get_axes(ax)
@@ -164,7 +172,7 @@ class AUGOverview:
         ax.set_ylabel('Gas (10$^{\mathdefault{21}}$ el s$^{\mathdefault{-1}}$)')
 
         t = S['gasv']['t']
-        m = (t < 1.) | (t > 6.)
+        m = (t < 0.5) | (t > 6.)
         Signal(1e-21*S['gasv']['D_tot'], t, name='D total').masked(m).plot(ax)
         ax.legend()
         return ax

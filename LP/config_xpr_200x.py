@@ -39,6 +39,83 @@ def_LPS_old = dict(dig='LPS_old', amp_default=amp_default_unity, lines=dict(LPS=
 
 
 ############################################
+E = campaign.add_experiment(date="19990323")
+
+E.add(11816, "",
+        head = head,
+        times = 1.2,
+        posit = 0.13,
+        descr = "XXX mapping incorrect!",
+        stars = '**', **def_LPS_old)
+
+E.rep(11817, 11816, "",
+        times = 1.5,
+        posit = 0.31,
+        descr = """\ 
+            (2005_Tsalas_JNM)""",
+        stars = '**')
+
+
+############################################
+E = campaign.add_experiment(date="20040318")
+
+E.add(18786, "No plunge",
+        head = head_V2,
+        descr = "XXX mapping incorrect!",
+        stars = '', **def_LPS_old)
+
+E.rep(18787, 18786, "",
+        times = 4.9,
+        posit = 0.18,
+        descr = """\
+            """,
+        stars = '**')
+
+E.rep(18788, 18787, "",
+        times = 3.4,
+        posit = 0.18,
+        descr = "Didn't run.",
+        stars = '')
+
+E.rep(18789, 18788, "",
+        times = 3.4,
+        posit = 0.18,
+        descr = """\
+            Probe influencing ELMs! (2005_Tsalas_JNM)""",
+        stars = '*****')
+
+
+############################################
+E = campaign.add_experiment(date="19990323")
+
+E.add(11816, "",
+        head = head,
+        times = 1.2,
+        posit = 0.13,
+        descr = """\
+             """,
+        stars = '**', **def_LPS_old)
+
+
+############################################
+E = campaign.add_experiment(date="20050330")
+
+E.add(19951, "Standard Ohmic, sweeps",
+        head = head_V2,
+        times = 3.9,
+        posit = 0.31,
+        descr = """\
+            Nice swept data, some arcs. (2007_Tsalas_PPCF)""",
+        stars = '****', **def_LPS_old)
+
+E.rep(19952, 19951, "Higher density", 
+        times = 2.6,
+        posit = 0.31,
+        descr = "Good data too. (2007_Tsalas_PPCF)", 
+        stars = '****')
+
+
+############################################
 E = campaign.add_experiment(date="20050621")
 
 E.add(20326, "Standard Ohmic, Maximos fitting demo",
@@ -62,8 +139,8 @@ E.rep(20337, 20336, "Repeat",
         stars = '**')
 
 E.rep(20339, 20337, "Modify strike point position", 
-        descr = "H-mode, arcs.", 
-        stars = '**')
+        descr = "H-mode with type I ELMs, arcs. (2007_Tsalas_PPCF)", 
+        stars = '****')
 
 E.rep(20341, 20339, "Repeat with interrupted DC biasing", 
         descr = "H-mode with ELMs. Arcs during ELMs and on the way out.", 
@@ -79,6 +156,26 @@ E.rep(20343, 20342, "Repeat",
 
 
 ############################################
+E = campaign.add_experiment(date="20050624")
+
+E.add(20372, "Standard Ohmic",
+        times = 3.4,
+        posit = 0.31,
+        head = head_V2,
+        descr = """\
+            All tips DC biased. Nice flow data from Mach -2 to Mach 2.
+            No arcs. (2007_Tsalas_PPCF)""",
+        stars = '****', **def_LPS_old)
+
+E.rep(20373, 20372, "Standard H-mode",
+        times = 2.1,
+        posit = 0.13,
+        descr = """\
+            Rectangular sweep.""",
+        stars = '***')
+
+
+############################################
 E = campaign.add_experiment(date="20060404")
 
 E.add(21256, "Maximos high density data", 
@@ -88,9 +185,11 @@ E.add(21256, "Maximos high density data",
         descr = "Shot didn't run.",
         stars = '', **def_LPS_old)
 
-E.rep(21258, 21256, "Plunge all the way through",
-        descr = "",
-        stars = '')
+E.rep(21258, 21256, "Plunge all the way thru",
+        times = 3.4,
+        posit = 0.31,
+        descr = "Excellent profiles, low HFS density. (2007_Tsalas_PPCF)",
+        stars = '*****')
 
 
 ############################################
