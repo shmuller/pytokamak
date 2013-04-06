@@ -741,6 +741,9 @@ class Signal:
     def __array_wrap__(self, x):
         return self.__class__(x, self.t, **self.kw)
 
+    def shift_t(self, dt):
+        return self.__class__(self.x, self.t + dt, **self.kw)
+
     def _op_factory(op, calcfun):
         def apply(self, other, out=None):
             try:
@@ -805,6 +808,9 @@ class Signal:
             return self
         else:
             return self.__array_wrap__(self.x.data)
+
+    def standardized(self):
+        return self.__array_wrap__((self.x - self.x.mean()) / self.x.std())
 
     def trim(self, s):
         self.x, self.t = self.x[s], self.t[s]
@@ -968,6 +974,25 @@ class Signal:
         
         ax.figure.tight_layout(pad=0.2)
         return ax
+
+    def xcorr(self, other):
+        dt = self.t - self.t[0]
+        Dt = np.concatenate((-dt[:0:-1], dt))
+        C = np.correlate(self.x, other.x, 'full')
+        return Signal(C, Dt, tunits=self.tunits, type='Correlation',
+                             name='xcorr(%s, %s)' % (self.name, other.name))
+
+    def autocorr(self):
+        return self.xcorr(self)
+
+    def lag(self, other):
+        """
+        Returns C, where C.t is the amount of time by which 'other' is lagging 
+        behind 'self'. If C.x is negative, the maximum overlap was found for an
+        anticorrelation.
+        """
+        C = self.xcorr(other)
+        return C[np.argmax(np.abs(C.x))]
 
 
 class PeriodPhaseFinder:
