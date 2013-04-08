@@ -993,14 +993,14 @@ E.rep(29846, 29845, "Repeat 29779, Mach -200 V, single swept at 14.5 Vpp",
         posit = (0.34, 0.34),
         descr = """\
             """,
-        stars = '')
+        stars = '*****')
 
 E.rep(29850, 29846, "Repeat with additional plunge at 3.0 s, single swept at 13.5 Vpp", 
         times = (2.0, 3.0, 3.9),
         posit = (0.34, 0.34, 0.34),
         descr = """\
             """,
-        stars = '')
+        stars = '*****')
 
 
 ############################################
@@ -1210,7 +1210,7 @@ E.rep(29911, 29909, "USN",
 E.rep(29912, 29911, "LSN, sweeps 13.0 Vpp, arc box I3 at 1.95 V",
         times = 3.9,
         posit = 0.15,
-        descr = "Good data, ready in rampdown.",
+        descr = "Good data, already in rampdown.",
         stars = '**')
 
 # Leena Aho-Mantila
@@ -1284,8 +1284,10 @@ E.rep(29934, 29933, "300 ms H-mode, replace Mach arc box (at 1.4 V)",
         times = 4.0,
         posit = 0.34,
         descr = """\
-           Locked mode after second plunge, no XPR data.""",
-        stars = '')
+           Locked mode after second L-H transition, no XPR data. 
+           First L-H transition was great! No impurity poisoning up to 300 ms
+           after transition, NBI triggered first ELM only after 60 ms.""",
+        stars = '****')
 
 E.rep(29935, 29934, "",
         times = (2.35, 3.55),
@@ -1298,13 +1300,14 @@ E.rep(29936, 29935, "Repeat with different startup, plunge later",
         times = (2.45, 3.65),
         posit = (0.34, 0.34),
         descr = """\
-           Good shot. XPR arc box didn't switch.""",
-        stars = '')
+           Good shot. XPR arc box didn't switch.
+           NBI triggered ELM within 2 ms on all 3 transitions.""",
+        stars = '***')
 
 E.rep(29937, 29936, "Repeat, different arc box at 1.2 V",
         times = (2.45, 3.65),
         posit = (0.34, 0.34),
         descr = """\
            Arc box switched.""",
-        stars = '')
+        stars = '***')
 

@@ -59,12 +59,20 @@ class AUGOverview:
         Signal(1e-6*S['pech']['PECRH'], S['pech']['t'], name="ECRH").plot(ax)
         Signal(1e-6*S['pnbi']['PNI'], S['pnbi']['t'], name="NBI").plot(ax)
         Signal(1e-5*S['wmhd']['Wmhd'], S['wmhd']['t'], name="WMHD (x10)").plot(ax)
+        ax.legend()
+        return ax
 
+    def plot_rad(self, ax):
+        S = self.S
         t = S['prad']['t']
         mask = t > 6.
         Signal(1e-6*S['prad']['Pradtot'], t, name="Pradtot").masked(mask).plot(ax)
         ax.legend()
         return ax
+
+    def plot_power_rad(self, ax):
+        ax = self.plot_power(ax)
+        return self.plot_rad(ax)
 
     def plot_density(self, ax, chn=('H-1', 'H-4', 'H-5')):
         S = self.S['dens']
@@ -100,6 +108,12 @@ class AUGOverview:
         ax.legend()
         return ax
 
+    def plot_XPR_I_Mach(self, ax):
+        return self.plot_XPR_I(ax, no_single=True)
+
+    def plot_XPR_I_single(self, ax):
+        return self.plot_XPR_I(ax, no_Mach=True)
+
     def plot_XPR_V(self, ax, no_Mach=False, no_single=False):
         ax = get_axes(ax)
         ax.set_ylabel('Voltage (V)')
@@ -120,6 +134,12 @@ class AUGOverview:
         ax.legend()
         return ax
 
+    def plot_XPR_V_Mach(self, ax):
+        return self.plot_XPR_V(ax, no_single=True)
+
+    def plot_XPR_V_single(self, ax):
+        return self.plot_XPR_V(ax, no_Mach=True)
+
     def plot_XPR_R(self, ax):
         ax = get_axes(ax)
         ax.set_ylabel('Pos (cm)')
@@ -135,12 +155,12 @@ class AUGOverview:
     def plot_Ipolsol(self, ax):
         S = self.S['isol']
         ax = get_axes(ax)
-        ax.set_ylabel('Current (kA)')
+        ax.set_ylabel('Div. cur. (kA)')
 
         t = S['t']
         m = t > 6.
-        Signal(1e-3*S['Ipolsola'], t, name='Ipolsola').masked(m).plot(ax)
-        Signal(1e-3*S['Ipolsoli'], t, name='Ipolsoli').masked(m).plot(ax)
+        Signal(1e-3*S['Ipolsola'], t, name='Outer').masked(m).plot(ax)
+        Signal(1e-3*S['Ipolsoli'], t, name='Inner').masked(m).plot(ax)
         ax.legend()
         return ax
 

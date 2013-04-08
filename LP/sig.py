@@ -978,21 +978,23 @@ class Signal:
     def xcorr(self, other):
         dt = self.t - self.t[0]
         Dt = np.concatenate((-dt[:0:-1], dt))
-        C = np.correlate(self.x, other.x, 'full')
+        x = y = self.standardized().x
+        if other is not self:
+            y = other.standardized().x
+        C = np.correlate(x / x.size, y, 'full')
         return Signal(C, Dt, tunits=self.tunits, type='Correlation',
                              name='xcorr(%s, %s)' % (self.name, other.name))
 
     def autocorr(self):
         return self.xcorr(self)
 
-    def lag(self, other):
+    def lag(self, other, sign=1):
         """
         Returns C, where C.t is the amount of time by which 'other' is lagging 
-        behind 'self'. If C.x is negative, the maximum overlap was found for an
-        anticorrelation.
+        behind 'self'
         """
         C = self.xcorr(other)
-        return C[np.argmax(np.abs(C.x))]
+        return C[np.argmax(sign*C.x)]
 
 
 class PeriodPhaseFinder:
