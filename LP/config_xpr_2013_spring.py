@@ -1311,3 +1311,21 @@ E.rep(29937, 29936, "Repeat, different arc box at 1.2 V",
            Arc box switched.""",
         stars = '***')
 
+
+############################################
+E = campaign.add_experiment(date="20130409")
+
+# Test
+E.add(29967, "Mach -200 V, single swept at 13.5 Vpp",
+        head = head_20130312,
+        ampI1 = CurrentProbe1[20],
+        ampI2 = CurrentProbe2[20],
+        ampI3 = CurrentProbe3[20], 
+        ampI4 = CurrentProbe4[50],
+        descr = "",
+        stars = '', **def_XPR_pos)
+
+E.rep(29970, 29967, "Single swept at 12.5 Vpp",
+        descr = "",
+        stars = '')
+

@@ -25,6 +25,7 @@ class DigitizerAUG(Digitizer):
 
 AUG_diags = dict(
     dens = dict(diag='DCN', nodes=('H-1', 'H-2', 'H-3', 'H-4', 'H-5')),
+    ncor = dict(diag='TOT', nodes=('H-1_corr', 'H-2_corr', 'H-3_corr', 'H-4_corr', 'H-5_corr')),
     pnbi = dict(diag='NIS', nodes=('PNI',)),
     pech = dict(diag='ECS', nodes=('PECRH',)),
     wmhd = dict(diag='FPG', nodes=('Wmhd',)),
@@ -76,6 +77,17 @@ class AUGOverview:
 
     def plot_density(self, ax, chn=('H-1', 'H-4', 'H-5')):
         S = self.S['dens']
+        ax = get_axes(ax)
+        ax.set_ylabel('n (10$^{\mathdefault{19}}$ m$^{\mathdefault{-3}}$)')
+        
+        t = S['t']
+        for c in chn:
+            Signal(1e-19*S[c], t, name=c).masked(S[c] < 0).plot(ax)
+        ax.legend()
+        return ax
+
+    def plot_n(self, ax, chn=('H-1_corr', 'H-4_corr', 'H-5_corr')):
+        S = self.S['ncor']
         ax = get_axes(ax)
         ax.set_ylabel('n (10$^{\mathdefault{19}}$ m$^{\mathdefault{-3}}$)')
         
