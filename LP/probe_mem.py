@@ -1,11 +1,19 @@
 import numpy as np
 import numpy.ma as ma
 
-from sig import memoized_property, Digitizer
+from sig import memoized_property, Digitizer, PositionSignal
 
 from sm_pyplot.tight_figure import get_fig, get_axes
 
 from probe_xpr import TdiError, IOMdsAUG, IOFileAUG
+
+class DigitizerMEMPos(Digitizer):
+    def __init__(self, shn, sock=None):
+        Digitizer.__init__(self, shn, sock, name='MEM_POS')
+
+        self.IO_mds = IOMdsAUG(shn, sock, diag='LSM')
+        self.IO_file = IOFileAUG(shn, suffix='_MEM_POS')
+        self.nodes = ('S-posi', 't')
 
 
 class DigitizerMEM(Digitizer):

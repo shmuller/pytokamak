@@ -1223,8 +1223,8 @@ E.rep(29913, 29912, "Sweeps 17.0 Vpp",
 E.rep(29914, 29913, "Repeat for MEM conditioning, 3 plunges, sweeps 14.5 Vpp",
         times = (2.1, 3.1, 4.1),
         posit = (0.34, 0.34, 0.34),
-        descr = "",
-        stars = '')
+        descr = "Plasma died after first plunge.",
+        stars = '***')
 
 E.rep(29915, 29914, "No plunge, sweeps at 15.5 Vpp",
         times = (),
@@ -1313,19 +1313,59 @@ E.rep(29937, 29936, "Repeat, different arc box at 1.2 V",
 
 
 ############################################
-E = campaign.add_experiment(date="20130409")
+E = campaign.add_experiment(date="20130411")
 
-# Test
-E.add(29967, "Mach -200 V, single swept at 13.5 Vpp",
+# Steffen Potzel
+E.add(29998, "Mach swept at 12.5 Vpp, single floating",
         head = head_20130312,
         ampI1 = CurrentProbe1[20],
         ampI2 = CurrentProbe2[20],
         ampI3 = CurrentProbe3[20], 
         ampI4 = CurrentProbe4[50],
-        descr = "",
+        times = (1.6, 2.5, 3.5),
+        posit = (0.34, 0.34, 0.2),
+        descr = """\
+            Pretty good high density data. Insufficient positive sweep
+            voltage for low density in first plunge.""",
+        stars = '*****', **def_XPR_pos)
+
+
+############################################
+E = campaign.add_experiment(date="20130412")
+
+# Steffen Potzel
+E.add(30000, "Mach swept at 13.0 Vpp, single floating",
+        head = head_20130312,
+        ampI1 = CurrentProbe1[20],
+        ampI2 = CurrentProbe2[20],
+        ampI3 = CurrentProbe3[20], 
+        ampI4 = CurrentProbe4[20],
+        times = (2.2, 3.4),
+        posit = (0.34, 0.2),
+        descr = """\
+            Disrupted before first plunge.""",
         stars = '', **def_XPR_pos)
 
-E.rep(29970, 29967, "Single swept at 12.5 Vpp",
-        descr = "",
+E.rep(30002, 30000, "Repeat",
+        descr = """\
+            Arc box triggered too early due to wrong gain settings.
+            Current gain on I4 was set incorrectly to 20 mA/div.""",
         stars = '')
+
+# Stefan Muller
+E.rep(30017, 30002, "Mach at -200 V, single swept at 13.5 Vpp",
+        times = (2.55, 3.75),
+        posit = (0.34, 0.34),
+        descr = """\
+            2nd and 3rd L-H transitions triggered by ECRH, 50 ms before NBI.
+            """,
+        stars = '***')
+
+E.rep(30020, 30017, "Move NBI blips 200 ms later",
+        descr = """\
+            1st L-H transition with ECRH, 150 ms before NBI. Plasma went 
+            overdense in 2nd H-mode (gyrotron switched off) and fell back to
+            L-mode before NBI blip.""",
+        stars = '***')
+
 

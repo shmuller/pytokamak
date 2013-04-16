@@ -533,141 +533,6 @@ def PP_test():
     test_plot(PPE, w, ax=ax)
 
     return PP, PPE
-    
-
-class IOH5:
-    def __init__(self, h5name="test.h5"):
-        self.h5name = h5name
-
-    def save(self, d, compression="gzip"):
-        with H5.File(self.h5name, "w") as f:
-            for key, val in d.iteritems():
-                f.create_dataset(key, data=val, compression=compression)
-
-    def load(self, d=None):
-        with H5.File(self.h5name, "r") as f:
-            if d is None: 
-                d = dict()
-            for k in f:
-                d[k] = f[k].value
-        return d
-
-
-class IO:
-    def __init__(self):
-        pass
-
-    def get_size(self, node):
-        pass
-
-    def get_node(self, node):
-        pass
-
-    def put_node(self, node, val):
-        pass
-    
-    def load(self, nodes, more_nodes=()):
-        if isinstance(nodes, str):
-            nodes = (nodes,)
-        self.nodes = nodes
-        M = len(nodes) + len(more_nodes)
-        N = self.get_size(nodes[0])
-
-        dtype = [np.float32]*M
-        x = np.empty(N, zip(nodes + more_nodes, dtype))
-
-        for node in nodes:
-            x[node][:] = self.get_node(node)
-
-        return x
-
-    def save(self, x, nodes=None):
-        nodes = nodes or x.dtype.names
-        for node in nodes:
-            self.put_node(node, x[node])
-
-
-class IOFile(IO):
-    def __init__(self, shn=0, suffix="", subdir="", group=""):
-        self.shn, self.suffix, self.subdir, self.group = shn, suffix, subdir, group
-
-        self.basepath = os.environ['DATAPATH']
-        self.fullpath = os.path.join(self.basepath, self.subdir)
-        self.fname = str(self.shn) + self.suffix + '.h5'
-        
-        self.h5name = os.path.join(self.fullpath, self.fname)
-
-        IO.__init__(self)
-
-    def get_size(self, node):
-        return self._f[self.group + '/' + node].len()
-
-    def get_node(self, node):
-        return self._f[self.group + '/' + node].value
-
-    def put_node(self, node, val):
-        name = self.group + '/' + node
-        if name in self._f:
-            del self._f[name]
-        self._f.create_dataset(name, data=val, compression="gzip")
-
-    def load(self, *args):
-        with H5.File(self.h5name, "r") as self._f:
-            x = IO.load(self, *args)
-        return x
-
-    def save(self, *args):
-        with H5.File(self.h5name, "a") as self._f:
-            IO.save(self, *args)
-
-
-class TdiError(Exception):
-    pass
-
-class IOMds(IO):
-    def __init__(self, shn=0, sock=None):
-        self.shn = shn
-        self.mdsserver = "localhost"
-        self.mdsport = "8000"
-        self.mdstree = None
-        self.mdsfmt = "%s"
-        self.datadeco = "data(%s)"
-        self.timedeco = "dim_of(%s)"
-        self.sizedeco = "size(%s)"
-
-    @memoized_property
-    def sock(self):
-        s = mdsconnect(self.mdsserver + ':' + str(self.mdsport))
-        if self.mdstree is not None:
-            mdsopen(s, self.mdstree, self.shn)
-        return s
-
-    def _mdsstr(self, node):
-        mdsfmt = self.mdsfmt
-        if node == 't':
-            node = self.nodes[self.nodes.index('t')-1]
-            if node == 't':
-                raise TdiError("Need other node name to obtain 't'")
-            mdsfmt = self.timedeco % mdsfmt
-        else:
-            mdsfmt = self.datadeco % mdsfmt
-
-        return mdsfmt % node
-
-    def get_size(self, node):
-        return self.mdsvalue(self.sizedeco % self._mdsstr(node))
-
-    def get_node(self, node):
-        return self.mdsvalue(self._mdsstr(node))
-
-    def save(self, x):
-        raise NotImplementedError("Saving to MDS not implemented")
-
-    def mdsvalue(self, *args):
-        ret = mdsvalue(self.sock, *args)
-        if isinstance(ret, str) and ret.startswith("Tdi"):
-            raise TdiError(ret)
-        return ret
 
 
 class Amp:
@@ -1221,6 +1086,141 @@ class CurrentSignal(Signal):
         return self - self.I_capa
 
 
+class IOH5:
+    def __init__(self, h5name="test.h5"):
+        self.h5name = h5name
+
+    def save(self, d, compression="gzip"):
+        with H5.File(self.h5name, "w") as f:
+            for key, val in d.iteritems():
+                f.create_dataset(key, data=val, compression=compression)
+
+    def load(self, d=None):
+        with H5.File(self.h5name, "r") as f:
+            if d is None: 
+                d = dict()
+            for k in f:
+                d[k] = f[k].value
+        return d
+
+
+class IO:
+    def __init__(self):
+        pass
+
+    def get_size(self, node):
+        pass
+
+    def get_node(self, node):
+        pass
+
+    def put_node(self, node, val):
+        pass
+    
+    def load(self, nodes, more_nodes=()):
+        if isinstance(nodes, str):
+            nodes = (nodes,)
+        self.nodes = nodes
+        M = len(nodes) + len(more_nodes)
+        N = self.get_size(nodes[0])
+
+        dtype = [np.float32]*M
+        x = np.empty(N, zip(nodes + more_nodes, dtype))
+
+        for node in nodes:
+            x[node][:] = self.get_node(node)
+
+        return x
+
+    def save(self, x, nodes=None):
+        nodes = nodes or x.dtype.names
+        for node in nodes:
+            self.put_node(node, x[node])
+
+
+class IOFile(IO):
+    def __init__(self, shn=0, suffix="", subdir="", group=""):
+        self.shn, self.suffix, self.subdir, self.group = shn, suffix, subdir, group
+
+        self.basepath = os.environ['DATAPATH']
+        self.fullpath = os.path.join(self.basepath, self.subdir)
+        self.fname = str(self.shn) + self.suffix + '.h5'
+        
+        self.h5name = os.path.join(self.fullpath, self.fname)
+
+        IO.__init__(self)
+
+    def get_size(self, node):
+        return self._f[self.group + '/' + node].len()
+
+    def get_node(self, node):
+        return self._f[self.group + '/' + node].value
+
+    def put_node(self, node, val):
+        name = self.group + '/' + node
+        if name in self._f:
+            del self._f[name]
+        self._f.create_dataset(name, data=val, compression="gzip")
+
+    def load(self, *args):
+        with H5.File(self.h5name, "r") as self._f:
+            x = IO.load(self, *args)
+        return x
+
+    def save(self, *args):
+        with H5.File(self.h5name, "a") as self._f:
+            IO.save(self, *args)
+
+
+class TdiError(Exception):
+    pass
+
+class IOMds(IO):
+    def __init__(self, shn=0, sock=None):
+        self.shn = shn
+        self.mdsserver = "localhost"
+        self.mdsport = "8000"
+        self.mdstree = None
+        self.mdsfmt = "%s"
+        self.datadeco = "data(%s)"
+        self.timedeco = "dim_of(%s)"
+        self.sizedeco = "size(%s)"
+
+    @memoized_property
+    def sock(self):
+        s = mdsconnect(self.mdsserver + ':' + str(self.mdsport))
+        if self.mdstree is not None:
+            mdsopen(s, self.mdstree, self.shn)
+        return s
+
+    def _mdsstr(self, node):
+        mdsfmt = self.mdsfmt
+        if node == 't':
+            node = self.nodes[self.nodes.index('t')-1]
+            if node == 't':
+                raise TdiError("Need other node name to obtain 't'")
+            mdsfmt = self.timedeco % mdsfmt
+        else:
+            mdsfmt = self.datadeco % mdsfmt
+
+        return mdsfmt % node
+
+    def get_size(self, node):
+        return self.mdsvalue(self.sizedeco % self._mdsstr(node))
+
+    def get_node(self, node):
+        return self.mdsvalue(self._mdsstr(node))
+
+    def save(self, x):
+        raise NotImplementedError("Saving to MDS not implemented")
+
+    def mdsvalue(self, *args):
+        ret = mdsvalue(self.sock, *args)
+        if isinstance(ret, str) and ret.startswith("Tdi"):
+            raise TdiError(ret)
+        return ret
+
+
 class Digitizer:
     def __init__(self, shn=0, sock=None, name=""):
         self.shn, self.sock, self.name = shn, sock, name
@@ -1294,6 +1294,5 @@ class Digitizer:
             ax.plot(t, self.x[node])
         fig.canvas.draw()
         return fig
-
 
 
