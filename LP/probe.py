@@ -275,8 +275,8 @@ class Probe:
         self.calib()
         return self.S
 
-    def load_raw(self, loadfun='load', plunge=None, calib=True, corr_capa=False):
-        self.x = getattr(self.digitizer, loadfun)()
+    def load_raw(self, loadfun='load', plunge=None, calib=True, corr_capa=False, **kw):
+        self.x = getattr(self.digitizer, loadfun)(**kw)
 
         self.mapsig()
         if calib:

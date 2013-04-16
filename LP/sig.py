@@ -1108,26 +1108,26 @@ class IO:
     def __init__(self):
         pass
 
-    def get_size(self, node):
+    def get_size(self, node, **kw):
         pass
 
-    def get_node(self, node):
+    def get_node(self, node, **kw):
         pass
 
     def put_node(self, node, val):
         pass
     
-    def load(self, nodes, more_nodes=()):
+    def load(self, nodes, more_nodes=(), **kw):
         if isinstance(nodes, str):
             nodes = (nodes,)
         M = len(nodes) + len(more_nodes)
-        N = self.get_size(nodes[0])
+        N = self.get_size(nodes[0], **kw)
 
         dtype = [np.float32]*M
         x = np.empty(N, zip(nodes + more_nodes, dtype))
 
         for node in nodes:
-            x[node][:] = self.get_node(node)
+            x[node][:] = self.get_node(node, **kw)
 
         return x
 
@@ -1150,22 +1150,22 @@ class IOFile(IO):
 
     def ensure_open(mode):
         def ensure_open_mode(fun):
-            def open(self, *args):
+            def open(self, *args, **kw):
                 try:
-                    x = fun(self, *args)
+                    x = fun(self, *args, **kw)
                 except:
                     with H5.File(self.h5name, mode) as self._f:
-                        x = fun(self, *args)
+                        x = fun(self, *args, **kw)
                 return x
             return open
         return ensure_open_mode
 
     @ensure_open("r")
-    def get_size(self, node):
+    def get_size(self, node, **kw):
         return self._f[self.group + '/' + node].len()
 
     @ensure_open("r")
-    def get_node(self, node):
+    def get_node(self, node, **kw):
         return self._f[self.group + '/' + node].value
 
     @ensure_open("a")
@@ -1176,8 +1176,8 @@ class IOFile(IO):
         self._f.create_dataset(name, data=val, compression="gzip")
 
     @ensure_open("r")
-    def load(self, *args):
-        return IO.load(self, *args)
+    def load(self, *args, **kw):
+        return IO.load(self, *args, **kw)
 
     @ensure_open("w")
     def save(self, *args):
@@ -1193,6 +1193,7 @@ class IOMds(IO):
         self.mdsserver = "localhost"
         self.mdsport = "8000"
         self.mdstree = None
+        self.mdsplaceholder = "$"
         self.mdsfmt = "%s"
         self.datadeco = "data(%s)"
         self.timedeco = "dim_of(%s)"
@@ -1220,17 +1221,31 @@ class IOMds(IO):
 
         return mdsfmt % node
 
-    def get_size(self, node):
-        return self.mdsvalue(self.sizedeco % self._mdsstr(node))
+    def get_size(self, node, t0=None, t1=None):
+        return self.mdsvalue(self.sizedeco % self._mdsstr(node), t0, t1)
 
-    def get_node(self, node):
-        return self.mdsvalue(self._mdsstr(node))
+    def get_node(self, node, t0=None, t1=None):
+        return self.mdsvalue(self._mdsstr(node), t0, t1)
 
     def save(self, x):
         raise NotImplementedError("Saving to MDS not implemented")
 
-    def mdsvalue(self, *args):
-        ret = mdsvalue(self.sock, *args)
+    def _fix_none_args(self, mdsfmt, orig_args):
+        parts, args = [], []
+        for arg in orig_args:
+            head, sep, mdsfmt = mdsfmt.partition(self.mdsplaceholder)
+            if arg is None:
+                sep = '*'
+            else:
+                args += [arg]
+            parts += [head, sep]
+        mdsfmt = ''.join(parts + [mdsfmt])
+        return mdsfmt, args
+
+    def mdsvalue(self, mdsfmt, *args):
+        mdsfmt, args = self._fix_none_args(mdsfmt, args)
+
+        ret = mdsvalue(self.sock, mdsfmt, *args)
         if isinstance(ret, str) and ret.startswith("Tdi"):
             raise TdiError(ret)
         return ret
@@ -1254,33 +1269,33 @@ class Digitizer(IO):
     def __getitem__(self, indx):
         return self.x[indx]
 
-    def load_raw_mds(self):
-        self.x = self.IO_mds.load(self.nodes, self.more_nodes)
+    def load_raw_mds(self, **kw):
+        self.x = self.IO_mds.load(self.nodes, self.more_nodes, **kw)
         return self.x
         
-    def load_raw_file(self):
-        self.x = self.IO_file.load(self.nodes, self.more_nodes)
+    def load_raw_file(self, **kw):
+        self.x = self.IO_file.load(self.nodes, self.more_nodes, **kw)
         return self.x
 
-    def get_size(self, node):
+    def get_size(self, node, **kw):
         try:
-            return self.IO_file.get_size(node)
+            return self.IO_file.get_size(node, **kw)
         except (IOError, KeyError):
-            return self.IO_mds.get_size(node)
+            return self.IO_mds.get_size(node, **kw)
 
-    def get_node(self, node):
+    def get_node(self, node, **kw):
         try:
-            return self.IO_file.get_node(node)
+            return self.IO_file.get_node(node, **kw)
         except (IOError, KeyError):
-            val = self.IO_mds.get_node(node).astype(np.float32)
+            val = self.IO_mds.get_node(node, **kw).astype(np.float32)
             self.put_node(node, val)
             return val
 
     def put_node(self, node, val):
         return self.IO_file.put_node(node, val)
         
-    def load_raw(self):
-        self.x = IO.load(self, self.nodes, self.more_nodes)
+    def load_raw(self, **kw):
+        self.x = IO.load(self, self.nodes, self.more_nodes, **kw)
         return self.x
     
     def save(self):
@@ -1293,19 +1308,16 @@ class Digitizer(IO):
             except KeyError:
                 pass
 
-    def _load_calib(self, loadfun):
-        loadfun()
-        self.calib()
-        return self.x
+    def _load_calib_factory(name):
+        def load_calib(self, **kw):
+            getattr(self, name)(**kw)
+            self.calib()
+            return self.x
+        return load_calib
 
-    def load_mds(self):
-        return self._load_calib(self.load_raw_mds)
-
-    def load_file(self):
-        return self._load_calib(self.load_raw_file)
-
-    def load(self):
-        return self._load_calib(self.load_raw)
+    load_mds  = _load_calib_factory('load_raw_mds')
+    load_file = _load_calib_factory('load_raw_file')
+    load      = _load_calib_factory('load_raw')
 
     def calib_offset(self):
         self.load_raw()

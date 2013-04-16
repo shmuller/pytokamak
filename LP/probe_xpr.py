@@ -47,14 +47,15 @@ class IOMdsAUG(IOMds):
         else:
             self.mdsserver, self.mdsport = "mdsplus.aug.ipp.mpg.de", "8000"
 
+        self.mdsplaceholder = 'f_float($)'
+
+        fmtargs = '%d,"%s","%%s","AUGD",*,f_float($),f_float($)' % (self.shn, diag)
         if raw:
-            mdsfmt = '_s = augsignal(%d,"%s","%%s","AUGD",*,*,*,*,*,"raw")'
+            self.mdsfmt = '_s = augsignal(%s,*,*,"raw")' % fmtargs
             self.datadeco = '%s; word(data(_s))'
         else:
-            mdsfmt = '_s = augsignal(%d,"%s","%%s","AUGD")'
+            self.mdsfmt = '_s = augsignal(%s)' % fmtargs
             self.datadeco = '%s; data(_s)'
-
-        self.mdsfmt =  mdsfmt % (self.shn, diag)
 
         self.timedeco = '%s; dim_of(_s)'
         self.sizedeco = '%s; size(_s)'
@@ -106,8 +107,8 @@ class DigitizerXPRRawPos(DigitizerXPRRaw):
         self.more_nodes = ('Pos',)
 
     def _load_raw_factory(name):
-        def load_raw(self):
-            getattr(DigitizerXPRRaw, name)(self)
+        def load_raw(self, **kw):
+            getattr(DigitizerXPRRaw, name)(self, **kw)
 
             PosL = self.x['PosL'].astype(np.int16).view(np.uint16)
             PosH = self.x['PosH'].astype(np.int16).view(np.uint16) & 0b0011111111111111
@@ -165,14 +166,12 @@ class DigitizerLPSOld(DigitizerLPS):
             self.amp[node] = ampInv.copy()
 
     def _load_raw_factory(name):
-        def load_raw(self):
-            getattr(DigitizerLPS, name)(self)
-            getattr(self.dig_xpos, name)()
-
-            x = self.dig_xpos.x
+        def load_raw(self, **kw):
+            x = getattr(self.dig_xpos, name)()
             R = Signal(x['XPOS'].astype('d'), x['t'].astype('d'))
             R.despike()
 
+            getattr(DigitizerLPS, name)(self, **kw)
             self.x['XPOS'] = R(self.x['t'])
             return self.x
         return load_raw

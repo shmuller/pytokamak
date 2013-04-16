@@ -16,9 +16,9 @@ class DigitizerAUG(Digitizer):
         self.IO_file = IOFileAUG(shn, suffix='_AUG', group=name + '/' + diag)
         self.nodes = nodes + ('t',)
 
-    def load(self):
+    def load(self, **kw):
         try:
-            return Digitizer.load(self)
+            return Digitizer.load(self, **kw)
         except TdiError:
             return {node: np.zeros(1) for node in self.nodes}
 
