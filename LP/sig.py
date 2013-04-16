@@ -1120,7 +1120,6 @@ class IO:
     def load(self, nodes, more_nodes=()):
         if isinstance(nodes, str):
             nodes = (nodes,)
-        self.nodes = nodes
         M = len(nodes) + len(more_nodes)
         N = self.get_size(nodes[0])
 
@@ -1147,29 +1146,42 @@ class IOFile(IO):
         self.fname = str(self.shn) + self.suffix + '.h5'
         
         self.h5name = os.path.join(self.fullpath, self.fname)
-
         IO.__init__(self)
 
+    def ensure_open(mode):
+        def ensure_open_mode(fun):
+            def open(self, *args):
+                try:
+                    x = fun(self, *args)
+                except:
+                    with H5.File(self.h5name, mode) as self._f:
+                        x = fun(self, *args)
+                return x
+            return open
+        return ensure_open_mode
+
+    @ensure_open("r")
     def get_size(self, node):
         return self._f[self.group + '/' + node].len()
 
+    @ensure_open("r")
     def get_node(self, node):
         return self._f[self.group + '/' + node].value
 
+    @ensure_open("a")
     def put_node(self, node, val):
         name = self.group + '/' + node
         if name in self._f:
             del self._f[name]
         self._f.create_dataset(name, data=val, compression="gzip")
 
+    @ensure_open("r")
     def load(self, *args):
-        with H5.File(self.h5name, "r") as self._f:
-            x = IO.load(self, *args)
-        return x
+        return IO.load(self, *args)
 
+    @ensure_open("w")
     def save(self, *args):
-        with H5.File(self.h5name, "a") as self._f:
-            IO.save(self, *args)
+        IO.save(self, *args)
 
 
 class TdiError(Exception):
@@ -1185,6 +1197,8 @@ class IOMds(IO):
         self.datadeco = "data(%s)"
         self.timedeco = "dim_of(%s)"
         self.sizedeco = "size(%s)"
+        self.last_node = None
+        IO.__init__(self)
 
     @memoized_property
     def sock(self):
@@ -1196,11 +1210,12 @@ class IOMds(IO):
     def _mdsstr(self, node):
         mdsfmt = self.mdsfmt
         if node == 't':
-            node = self.nodes[self.nodes.index('t')-1]
-            if node == 't':
-                raise TdiError("Need other node name to obtain 't'")
+            node = self.last_node
+            if node is None:
+                raise TdiError("Need to load another node before 't'")
             mdsfmt = self.timedeco % mdsfmt
         else:
+            self.last_node = node
             mdsfmt = self.datadeco % mdsfmt
 
         return mdsfmt % node
@@ -1221,7 +1236,7 @@ class IOMds(IO):
         return ret
 
 
-class Digitizer:
+class Digitizer(IO):
     def __init__(self, shn=0, sock=None, name=""):
         self.shn, self.sock, self.name = shn, sock, name
 
@@ -1229,6 +1244,8 @@ class Digitizer:
         self.nodes = self.more_nodes = ()
         self.window = slice(None)
         self.amp = dict()
+
+        IO.__init__(self)
 
     @memoized_property
     def x(self):
@@ -1245,12 +1262,25 @@ class Digitizer:
         self.x = self.IO_file.load(self.nodes, self.more_nodes)
         return self.x
 
-    def load_raw(self):
+    def get_size(self, node):
         try:
-            self.load_raw_file()
+            return self.IO_file.get_size(node)
         except (IOError, KeyError):
-            self.load_raw_mds()
-            self.save()
+            return self.IO_mds.get_size(node)
+
+    def get_node(self, node):
+        try:
+            return self.IO_file.get_node(node)
+        except (IOError, KeyError):
+            val = self.IO_mds.get_node(node).astype(np.float32)
+            self.put_node(node, val)
+            return val
+
+    def put_node(self, node, val):
+        return self.IO_file.put_node(node, val)
+        
+    def load_raw(self):
+        self.x = IO.load(self, self.nodes, self.more_nodes)
         return self.x
     
     def save(self):

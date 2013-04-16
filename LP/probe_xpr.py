@@ -118,6 +118,7 @@ class DigitizerXPRRawPos(DigitizerXPRRaw):
             return self.x
         return load_raw
 
+    load_raw      = _load_raw_factory('load_raw')
     load_raw_mds  = _load_raw_factory('load_raw_mds')
     load_raw_file = _load_raw_factory('load_raw_file')
 
@@ -176,6 +177,7 @@ class DigitizerLPSOld(DigitizerLPS):
             return self.x
         return load_raw
 
+    load_raw      = _load_raw_factory('load_raw')
     load_raw_mds  = _load_raw_factory('load_raw_mds')
     load_raw_file = _load_raw_factory('load_raw_file')
 
