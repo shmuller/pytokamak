@@ -86,18 +86,6 @@ E.rep(18789, 18788, "",
 
 
 ############################################
-E = campaign.add_experiment(date="19990323")
-
-E.add(11816, "",
-        head = head,
-        times = 1.2,
-        posit = 0.13,
-        descr = """\
-             """,
-        stars = '**', **def_LPS_old)
-
-
-############################################
 E = campaign.add_experiment(date="20050330")
 
 E.add(19951, "Standard Ohmic, sweeps",
@@ -176,35 +164,43 @@ E.rep(20373, 20372, "Standard H-mode",
 
 
 ############################################
+E = campaign.add_experiment(date="20060316")
+
+E.add(21194, "Standard Ohmic",
+        times = 1.9,
+        posit = 0.31,
+        head = head_V2,
+        descr = """\
+            All tips swept. Very nice flow data from Mach -1 to Mach 1.
+            No arcs. (2007_Tsalas_PPCF)""",
+        stars = '*****', **def_LPS_old)
+
+
+############################################
 E = campaign.add_experiment(date="20060404")
 
-E.add(21256, "Maximos high density data", 
-        times = 3.5, 
-        posit = 0.31,
-        head = head,
-        descr = "Shot didn't run.",
-        stars = '', **def_LPS_old)
-
-E.rep(21258, 21256, "Plunge all the way thru",
+E.add(21258, "Maximos high density data",
         times = 3.4,
         posit = 0.31,
+        head = head_V2,
         descr = "Excellent profiles, low HFS density. (2007_Tsalas_PPCF)",
-        stars = '*****')
+        stars = '*****', **def_LPS_old)
 
 
 ############################################
 E = campaign.add_experiment(date="20060407")
 
-E.add(21288, "Standard Ohmic", 
-        times = 2.1, 
-        posit = 0.34,
+E.add(21288, "Standard Ohmic, Mach tips DC biased, single tip floating", 
+        times = 1.9, 
+        posit = 0.31,
         head = head,
-        descr = "",
-        stars = '*', **def_LPS_old)
+        descr = """\
+            Excellent fluctuation data. Compare with 21194 for swept profiles.""",
+        stars = '*****', **def_LPS_old)
 
 E.rep(21303, 21288, "Andrea's shot", 
-        times = 2.1, 
-        posit = 0.34,
+        times = 2.0, 
+        posit = 0.31,
         descr = "Very nice data. Mach numbers exactly 1 on HFS", 
         stars = '*****')
 
@@ -249,6 +245,20 @@ E.rep(21327, 21326, "No plunge",
         stars = '')
 
 
+############################################
+E = campaign.add_experiment(date="20060421")
+
+E.add(21380, "Standard Ohmic",
+        times = 3.6,
+        posit = 0.31,
+        head = head_V2,
+        LPS_mapping_ampI1='CUR2',
+        LPS_mapping_ampI2='CUR1',
+        descr = """\
+            Tip 1 and tip 3 reversed.
+            All tips swept. Very nice flow data from Mach -1 to Mach 1.
+            No arcs. (2007_Tsalas_PPCF)""",
+        stars = '*****', **def_LPS_old)
 
 
 

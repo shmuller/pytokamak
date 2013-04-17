@@ -356,7 +356,8 @@ E.rep(29404, 29403, "All the way thru",
         posit = 0.34,
         descr = """\
             Programming error led to probe not retracting, VPE at 6.02122 s.
-            Data appears to be H-mode, high density, ELMs. Rough.""",
+            Data appears to be H-mode, high density, ELMs. Rough. Automatic
+            plunge determination fails for this shot.""",
         stars = '***')
 
 E.rep(29405, 29404, "25 cm",
@@ -1367,5 +1368,9 @@ E.rep(30020, 30017, "Move NBI blips 200 ms later",
             overdense in 2nd H-mode (gyrotron switched off) and fell back to
             L-mode before NBI blip.""",
         stars = '***')
+
+
+# 2013/04/17: Tips were checked and found in similar (good) conditions as last time
+
 
 

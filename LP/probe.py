@@ -29,44 +29,46 @@ class PhysicalResults:
         self.shn, self.R, self.i, self.meas, self.usetex = shn, R, i, meas, usetex
 
         self.keys = ('n_cs', 'Mach', 'nv', 'mnv', 'j', 'Vf', 'Te', 'Vp', 
-                'cs', 'n', 'v', 'pe', 'R', 't', 'Dt')
+                'cs', 'n', 'v', 'pe', 'pe_tot', 'R', 't', 'Dt')
 
         def sup(x): return r'$^{\mathdefault{%s}}$' % x
         def sub(x): return r'$_{\mathdefault{%s}}$' % x
 
         self.units = dict(
-                n_cs = r'm%s s%s' % (sup('-2'), sup('-1')),
-                Mach = None,
-                nv   = r'm%s s%s' % (sup('-2'), sup('-1')),
-                mnv  = r'g m%s s%s' % (sup('-2'), sup('-1')),
-                j    = r'kA m%s' % sup('-2'),
-                Vf   = r'V',
-                Te   = r'eV',
-                Vp   = r'V',
-                cs   = r'km s%s' % sup('-1'),
-                n    = r'm%s' % sup('-3'),
-                v    = r'km s%s' % sup('-1'),
-                pe   = r'Pa',
-                R    = r'cm',
-                t    = r's',
-                Dt   = r'ms')
+                n_cs   = r'm%s s%s' % (sup('-2'), sup('-1')),
+                Mach   = None,
+                nv     = r'm%s s%s' % (sup('-2'), sup('-1')),
+                mnv    = r'g m%s s%s' % (sup('-2'), sup('-1')),
+                j      = r'kA m%s' % sup('-2'),
+                Vf     = r'V',
+                Te     = r'eV',
+                Vp     = r'V',
+                cs     = r'km s%s' % sup('-1'),
+                n      = r'm%s' % sup('-3'),
+                v      = r'km s%s' % sup('-1'),
+                pe     = r'Pa',
+                pe_tot = r'Pa',
+                R      = r'cm',
+                t      = r's',
+                Dt     = r'ms')
 
         self.texlabels = dict(
-                n_cs = math_sel.wrap(r'n c_s'),
-                Mach = r'Mach',
-                nv   = math_sel.wrap(r'nv'),
-                mnv  = math_sel.wrap(r'mnv'),
-                j    = math_sel.wrap(r'j'),
-                Vf   = math_sel.wrap(r'V_f'),
-                Te   = math_sel.wrap(r'T_e'),
-                Vp   = math_sel.wrap(r'V_p'),
-                cs   = math_sel.wrap(r'c_s'),
-                n    = math_sel.wrap(r'n'),
-                v    = math_sel.wrap(r'v'),
-                pe   = math_sel.wrap(r'p_e'),
-                R    = math_sel.wrap(r'R'),
-                t    = math_sel.wrap(r't'),
-                Dt   = math_sel.wrap(r'\Delta t'))
+                n_cs   = math_sel.wrap(r'n c_s'),
+                Mach   = r'Mach',
+                nv     = math_sel.wrap(r'nv'),
+                mnv    = math_sel.wrap(r'mnv'),
+                j      = math_sel.wrap(r'j'),
+                Vf     = math_sel.wrap(r'V_f'),
+                Te     = math_sel.wrap(r'T_e'),
+                Vp     = math_sel.wrap(r'V_p'),
+                cs     = math_sel.wrap(r'c_s'),
+                n      = math_sel.wrap(r'n'),
+                v      = math_sel.wrap(r'v'),
+                pe     = math_sel.wrap(r'p_e'),
+                pe_tot = math_sel.wrap(r'p_{e,tot}'),
+                R      = math_sel.wrap(r'R'),
+                t      = math_sel.wrap(r't'),
+                Dt     = math_sel.wrap(r'\Delta t'))
 
         self.fact = dict.fromkeys(self.keys, 1)
         self.fact['j'] = self.fact['cs'] = self.fact['v'] = 1e-3
@@ -108,9 +110,10 @@ class PhysicalResults:
 
         Ti = Te
         res.cs = cs = np.sqrt(qe/mi*(Te+Ti))
-        res.n  = n = n_cs/cs
-        res.v  = v = Mach*cs
-        res.pe = n*qe*Te
+        res.n  = n  = n_cs/cs
+        res.v  = v  = Mach*cs
+        res.pe = pe = n*qe*Te
+        res.pe_tot  = pe*(1. + Mach*Mach)
         return res 
 
     def _mask(self, w):
@@ -211,7 +214,7 @@ class PhysicalResults:
             label += " (out)"
 
         if keys is None:
-            keys = ('Dt', 'R'), ('n', 'Mach'), ('Vf', 'v'), ('Te', 'mnv'), ('Vp', 'pe')
+            keys = ('Dt', 'R'), ('n', 'Mach'), ('Vf', 'mnv'), ('Te', 'pe'), ('Vp', 'pe_tot')
         keys = np.array(keys, ndmin=2)
 
         fig = get_tfig(fig, keys.shape, xlab=xlab, figsize=figsize)

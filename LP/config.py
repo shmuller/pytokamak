@@ -2,6 +2,7 @@ import numpy as np
 
 import textwrap
 
+from pprint import pformat
 from collections import OrderedDict
 
 from sig import ensure_tuple, Container, PositionSignal, VoltageSignal, CurrentSignal
@@ -16,6 +17,13 @@ class Tip:
         self.V_keys = V_keys
         self.I_keys = I_keys
         self.name = name or 'tip%d' % self.number
+
+    def __repr__(self):
+        fmtstr = "%s {number}, '{name}', {pos}, connected to '{V_keys}' and '{I_keys}'"
+        return (fmtstr % self.__class__.__name__).format(**self.__dict__)
+
+    def __str__(self):
+        return self.__repr__() + ", with:\n%s" % pformat(self.__dict__)
 
 
 class CylindricalTip(Tip):
@@ -109,6 +117,12 @@ class Head:
         for tip in self.tips:
             if tip.pos == pos:
                 return tip.number
+
+    def __repr__(self):
+        return "%s with %d tips" % (self.__class__.__name__, len(self.tips))
+
+    def __str__(self):
+        return self.__repr__() + ":\n%s" % pformat(self.tips)
 
 
 def recursive_dictcopy(d):
