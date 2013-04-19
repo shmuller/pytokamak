@@ -214,7 +214,11 @@ class PhysicalResults:
             label += " (out)"
 
         if keys is None:
-            keys = ('Dt', 'R'), ('n', 'Mach'), ('Vf', 'mnv'), ('Te', 'pe'), ('Vp', 'pe_tot')
+            keys = (('Dt', 'R'     ), 
+                    ('n' , 'Mach'  ), 
+                    ('Vf', 'mnv'   ), 
+                    ('Te', 'pe'    ), 
+                    ('Vp', 'pe_tot'))
         keys = np.array(keys, ndmin=2)
 
         fig = get_tfig(fig, keys.shape, xlab=xlab, figsize=figsize)

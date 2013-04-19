@@ -35,8 +35,6 @@ class DigitizerMEMPos(DigitizerMEM):
 
         self.dig_lsm = DigitizerLSM(self.shn, self.sock)
 
-        self.more_nodes = ('S-posi',)
-
     def _load_raw_factory(name):
         def load_raw(self, **kw):
             x = getattr(self.dig_lsm, name)()
@@ -49,7 +47,7 @@ class DigitizerMEMPos(DigitizerMEM):
             kw.setdefault('t1', t1)
 
             getattr(DigitizerMEM, name)(self, **kw)
-            self.x['S-posi'] = R(self.x['t'])
+            self.x['S-posi'] = R(self.x['t']).astype(np.float32)
             return self.x
         return load_raw
 

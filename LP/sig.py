@@ -1117,22 +1117,14 @@ class IO:
     def put_node(self, node, val):
         pass
     
-    def load(self, nodes, more_nodes=(), **kw):
+    def load(self, nodes, **kw):
         if isinstance(nodes, str):
             nodes = (nodes,)
-        M = len(nodes) + len(more_nodes)
-        N = self.get_size(nodes[0], **kw)
-
-        dtype = [np.float32]*M
-        x = np.empty(N, zip(nodes + more_nodes, dtype))
-
-        for node in nodes:
-            x[node][:] = self.get_node(node, **kw)
-
-        return x
+        return {node: self.get_node(node, **kw) for node in nodes}
 
     def save(self, x, nodes=None):
-        nodes = nodes or x.dtype.names
+        if nodes is None:
+            nodes = x.keys()
         for node in nodes:
             self.put_node(node, x[node])
 
@@ -1256,7 +1248,7 @@ class Digitizer(IO):
         self.shn, self.sock, self.name = shn, sock, name
 
         self.IO_mds = self.IO_file = None
-        self.nodes = self.more_nodes = ()
+        self.nodes = ()
         self.window = slice(None)
         self.amp = dict()
 
@@ -1270,11 +1262,13 @@ class Digitizer(IO):
         return self.x[indx]
 
     def load_raw_mds(self, **kw):
-        self.x = self.IO_mds.load(self.nodes, self.more_nodes, **kw)
+        self.x = self.IO_mds.load(self.nodes, **kw)
+        for k in self.x.keys():
+            self.x[k] = self.x[k].astype(np.float32)
         return self.x
         
     def load_raw_file(self, **kw):
-        self.x = self.IO_file.load(self.nodes, self.more_nodes, **kw)
+        self.x = self.IO_file.load(self.nodes, **kw)
         return self.x
 
     def get_size(self, node, **kw):
@@ -1295,7 +1289,7 @@ class Digitizer(IO):
         return self.IO_file.put_node(node, val)
         
     def load_raw(self, **kw):
-        self.x = IO.load(self, self.nodes, self.more_nodes, **kw)
+        self.x = IO.load(self, self.nodes, **kw)
         return self.x
     
     def save(self):

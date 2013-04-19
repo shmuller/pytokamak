@@ -104,7 +104,6 @@ class DigitizerXPRRawPos(DigitizerXPRRaw):
     def __init__(self, shn, sock=None):
         DigitizerXPRRaw.__init__(self, shn, sock)
         self.nodes += ('PosL', 'PosH')
-        self.more_nodes = ('Pos',)
 
     def _load_raw_factory(name):
         def load_raw(self, **kw):
@@ -115,7 +114,7 @@ class DigitizerXPRRawPos(DigitizerXPRRaw):
         
             Pos  = np.c_[PosL, np.r_[PosH[0], PosH[:-1]]]
         
-            self.x['Pos'] = Pos.copy().view(np.uint32)[:,0]
+            self.x['Pos'] = Pos.copy().view(np.uint32)[:,0].astype(np.float32)
             return self.x
         return load_raw
 
@@ -160,8 +159,6 @@ class DigitizerLPSOld(DigitizerLPS):
 
         self.dig_xpos = DigitizerXPOS(self.shn, self.sock)
 
-        self.more_nodes = ('XPOS',)
-
         for node in ('CUR1', 'CUR2', 'VOL3'):
             self.amp[node] = ampInv.copy()
 
@@ -172,7 +169,7 @@ class DigitizerLPSOld(DigitizerLPS):
             R.despike()
 
             getattr(DigitizerLPS, name)(self, **kw)
-            self.x['XPOS'] = R(self.x['t'])
+            self.x['XPOS'] = R(self.x['t']).astype(np.float32)
             return self.x
         return load_raw
 
@@ -205,8 +202,8 @@ class ProbeXPR(Probe):
         Probe.__init__(self, digitizer)
 
     def mapsig(self):
-        
-        x = self.x[self.digitizer.window]
+        w = self.digitizer.window
+        x = {k: v[w] for k, v in self.x.iteritems()}
 
         self.S = self.config.mapsig(x, self.digitizer.name)
 
