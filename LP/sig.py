@@ -4,6 +4,8 @@ import os
 import h5py as H5
 #import hdf5_cffi as H5
 
+from pprint import pformat
+
 from pdb import set_trace
 
 import scipy.optimize as opt
@@ -581,19 +583,27 @@ class Amp:
         return Amp(self.fact, self.offs)
 
     def __repr__(self):
-        return "Amp instance (fact=%.3f, offs=%.3f)" % (self.fact, self.offs)
+        fmtstr = "%s (fact={fact:.3e}, offs={offs:.3e})"
+        return (fmtstr % self.__class__.__name__).format(**self.__dict__)
 
 
 class Signal:
     def __init__(self, x, t, **kw):
         self.x, self.t, self.kw = x, t, kw
-        
+        self.size = x.size
         self.number = kw.get('number', -1)
         self.name = kw.get('name', "")
         self.type = kw.get('type', None)
         self.units = kw.get('units', "")
         self.tunits = kw.get('tunits', "s")
-        
+    
+    def __repr__(self):
+        fmtstr = "%s {name} with {size} points"
+        return (fmtstr % self.__class__.__name__).format(**self.__dict__)
+
+    def __str__(self):
+        return self.__repr__() + ", with:\n%s" % pformat(self.__dict__)
+
     def __call__(self, t):
         return self.PP(t)
 
@@ -658,12 +668,11 @@ class Signal:
             np.multiply(self.x, other, self.x)
         return self
 
-    @memoized_property
-    def size(self):
-        return self.x.size
-
     def copy(self):
         return self.__array_wrap__(self.x.copy())
+
+    def astype(self, dtype):
+        return self.__array_wrap__(self.x.astype(dtype))
 
     def masked(self, mask):
         return self.__array_wrap__(ma.masked_array(self.x, mask))
@@ -674,6 +683,13 @@ class Signal:
         else:
             return self.__array_wrap__(self.x.data)
 
+    def normed(self):
+        return self.__array_wrap__(self.x / np.abs(self.range).max())
+
+    def normed_zero_one(self):
+        xm, xM = self.range
+        return self.__array_wrap__((self.x - xm) / (xM - xm))
+
     def standardized(self):
         return self.__array_wrap__((self.x - self.x.mean()) / self.x.std())
 
@@ -681,6 +697,7 @@ class Signal:
         self.x, self.t = self.x[s], self.t[s]
         return self
 
+    @memoized_property
     def range(self):
         return np.nanmin(self.x), np.nanmax(self.x)
 
@@ -807,11 +824,17 @@ class Signal:
 
     @memoized_property
     def xlab(self):
-        return "t (%s)" % self.tunits
+        xlab = "t"
+        if len(self.tunits) > 0:
+            xlab += " (%s)" % self.tunits
+        return xlab
 
     @memoized_property
     def ylab(self):
-        return "%s (%s)" % (self.name, self.units)
+        ylab = self.name
+        if len(self.units) > 0:
+            ylab += " (%s)" % self.units
+        return ylab
 
     def plot(self, ax=None, **kw):
         ax = get_axes(ax, xlab=self.xlab, ylab=self.ylab)
@@ -1244,8 +1267,9 @@ class IOMds(IO):
 
 
 class Digitizer(IO):
-    def __init__(self, shn=0, sock=None, name=""):
+    def __init__(self, shn=0, sock=None, name="", units='V', tunits='s'):
         self.shn, self.sock, self.name = shn, sock, name
+        self.units, self.tunits = units, tunits
 
         self.IO_mds = self.IO_file = None
         self.nodes = ()
@@ -1254,9 +1278,23 @@ class Digitizer(IO):
 
         IO.__init__(self)
 
+    def __repr__(self):
+        fmtstr = "%s {name} for shot {shn}"
+        return (fmtstr % self.__class__.__name__).format(**self.__dict__)
+
+    def __str__(self):
+        return self.__repr__() + ", with:\n%s" % pformat(self.__dict__)
+
     @memoized_property
     def x(self):
         return self.load()
+
+    @memoized_property
+    def S(self):
+        x = self.x
+        t = x['t']
+        return {k: Signal(v, t, name=k, units=self.units, tunits=self.tunits)
+                for k, v in x.iteritems() if k != 't'}
 
     def __getitem__(self, indx):
         return self.x[indx]
@@ -1318,17 +1356,16 @@ class Digitizer(IO):
         offs = [median(self.x[node]) for node in self.nodes]
         return offs
 
-    def plot(self, fig=None, nodes=None):
+    def plot(self, nodes=None, fig=None):
+        S = self.S
         if nodes is None:
-            nodes = list(self.nodes)
-            nodes.remove('t')
+            nodes = sorted(S.keys())
 
-        fig = get_fig(fig, (len(nodes), 1), xlab='t (s)', ylab=nodes)
-        
-        t = self.x['t']
+        fig = get_fig(fig, (len(nodes), 1), xlab=S[nodes[0]].xlab, ylab=nodes)
+
         for node, ax in zip(nodes, fig.axes):
-            ax.plot(t, self.x[node])
+            S[node].plot(ax)
         fig.canvas.draw()
         return fig
-
+        
 
