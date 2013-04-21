@@ -48,7 +48,7 @@ from mdsclient import *
 from mediansmooth import *
 from cookb_signalsmooth import smooth
 
-from collections import MutableMapping, Iterable, OrderedDict
+from collections import Mapping, MutableMapping, Iterable, OrderedDict
 
 def ensure_tuple(d, *keys):
     for k in keys:
@@ -294,6 +294,7 @@ class PiecewisePolynomial:
         return self.__class__(self.c[index], self.x, **self.kw)
 
     def __call__(self, X, **kw):
+        X = np.atleast_1d(X)
         ind, outl, outr = self._findind(X, **kw)
         Y = self._polyval(X, ind)
 
@@ -590,25 +591,28 @@ class Amp:
 class Signal:
     def __init__(self, x, t, **kw):
         self.x, self.t, self.kw = x, t, kw
-        self.size = x.size
+        self.size, self.shape = x.size, x.shape
         self.number = kw.get('number', -1)
         self.name = kw.get('name', "")
         self.type = kw.get('type', None)
         self.units = kw.get('units', "")
         self.tunits = kw.get('tunits', "s")
-    
+
     def __repr__(self):
-        fmtstr = "%s {name} with {size} points"
+        fmtstr = "%s {name} with shape {shape}"
         return (fmtstr % self.__class__.__name__).format(**self.__dict__)
 
     def __str__(self):
         return self.__repr__() + ", with:\n%s" % pformat(self.__dict__)
 
     def __call__(self, t):
-        return self.PP(t)
+        t = np.atleast_1d(t)
+        return self.__class__(self.PP(t), t, **self.kw)
 
-    def __getitem__(self, index):
-        return self.__class__(self.x[index], self.t[index], **self.kw)
+    def __getitem__(self, indx):
+        if not isinstance(indx, tuple):
+            indx = (indx,)
+        return self.__class__(self.x[indx], self.t[indx[0]], **self.kw)
 
     def __array__(self):
         return self.x
@@ -715,11 +719,15 @@ class Signal:
         return self
 
     @memoized_property
+    def bcast(self):
+        return (-1,) + (1,)*(len(self.shape) - 1)
+
+    @memoized_property
     def PP(self):
         x, t = self.x.astype('d'), self.t.astype('d')
         x0, x1 = x[:-1], x[1:]
         t0, t1 = t[:-1], t[1:]
-        dx_dt = (x1 - x0)/(t1 - t0)
+        dx_dt = (x1 - x0) / (t1 - t0).reshape(self.bcast)
         return PiecewisePolynomial((dx_dt, x0), t)
 
     def interp(self, ti):
@@ -839,7 +847,7 @@ class Signal:
     def plot(self, ax=None, **kw):
         ax = get_axes(ax, xlab=self.xlab, ylab=self.ylab)
         kw.setdefault('label', self.name)
-        ax.plot(self.t, self.x.T, **kw)
+        ax.plot(self.t, self.x, **kw)
         return ax
 
     @memoized_property
@@ -1143,7 +1151,7 @@ class IO:
     def load(self, nodes, **kw):
         if isinstance(nodes, str):
             nodes = (nodes,)
-        return {node: self.get_node(node, **kw) for node in nodes}
+        return OrderedDict([(k, self.get_node(k, **kw)) for k in nodes])
 
     def save(self, x, nodes=None):
         if nodes is None:
@@ -1266,10 +1274,10 @@ class IOMds(IO):
         return ret
 
 
-class Digitizer(IO):
-    def __init__(self, shn=0, sock=None, name="", units='V', tunits='s'):
+class Digitizer(IO, Mapping):
+    def __init__(self, shn=0, sock=None, name=""):
         self.shn, self.sock, self.name = shn, sock, name
-        self.units, self.tunits = units, tunits
+        self.tnode, self.tunits = 't', 's'
 
         self.IO_mds = self.IO_file = None
         self.nodes = ()
@@ -1289,15 +1297,21 @@ class Digitizer(IO):
     def x(self):
         return self.load()
 
-    @memoized_property
-    def S(self):
-        x = self.x
-        t = x['t']
-        return {k: Signal(v, t, name=k, units=self.units, tunits=self.tunits)
-                for k, v in x.iteritems() if k != 't'}
+    def assignal(self, *args, **kw):
+        return Signal(*args, tunits=self.tunits, **kw)
 
     def __getitem__(self, indx):
-        return self.x[indx]
+        return self.assignal(self.x[indx], self.x[self.tnode], name=indx)
+
+    def keys(self):
+        return [k for k in self.x.keys() if k != self.tnode]
+
+    def __len__(self):
+        return len(self.keys())
+
+    def __iter__(self):
+        for k in self.keys():
+            yield k
 
     def load_raw_mds(self, **kw):
         self.x = self.IO_mds.load(self.nodes, **kw)
@@ -1357,15 +1371,13 @@ class Digitizer(IO):
         return offs
 
     def plot(self, nodes=None, fig=None):
-        S = self.S
         if nodes is None:
-            nodes = sorted(S.keys())
+            nodes = self.keys()
 
-        fig = get_fig(fig, (len(nodes), 1), xlab=S[nodes[0]].xlab, ylab=nodes)
+        fig = get_fig(fig, (len(nodes), 1), xlab=self[nodes[0]].xlab, ylab=nodes)
 
         for node, ax in zip(nodes, fig.axes):
-            S[node].plot(ax)
+            self[node].plot(ax)
         fig.canvas.draw()
-        return fig
-        
+        return fig        
 

@@ -258,7 +258,6 @@ class PhysicalResults:
 class Probe:
     def __init__(self, digitizer=None):
         self.digitizer = digitizer
-        self.PP = None
 
         self.xlab = "t (s)"
         self.ylab = ("Isat (A)", "Vf (V)", "Te (eV)")

@@ -1,39 +1,95 @@
-from sm_pyplot.tight_figure import get_fig, show
+import numpy as np
 
-from mdsclient import *
+from LP.sig import memoized_property, Digitizer
+from LP.probe_xpr import IOMdsAUG, IOFileAUG
 
-shn = 30017
-diag = 'EQI'
-i = 20
-
-sock = mdsconnect('localhost:8001')
-
-mdsfmt = 'augsignal({shn}, "{diag}", "%s", "AUGD")'.format(shn=shn, diag=diag)
-
-t = mdsvalue(sock, mdsfmt % 'time')
-R = mdsvalue(sock, mdsfmt % 'Ri')[:t.shape[0]]
-z = mdsvalue(sock, mdsfmt % 'Zj')[:t.shape[0]]
-psi = mdsvalue(sock, mdsfmt % 'PFM')[:t.shape[0],:z.shape[1],:R.shape[1]]
+from sm_pyplot.tight_figure import get_axes, show
+from sm_pyplot.vtk_contour import VtkContour
 
 
-labi = ('Magn. axis', 'X-point', 'Inner limiter', '2nd X-point', 'Outer limiter')
-cati = mdsvalue(sock, mdsfmt % 'ikCAT')
-psii = mdsvalue(sock, mdsfmt % 'PFxx')
-Ri = mdsvalue(sock, mdsfmt % 'RPFx')
-zi = mdsvalue(sock, mdsfmt % 'zPFx')
+class DigitizerEQI(Digitizer):
+    def __init__(self, shn, sock=None):
+        Digitizer.__init__(self, shn, sock, name='EQI')
+        self.tnode, self.tunits = 'time', 's'
 
-mdsdisconnect(sock)
+        self.IO_mds = IOMdsAUG(shn, sock, diag='EQI')
+        self.IO_file = IOFileAUG(shn, suffix='_EQI')
+        self.nodes = ('time', 'Ri', 'Zj', 'PFM', 'ikCAT', 'RPFx', 'zPFx', 'PFxx')
 
-fig = get_fig()
-ax = fig.axes[0]
-ax.axis('equal')
+        self.mapspec = dict(magnaxis=0, xpoint=1, innerlim=2, xpoint2=3, outerlim=4)
 
-ax.contour(R[i], z[i], psi[i], 20)
-ax.plot(Ri[i], zi[i], '*')
+    def __getitem__(self, indx):
+        t = self.x['time']
+        x = self.x[indx][:t.shape[0]]
+        if indx == 'PFM':
+            x = x[:, :self.x['Zj'].shape[1], :self.x['Ri'].shape[1]]
+        return self.assignal(x, t, name=indx)
 
-ax.contour(R[i], z[i], psi[i], psii[i])
+    def get_R_z_psi(self):
+        return self['Ri'], self['Zj'], self['PFM']
 
-#fig.colorbar(ax._gci())
+    def get_R_z_psi_special(self, spec):
+        i = self.mapspec[spec]
+        return self['RPFx'][:,i], self['zPFx'][:,i], self['PFxx'][:,i]
 
-show()
+
+class FluxSurf:
+    def __init__(self, vtk_ctr):
+        self.vtk_ctr = vtk_ctr
+
+    def plot(self, ax=None):
+        ax = get_axes(ax)
+        self.vtk_ctr.plot(ax=ax)
+        return ax
+
+
+class EQI:
+    def __init__(self, shn):
+        self.digitizer = None
+
+    @memoized_property
+    def R_z_psi(self):
+        return self.digitizer.get_R_z_psi()
+
+    @memoized_property
+    def R(self):
+        return self.R_z_psi[0]
+
+    @memoized_property
+    def z(self):
+        return self.R_z_psi[1]
+
+    @memoized_property
+    def psi(self):
+        return self.R_z_psi[2]
+
+    @memoized_property
+    def psi_n(self):
+        psi0 = self.digitizer.get_R_z_psi_special('magnaxis')[2]
+        psi1 = self.digitizer.get_R_z_psi_special('xpoint')[2]
+        dpsi = psi1 - psi0
+        return (self.psi - psi0[:, None, None]) / dpsi[:, None, None]
+
+    def get_flux_surf(self, ti, Lvls=None):
+        x = self.R(ti).x[0].astype('d')
+        y = self.z(ti).x[0].astype('d')
+        z = np.zeros(1, 'd')
+        f = self.psi_n(ti).x[0].astype('d')
+        vtk_ctr = VtkContour(x, y, z, f, Lvls)
+        vtk_ctr.contour()
+        return FluxSurf(vtk_ctr)
+
+
+class EQIAUG(EQI):
+    def __init__(self, shn):
+        self.digitizer = DigitizerEQI(shn=shn)
+
+
+if __name__ == "__main__":
+    eqi = EQIAUG(shn=30017)
+    FS = eqi.get_flux_surf(3.45)
+    ax = FS.plot()
+    show()
+
+
 
