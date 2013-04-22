@@ -8,11 +8,11 @@ from sm_pyplot.vtk_contour import VtkContour
 
 
 class DigitizerEQI(Digitizer):
-    def __init__(self, shn, sock=None):
-        Digitizer.__init__(self, shn, sock, name='EQI')
+    def __init__(self, shn):
+        Digitizer.__init__(self, shn, name='EQI')
         self.tnode, self.tunits = 'time', 's'
 
-        self.IO_mds = IOMdsAUG(shn, sock, diag='EQI')
+        self.IO_mds = IOMdsAUG(shn, diag='EQI')
         self.IO_file = IOFileAUG(shn, suffix='_EQI')
         self.nodes = ('time', 'Ri', 'Zj', 'PFM', 'ikCAT', 'RPFx', 'zPFx', 'PFxx')
 

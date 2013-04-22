@@ -33,14 +33,11 @@ amp14Bit = Amp(fact=20./16383, offs=-10.)
 
 
 class IOMdsAUG(IOMds):
-    def __init__(self, *args, **kw):
+    def __init__(self, shn, diag='XPR', raw=False):
         # augsignal(_shot, _diag, _signame, _experiment, _edition, 
         #   _t1, _t2, _oshot, _oedition, _qual)
 
-        diag = kw.pop('diag', 'XPR')
-        raw  = kw.pop('raw', False)
-
-        IOMds.__init__(self, *args, **kw)
+        IOMds.__init__(self, shn)
         
         if os.uname()[1] == 'plaspc04':
             self.mdsserver, self.mdsport = "localhost", "8001"
@@ -68,10 +65,10 @@ class IOFileAUG(IOFile):
 
 
 class DigitizerXPR(Digitizer):
-    def __init__(self, shn, sock=None, raw=False):
-        Digitizer.__init__(self, shn, sock, name='XPR')
+    def __init__(self, shn, raw=False):
+        Digitizer.__init__(self, shn, name='XPR')
 
-        self.IO_mds = IOMdsAUG(shn, sock, diag='XPR', raw=raw)
+        self.IO_mds = IOMdsAUG(shn, diag='XPR', raw=raw)
         self.IO_file = IOFileAUG(shn, suffix='_XPR')
         self.nodes = ('S1', 'S2', 'S3', 'S4', 'S5', 'S6', 'S7', 'S8', 't')
 
@@ -94,15 +91,15 @@ class DigitizerXPR(Digitizer):
 
 
 class DigitizerXPRRaw(DigitizerXPR):
-    def __init__(self, shn, sock=None):
-        DigitizerXPR.__init__(self, shn, sock, raw=True)
+    def __init__(self, shn):
+        DigitizerXPR.__init__(self, shn, raw=True)
 
         self.amp = {node: amp14Bit.copy() for node in self.nodes[:-1]}
 
 
 class DigitizerXPRRawPos(DigitizerXPRRaw):
-    def __init__(self, shn, sock=None):
-        DigitizerXPRRaw.__init__(self, shn, sock)
+    def __init__(self, shn):
+        DigitizerXPRRaw.__init__(self, shn)
         self.nodes += ('PosL', 'PosH')
 
     def _load_raw_factory(name):
@@ -124,10 +121,10 @@ class DigitizerXPRRawPos(DigitizerXPRRaw):
 
 
 class DigitizerLPS(Digitizer):
-    def __init__(self, shn, sock=None, raw=False):
-        Digitizer.__init__(self, shn, sock, name='LPS')
+    def __init__(self, shn, raw=False):
+        Digitizer.__init__(self, shn, name='LPS')
 
-        self.IO_mds = IOMdsAUG(shn, sock, diag='LPS', raw=raw)
+        self.IO_mds = IOMdsAUG(shn, diag='LPS', raw=raw)
         self.IO_file = IOFileAUG(shn, suffix='_LPS')
         self.nodes = ('CUR1', 'VOL1', 'CUR2', 'VOL2', 'VOL3', 'VOL4', 't')
 
@@ -135,8 +132,8 @@ class DigitizerLPS(Digitizer):
 
 
 class DigitizerLPSRaw(DigitizerLPS):
-    def __init__(self, shn, sock=None):
-        DigitizerLPS.__init__(self, shn, sock, raw=True)
+    def __init__(self, shn):
+        DigitizerLPS.__init__(self, shn, raw=True)
 
         self.amp = {node: amp12Bit.copy() for node in self.nodes[:-1]}
 
@@ -145,19 +142,19 @@ class DigitizerLPSRaw(DigitizerLPS):
 
 
 class DigitizerXPOS(Digitizer):
-    def __init__(self, shn, sock=None):
-        Digitizer.__init__(self, shn, sock, name='XPOS')
+    def __init__(self, shn):
+        Digitizer.__init__(self, shn, name='XPOS')
 
-        self.IO_mds = IOMdsAUG(shn, sock, diag='LPS')
+        self.IO_mds = IOMdsAUG(shn, diag='LPS')
         self.IO_file = IOFileAUG(shn, suffix='_LPS_XPOS')
         self.nodes = ('XPOS', 't')
 
 
 class DigitizerLPSOld(DigitizerLPS):
-    def __init__(self, shn, sock=None):
-        DigitizerLPS.__init__(self, shn, sock)
+    def __init__(self, shn):
+        DigitizerLPS.__init__(self, shn)
 
-        self.dig_xpos = DigitizerXPOS(self.shn, self.sock)
+        self.dig_xpos = DigitizerXPOS(shn)
 
         for node in ('CUR1', 'CUR2', 'VOL3'):
             self.amp[node] = ampInv.copy()
@@ -169,7 +166,7 @@ class DigitizerLPSOld(DigitizerLPS):
             R.despike()
 
             getattr(DigitizerLPS, name)(self, **kw)
-            self.x['XPOS'] = R(self.x['t']).astype(np.float32)
+            self.x['XPOS'] = R(self.x['t']).x.astype(np.float32)
             return self.x
         return load_raw
 
@@ -190,7 +187,7 @@ DigitizerClasses = dict(
 
 
 class ProbeXPR(Probe):
-    def __init__(self, shn, sock=None, dig=None):
+    def __init__(self, shn, dig=None):
         
         reload(config)
         
@@ -198,7 +195,7 @@ class ProbeXPR(Probe):
         if dig is None:
             dig = self.config.dig
 
-        digitizer = DigitizerClasses[dig](shn, sock)
+        digitizer = DigitizerClasses[dig](shn)
         Probe.__init__(self, digitizer)
 
     def mapsig(self):

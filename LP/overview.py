@@ -9,10 +9,10 @@ from probe_xpr import TdiError, IOMdsAUG, IOFileAUG, ProbeXPR, ShotNotFoundError
 
 
 class DigitizerAUG(Digitizer):
-    def __init__(self, shn, diag, nodes, sock=None, name=""):
-        Digitizer.__init__(self, shn, sock, name=name)
+    def __init__(self, shn, diag, nodes, name=""):
+        Digitizer.__init__(self, shn, name=name)
 
-        self.IO_mds = IOMdsAUG(shn, sock, diag=diag, raw=False)
+        self.IO_mds = IOMdsAUG(shn, diag=diag, raw=False)
         self.IO_file = IOFileAUG(shn, suffix='_AUG', group=name + '/' + diag)
         self.nodes = nodes + ('t',)
 
@@ -57,17 +57,18 @@ class AUGOverview:
         ax = get_axes(ax)
         ax.set_ylabel('Power (MW)')
         
-        Signal(1e-6*S['pech']['PECRH'], S['pech']['t'], name="ECRH").plot(ax)
-        Signal(1e-6*S['pnbi']['PNI'], S['pnbi']['t'], name="NBI").plot(ax)
-        Signal(1e-5*S['wmhd']['Wmhd'], S['wmhd']['t'], name="WMHD (x10)").plot(ax)
+        (S['pech']['PECRH']*1e-6).plot(ax, label="ECRH")
+        (S['pnbi']['PNI']*1e-6).plot(ax, label="NBI")
+        (S['wmhd']['Wmhd']*1e-5).plot(ax, label="WMHD (x10)")
         ax.legend()
         return ax
 
     def plot_rad(self, ax):
-        S = self.S
-        t = S['prad']['t']
-        mask = t > 6.
-        Signal(1e-6*S['prad']['Pradtot'], t, name="Pradtot").masked(mask).plot(ax)
+        ax = get_axes(ax)
+        ax.set_ylabel('Power (MW)')
+
+        S = self.S['prad']['Pradtot']*1e-6
+        S.masked(S.t > 6.).plot(ax)
         ax.legend()
         return ax
 
@@ -80,9 +81,8 @@ class AUGOverview:
         ax = get_axes(ax)
         ax.set_ylabel('n (10$^{\mathdefault{19}}$ m$^{\mathdefault{-3}}$)')
         
-        t = S['t']
         for c in chn:
-            Signal(1e-19*S[c], t, name=c).masked(S[c] < 0).plot(ax)
+            (S[c]*1e-19).masked(S[c] < 0).plot(ax)
         ax.legend()
         return ax
 
@@ -91,9 +91,8 @@ class AUGOverview:
         ax = get_axes(ax)
         ax.set_ylabel('n (10$^{\mathdefault{19}}$ m$^{\mathdefault{-3}}$)')
         
-        t = S['t']
         for c in chn:
-            Signal(1e-19*S[c], t, name=c).masked(S[c] < 0).plot(ax)
+            (S[c]*1e-19).masked(S[c] < 0).plot(ax)
         ax.legend()
         return ax
 
@@ -108,15 +107,14 @@ class AUGOverview:
             XPR = self.XPR
         except AttributeError:
             return ax
-                
-        t = XPR['tip1'].t
-        I1, I2, I3 = XPR['tip1'].x, XPR['tip2'].x, XPR['tip3'].x
+        
+        I1, I2, I3 = XPR['tip1'], XPR['tip2'], XPR['tip3']
 
         if not no_Mach:
-            ax.plot(t, I1, label='Mach tip 1')
-            ax.plot(t, I2, label='Mach tip 2')
+            I1.plot(ax, label='Mach tip 1')
+            I2.plot(ax, label='Mach tip 2')
         if not no_single:
-            ax.plot(t, I3, label='Single tip')
+            I3.plot(ax, label='Single tip')
         ax.legend()
         return ax
 
@@ -135,14 +133,13 @@ class AUGOverview:
         except AttributeError:
             return ax
 
-        t = XPR['tip1'].t
-        V1, V2, V3 = XPR['tip1'].V.x, XPR['tip2'].V.x, XPR['tip3'].V.x
+        V1, V2, V3 = XPR['tip1'].V, XPR['tip2'].V, XPR['tip3'].V
 
         if not no_Mach:
-            ax.plot(t, V1, label='Mach tip 1')
-            ax.plot(t, V2, label='Mach tip 2')
+            V1.plot(ax, label='Mach tip 1')
+            V2.plot(ax, label='Mach tip 2')
         if not no_single:
-            ax.plot(t, V3, label='Single tip')
+            V3.plot(ax, label='Single tip')
         ax.legend()
         return ax
 
@@ -161,7 +158,7 @@ class AUGOverview:
         except AttributeError:
             return ax
 
-        ax.plot(XPR['R'].t, 100*XPR['R'].x)
+        (XPR['R']*100).plot(ax)
         return ax
 
     def plot_Ipolsol(self, ax):
@@ -169,20 +166,18 @@ class AUGOverview:
         ax = get_axes(ax)
         ax.set_ylabel('Div. cur. (kA)')
 
-        t = S['t']
-        m = t > 6.
-        Signal(1e-3*S['Ipolsola'], t, name='Outer').masked(m).plot(ax)
-        Signal(1e-3*S['Ipolsoli'], t, name='Inner').masked(m).plot(ax)
+        Sa, Si = S['Ipolsola']*1e-3, S['Ipolsoli']*1e-3
+        Sa.masked(Sa.t > 6.).plot(ax, label='Outer')
+        Si.masked(Si.t > 6.).plot(ax, label='Inner')
         ax.legend()
         return ax
 
     def plot_Tdiv(self, ax):
-        S = self.S['tdiv']
+        S = self.S['tdiv']['Tdiv']
         ax = get_axes(ax)
         ax.set_ylabel('Temp (eV)')
 
-        t = S['t']
-        Signal(S['Tdiv'], t, name='Tdiv').plot(ax)
+        S.plot(ax)
         ax.legend()
         return ax
 
@@ -191,21 +186,18 @@ class AUGOverview:
         ax = get_axes(ax)
         ax.set_ylabel('Photons (au)')
 
-        t = S['t']
-        m = t > 6.
-        Signal(S['ELMa-Han'], t, name='Da outer').masked(m).plot(ax)
-        Signal(S['ELMi-Han'], t, name='Da inner').masked(m).plot(ax)
+        Sa, Si = S['ELMa-Han'], S['ELMi-Han']
+        Sa.masked(Sa.t > 6.).plot(ax, label='Da outer')
+        Si.masked(Si.t > 6.).plot(ax, label='Da inner')
         ax.legend()
         return ax
 
     def plot_gas(self, ax):
-        S = self.S
+        S = self.S['gasv']['D_tot']*1e-21
         ax = get_axes(ax)
         ax.set_ylabel('Gas (10$^{\mathdefault{21}}$ el s$^{\mathdefault{-1}}$)')
 
-        t = S['gasv']['t']
-        m = (t < 0.5) | (t > 6.)
-        Signal(1e-21*S['gasv']['D_tot'], t, name='D total').masked(m).plot(ax)
+        S.masked((S.t < 0.5) | (S.t > 6.)).plot(ax, label='D total')
         ax.legend()
         return ax
 

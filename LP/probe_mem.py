@@ -8,19 +8,19 @@ from sm_pyplot.tight_figure import get_fig, get_axes
 from probe_xpr import TdiError, IOMdsAUG, IOFileAUG
 
 class DigitizerLSM(Digitizer):
-    def __init__(self, shn, sock=None):
-        Digitizer.__init__(self, shn, sock, name='LSM')
+    def __init__(self, shn):
+        Digitizer.__init__(self, shn, name='LSM')
 
-        self.IO_mds = IOMdsAUG(shn, sock, diag='LSM')
+        self.IO_mds = IOMdsAUG(shn, diag='LSM')
         self.IO_file = IOFileAUG(shn, suffix='_MEM_POS')
         self.nodes = ('S-posi', 't')
 
 
 class DigitizerMEM(Digitizer):
-    def __init__(self, shn, sock=None, raw=False):
-        Digitizer.__init__(self, shn, sock, name='MHC')
+    def __init__(self, shn, raw=False):
+        Digitizer.__init__(self, shn, name='MHC')
 
-        self.IO_mds = IOMdsAUG(shn, sock, diag='MHC', raw=raw)
+        self.IO_mds = IOMdsAUG(shn, diag='MHC', raw=raw)
         self.IO_file = IOFileAUG(shn, suffix='_MEM')
         
         self.nodes = ('Isat_m05', 'Isat_m10', 't')
@@ -30,10 +30,10 @@ class DigitizerMEM(Digitizer):
 
 
 class DigitizerMEMPos(DigitizerMEM):
-    def __init__(self, shn, sock=None, raw=False):
-        DigitizerMEM.__init__(self, shn, sock)
+    def __init__(self, shn, raw=False):
+        DigitizerMEM.__init__(self, shn)
 
-        self.dig_lsm = DigitizerLSM(self.shn, self.sock)
+        self.dig_lsm = DigitizerLSM(shn)
 
     def _load_raw_factory(name):
         def load_raw(self, **kw):
@@ -47,7 +47,7 @@ class DigitizerMEMPos(DigitizerMEM):
             kw.setdefault('t1', t1)
 
             getattr(DigitizerMEM, name)(self, **kw)
-            self.x['S-posi'] = R(self.x['t']).astype(np.float32)
+            self.x['S-posi'] = R(self.x['t']).x.astype(np.float32)
             return self.x
         return load_raw
 
@@ -61,10 +61,10 @@ class DigitizerMEMPos(DigitizerMEM):
 
 
 class DigitizerMEMCombi(Digitizer):
-    def __init__(self, shn, sock=None, raw=False):
-        Digitizer.__init__(self, shn, sock, name='MHC')
+    def __init__(self, shn, raw=False):
+        Digitizer.__init__(self, shn, name='MHC')
 
-        self.IO_mds = IOMdsAUG(shn, sock, diag='MHC', raw=raw)
+        self.IO_mds = IOMdsAUG(shn, diag='MHC', raw=raw)
         self.IO_file = IOFileAUG(shn, suffix='_MEM_combi')
         self.nodes = ('Usat_m05', 'Isat_m05', 'Usat_m10', 'Isat_m10', 
                       'Ufl_m02', 'Ufl_m04', 'U_m03', 'I_m03', 't')

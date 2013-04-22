@@ -1161,7 +1161,7 @@ class IO:
 
 
 class IOFile(IO):
-    def __init__(self, shn=0, suffix="", subdir="", group=""):
+    def __init__(self, shn, suffix="", subdir="", group=""):
         self.shn, self.suffix, self.subdir, self.group = shn, suffix, subdir, group
 
         self.basepath = os.environ['DATAPATH']
@@ -1208,10 +1208,15 @@ class IOFile(IO):
 
 
 class TdiError(Exception):
-    pass
+    def __init__(self, err, mdsfmt, args):
+        self.err, self.mdsfmt, self.args = err, mdsfmt, args
+
+    def __str__(self):
+        return self.err + '\nmdsfmt:\n' + self.mdsfmt + '\nargs:\n' + pformat(self.args)
+
 
 class IOMds(IO):
-    def __init__(self, shn=0, sock=None):
+    def __init__(self, shn):
         self.shn = shn
         self.mdsserver = "localhost"
         self.mdsport = "8000"
@@ -1236,7 +1241,7 @@ class IOMds(IO):
         if node == 't':
             node = self.last_node
             if node is None:
-                raise TdiError("Need to load another node before 't'")
+                raise RuntimeError("Need to load another node before 't'")
             mdsfmt = self.timedeco % mdsfmt
         else:
             self.last_node = node
@@ -1253,30 +1258,39 @@ class IOMds(IO):
     def save(self, x):
         raise NotImplementedError("Saving to MDS not implemented")
 
-    def _fix_none_args(self, mdsfmt, orig_args):
+    def _fix_args(self, mdsfmt, orig_args):
+        """
+        Replace mdsvalue placeholder (typically '$') by '*' for each argument
+        that is None. Arguments than exceed the number of placeholders are ignored.
+        """
         parts, args = [], []
         for arg in orig_args:
             head, sep, mdsfmt = mdsfmt.partition(self.mdsplaceholder)
+            parts.append(head)
+            if len(sep) == 0:
+                break
             if arg is None:
                 sep = '*'
             else:
-                args += [arg]
-            parts += [head, sep]
-        mdsfmt = ''.join(parts + [mdsfmt])
+                args.append(arg)
+            parts.append(sep)
+
+        parts.append(mdsfmt)
+        mdsfmt = ''.join(parts)
         return mdsfmt, args
 
     def mdsvalue(self, mdsfmt, *args):
-        mdsfmt, args = self._fix_none_args(mdsfmt, args)
+        mdsfmt, args = self._fix_args(mdsfmt, args)
 
         ret = mdsvalue(self.sock, mdsfmt, *args)
-        if isinstance(ret, str) and ret.startswith("Tdi"):
-            raise TdiError(ret)
+        if isinstance(ret, str) and (ret.startswith("Tdi") or ret.startswith('%')):
+            raise TdiError(ret, mdsfmt, args)
         return ret
 
 
 class Digitizer(IO, Mapping):
-    def __init__(self, shn=0, sock=None, name=""):
-        self.shn, self.sock, self.name = shn, sock, name
+    def __init__(self, shn=0, name=""):
+        self.shn, self.name = shn, name
         self.tnode, self.tunits = 't', 's'
 
         self.IO_mds = self.IO_file = None
