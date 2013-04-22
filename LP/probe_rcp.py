@@ -24,7 +24,7 @@ amp14Bit = Amp(fact=20./16383, offs=-10.)
 
 class IOMdsD3D(IOMds):
     def __init__(self, *args, **kw):
-        diag = kw.pop('diag', 'RCP')
+        diag = kw.pop('diag', '')
         suffix = kw.pop('suffix', '')
 
         IOMds.__init__(self, *args, **kw)
@@ -33,7 +33,7 @@ class IOMdsD3D(IOMds):
         self.mdsfmt = '\%s' + suffix
 
 class IOFileD3D(IOFile):
-    def __init__(self, shn, diag='RPC', suffix=''):
+    def __init__(self, shn, diag='', suffix=''):
         IOFile.__init__(self, shn=shn, suffix='_' + diag + suffix, subdir="D3D")
 
 
