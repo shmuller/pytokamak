@@ -34,7 +34,7 @@ class DigitizerEQIAUG(DigitizerEQI):
     def __init__(self, shn):
         DigitizerEQI.__init__(self, shn)
         self.IO_mds = IOMdsAUG(shn, diag='EQI')
-        self.IO_file = IOFileAUG(shn, suffix='_EQI')
+        self.IO_file = IOFileAUG(shn, suffix='_AUG', group='EQI')
 
 
 class DigitizerEFIT(Digitizer):
@@ -60,7 +60,7 @@ class DigitizerEFITD3D(DigitizerEFIT):
     def __init__(self, shn):
         DigitizerEFIT.__init__(self, shn)
         self.IO_mds = IOMdsD3D(shn, diag='EFIT01')
-        self.IO_file = IOFileD3D(shn, diag='EFIT01')
+        self.IO_file = IOFileD3D(shn, suffix='_D3D', group='EFIT01')
 
 
 class FluxSurf:

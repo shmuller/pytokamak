@@ -33,17 +33,17 @@ class IOMdsD3D(IOMds):
         self.mdsfmt = '\%s' + suffix
 
 class IOFileD3D(IOFile):
-    def __init__(self, shn, diag='', suffix=''):
-        IOFile.__init__(self, shn=shn, suffix='_' + diag + suffix, subdir="D3D")
+    def __init__(self, *args, **kw):
+        kw.setdefault('subdir', "D3D")
+        IOFile.__init__(self, *args, **kw)
 
 
 class DigitizerRCP(Digitizer):
     def __init__(self, shn, plunge=1):
         Digitizer.__init__(self, shn, name='RCP')
 
-        suffix = '_%d' % plunge
-        self.IO_mds = IOMdsD3D(shn, diag='RCP', suffix=suffix)
-        self.IO_file = IOFileD3D(shn, diag='RCP', suffix=suffix)
+        self.IO_mds = IOMdsD3D(shn, diag='RCP', suffix="_%d" % plunge)
+        self.IO_file = IOFileD3D(shn, suffix="_RCP", group='plunge_%d' % plunge)
 
         self.nodes = ('FPCALPOS', 'ISATV', 'ISATM1', 'ISATM2', 
             'VF1', 'VF2', 'TE1V', 'TE2I', 't')
