@@ -1,63 +1,20 @@
-import copy
-import os
 import numpy as np
 
 import scipy.interpolate as interp
 
-if __name__ == "__main__":
-    import matplotlib
-    #matplotlib.use('TkAgg')
-    matplotlib.use('Qt4Agg')
-    import matplotlib.pyplot as plt
-
-import probe
-reload(probe)
-
 import config_xpr as config
-
-TdiError = probe.TdiError
-IOMds = probe.IOMds
-IOFile = probe.IOFile
-Signal = probe.Signal
-Digitizer = probe.Digitizer
-Amp = probe.Amp
-Probe = probe.Probe
-PhysicalResults = probe.PhysicalResults
-
 ShotNotFoundError = config.ShotNotFoundError
+
+from tokamak.digitizer import Digitizer
+from tokamak.digitizer_aug import IOMdsAUG, IOFileAUG
+
+from sig import Amp, Signal
+from probe import Probe, PhysicalResults
 
 ampUnity = Amp(fact=1., offs=0.)
 ampInv   = Amp(fact=-1., offs=0.)
 amp12Bit = Amp(fact=10./4095, offs=-5.)
 amp14Bit = Amp(fact=20./16383, offs=-10.)
-
-
-class IOMdsAUG(IOMds):
-    def __init__(self, shn, diag='XPR', raw=False):
-        # augdiag(_shot, _diag, _signame, _experiment, _edition, 
-        #   _t1, _t2, _oshot, _oedition, _qual)
-
-        IOMds.__init__(self, shn)
-        
-        if os.uname()[1] == 'plaspc04':
-            self.mdsserver, self.mdsport = "localhost", "8001"
-        else:
-            self.mdsserver, self.mdsport = "mdsplus.aug.ipp.mpg.de", "8000"
-
-        self.mdsplaceholder = 'f_float($)'
-
-        fmtargs = '%d,"%s","%%s","AUGD",*,f_float($),f_float($)' % (self.shn, diag)
-        if raw:
-            self.mdsfmt = 'augdiag(%s,*,*,"raw")' % fmtargs
-            self.datadeco = 'word(data(%s))'
-        else:
-            self.mdsfmt = 'augdiag(%s)' % fmtargs
-
-
-class IOFileAUG(IOFile):
-    def __init__(self, *args, **kw):
-        kw.setdefault('subdir', "AUG")
-        IOFile.__init__(self, *args, **kw)
 
 
 class DigitizerXPR(Digitizer):
@@ -267,6 +224,8 @@ def get_dwell_params():
 
 
 if __name__ == "__main__":
+    import matplotlib.pyplot as plt
+
     shn = 29859
 
     XPR = ProbeXPR(shn=shn)

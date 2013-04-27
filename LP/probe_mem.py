@@ -1,11 +1,9 @@
 import numpy as np
-import numpy.ma as ma
 
-from sig import memoized_property, Digitizer, PositionSignal
+from sig import PositionSignal
 
-from sm_pyplot.tight_figure import get_fig, get_axes
-
-from probe_xpr import TdiError, IOMdsAUG, IOFileAUG
+from tokamak.digitizer import Digitizer
+from tokamak.digitizer_aug import IOMdsAUG, IOFileAUG
 
 class DigitizerLSM(Digitizer):
     def __init__(self, shn):

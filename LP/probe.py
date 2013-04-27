@@ -1,8 +1,5 @@
 import numpy as np
-
-import scipy.interpolate as interp
-
-import warnings
+import numpy.ma as ma
 
 import logging
 reload(logging)
@@ -11,17 +8,15 @@ logger = logging
 
 from pdb import set_trace
 
-from sm_pyplot.contextmenupicker import ContextMenuPicker
-from sm_pyplot.observer_viewer import ToggleViewer, ToggleViewerIntegrated
-
-from sig import *
-
 import fitter_IV
 reload(fitter_IV)
 
 FitterIV = fitter_IV.FitterIV
-FitterError = fitter_IV.FitterError
 IVContainer = fitter_IV.IVContainer
+
+from sm_pyplot.tight_figure import get_fig, get_tfig, get_axes
+
+from sig import memoized_property, DictView, math_sel, usetex
 
 
 class PhysicalResults:

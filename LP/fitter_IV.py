@@ -3,7 +3,7 @@ import numpy.ma as ma
 
 from itertools import cycle
 
-from sig import median, memoized_property, get_fig, get_tfig
+from sig import memoized_property, median
 from sig import DictView, GeneratorDict, Container, \
         CurrentSignal, PiecewisePolynomialEndpoints
 
@@ -14,8 +14,9 @@ import fitfun as ff
 #import fitfun_cython as ff
 #import fitfun_cffi as ff
 
-import mag_fit
+from LP import mag_fit
 
+from sm_pyplot.tight_figure import get_tfig
 from sm_pyplot.contextmenupicker import ContextMenuPicker
 from sm_pyplot.observer_viewer import ToggleViewer, ToggleViewerIntegrated
 
