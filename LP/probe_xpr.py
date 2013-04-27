@@ -5,8 +5,7 @@ import scipy.interpolate as interp
 import config_xpr as config
 ShotNotFoundError = config.ShotNotFoundError
 
-from tokamak.digitizer import Digitizer
-from tokamak.digitizer_aug import IOMdsAUG, IOFileAUG
+from tokamak.digitizer_aug import DigitizerAUG
 
 from sig import Amp, Signal
 from probe import Probe, PhysicalResults
@@ -17,13 +16,10 @@ amp12Bit = Amp(fact=10./4095, offs=-5.)
 amp14Bit = Amp(fact=20./16383, offs=-10.)
 
 
-class DigitizerXPR(Digitizer):
-    def __init__(self, shn, raw=False):
-        Digitizer.__init__(self, shn, name='XPR')
-
-        self.IO_mds = IOMdsAUG(shn, diag='XPR', raw=raw)
-        self.IO_file = IOFileAUG(shn, suffix='_XPR')
-        self.nodes = ('S1', 'S2', 'S3', 'S4', 'S5', 'S6', 'S7', 'S8', 't')
+class DigitizerXPR(DigitizerAUG):
+    def __init__(self, shn, raw=False, **kw):
+        DigitizerAUG.__init__(self, shn, diag='XPR', suffix='_XPR', group='', raw=raw,
+            nodes=('S1', 'S2', 'S3', 'S4', 'S5', 'S6', 'S7', 'S8'), **kw)
 
     def update_window(self):
         """Detect failing data readout and cut window
@@ -40,7 +36,7 @@ class DigitizerXPR(Digitizer):
         
     def calib(self):
         self.update_window()
-        Digitizer.calib(self)
+        DigitizerAUG.calib(self)
 
 
 class DigitizerXPRRaw(DigitizerXPR):
@@ -55,31 +51,19 @@ class DigitizerXPRRawPos(DigitizerXPRRaw):
         DigitizerXPRRaw.__init__(self, shn)
         self.nodes += ('PosL', 'PosH')
 
-    def _load_raw_factory(name):
-        def load_raw(self, **kw):
-            getattr(DigitizerXPRRaw, name)(self, **kw)
+    def calib(self):
+        DigitizerXPRRaw.calib(self)
+        PosL = self.x['PosL'].astype(np.int16).view(np.uint16)
+        PosH = self.x['PosH'].astype(np.int16).view(np.uint16) & 0b0011111111111111
+        Pos  = np.c_[PosL, np.r_[PosH[0], PosH[:-1]]]
 
-            PosL = self.x['PosL'].astype(np.int16).view(np.uint16)
-            PosH = self.x['PosH'].astype(np.int16).view(np.uint16) & 0b0011111111111111
-        
-            Pos  = np.c_[PosL, np.r_[PosH[0], PosH[:-1]]]
-        
-            self.x['Pos'] = Pos.copy().view(np.uint32)[:,0].astype(np.float32)
-            return self.x
-        return load_raw
-
-    load_raw      = _load_raw_factory('load_raw')
-    load_raw_mds  = _load_raw_factory('load_raw_mds')
-    load_raw_file = _load_raw_factory('load_raw_file')
+        self.x['Pos'] = Pos.copy().view(np.uint32)[:,0].astype(np.float32)
 
 
-class DigitizerLPS(Digitizer):
+class DigitizerLPS(DigitizerAUG):
     def __init__(self, shn, raw=False):
-        Digitizer.__init__(self, shn, name='LPS')
-
-        self.IO_mds = IOMdsAUG(shn, diag='LPS', raw=raw)
-        self.IO_file = IOFileAUG(shn, suffix='_LPS')
-        self.nodes = ('CUR1', 'VOL1', 'CUR2', 'VOL2', 'VOL3', 'VOL4', 't')
+        DigitizerAUG.__init__(self, shn, diag='LPS', suffix='_LPS', group='', raw=raw,
+            nodes=('CUR1', 'VOL1', 'CUR2', 'VOL2', 'VOL3', 'VOL4'))
 
         self.window = slice(2048, None)
 
@@ -94,42 +78,20 @@ class DigitizerLPSRaw(DigitizerLPS):
             self.amp[node] *= ampInv
 
 
-class DigitizerXPOS(Digitizer):
-    def __init__(self, shn):
-        Digitizer.__init__(self, shn, name='XPOS')
-
-        self.IO_mds = IOMdsAUG(shn, diag='LPS')
-        self.IO_file = IOFileAUG(shn, suffix='_LPS_XPOS')
-        self.nodes = ('XPOS', 't')
-
-
 class DigitizerLPSOld(DigitizerLPS):
     def __init__(self, shn):
         DigitizerLPS.__init__(self, shn)
 
-        self.dig_xpos = DigitizerXPOS(shn)
+        self.dig_xpos = DigitizerAUG(shn, diag='LPS', suffix='_LPS', group='XPOS',
+                nodes=('XPOS',))
 
         for node in ('CUR1', 'CUR2', 'VOL3'):
             self.amp[node] = ampInv.copy()
 
-    def _load_raw_factory(name):
-        def load_raw(self, **kw):
-            x = getattr(self.dig_xpos, name)()
-            R = Signal(x['XPOS'].astype('d'), x['t'].astype('d'))
-            R.despike()
-
-            getattr(DigitizerLPS, name)(self, **kw)
-            self.x['XPOS'] = R(self.x['t']).x.astype(np.float32)
-            return self.x
-        return load_raw
-
-    load_raw      = _load_raw_factory('load_raw')
-    load_raw_mds  = _load_raw_factory('load_raw_mds')
-    load_raw_file = _load_raw_factory('load_raw_file')
-
-    def save(self):
-        DigitizerLPS.save(self)
-        self.dig_xpos.save()
+    def calib(self):
+        DigitizerLPS.calib(self)
+        R = self.dig_xpos['XPOS'].astype(np.float64).despike()
+        self.x['XPOS'] = R(self.x['t']).x.astype(np.float32)
 
 
 DigitizerClasses = dict(

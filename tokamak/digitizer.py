@@ -243,13 +243,15 @@ class Digitizer(IO, Mapping):
         try:
             return self.IO_file.get_size(node, **kw)
         except (IOError, KeyError):
-            return self.IO_mds.get_size(node, s=self.s, **kw)
+            kw.setdefault('s', self.s)
+            return self.IO_mds.get_size(node, **kw)
 
     def get_node(self, node, **kw):
         try:
             return self.IO_file.get_node(node, **kw)
         except (IOError, KeyError):
-            val = self.IO_mds.get_node(node, s=self.s, **kw).astype(np.float32)
+            kw.setdefault('s', self.s)
+            val = self.IO_mds.get_node(node, **kw).astype(np.float32)
             self.put_node(node, val)
             return val
 

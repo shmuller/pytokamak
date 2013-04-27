@@ -32,11 +32,14 @@ class IOFileAUG(IOFile):
 
 
 class DigitizerAUG(Digitizer):
-    def __init__(self, shn, diag, nodes, subgrp='', **kw):
+    def __init__(self, shn, diag, nodes, suffix='_AUG', group=None, raw=False, **kw):
         Digitizer.__init__(self, shn, name=diag, **kw)
+        if group is None:
+            group = diag
 
-        self.IO_mds = IOMdsAUG(shn, diag=diag, raw=False)
-        self.IO_file = IOFileAUG(shn, suffix='_AUG', group=diag + '/' + subgrp)
+        self.IO_mds = IOMdsAUG(shn, diag=diag, raw=raw)
+        self.IO_file = IOFileAUG(shn, suffix=suffix, group=group)
+
         if self.tnode not in nodes:
             nodes += (self.tnode,)
         self.nodes = nodes
@@ -57,7 +60,7 @@ class DigitizerAUG(Digitizer):
 class DigitizerAUGMAC(DigitizerAUG):
     def __init__(self, shn):
         DigitizerAUG.__init__(self, shn, diag='MAC', nodes=('Ipolsola', 'Ipolsoli'))
-        self.dig_Tdiv = DigitizerAUG(shn, diag='MAC', subgrp='Tdiv', nodes=('Tdiv',))
+        self.dig_Tdiv = DigitizerAUG(shn, diag='MAC', group='MAC/Tdiv', nodes=('Tdiv',))
 
     def __getitem__(self, indx):
         try:

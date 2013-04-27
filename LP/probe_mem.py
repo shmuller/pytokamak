@@ -2,36 +2,25 @@ import numpy as np
 
 from sig import PositionSignal
 
-from tokamak.digitizer import Digitizer
-from tokamak.digitizer_aug import IOMdsAUG, IOFileAUG
+from tokamak.digitizer_aug import DigitizerAUG
 
-class DigitizerLSM(Digitizer):
-    def __init__(self, shn):
-        Digitizer.__init__(self, shn, name='LSM')
-
-        self.IO_mds = IOMdsAUG(shn, diag='LSM')
-        self.IO_file = IOFileAUG(shn, suffix='_MEM_POS')
-        self.nodes = ('S-posi', 't')
-
-
-class DigitizerMEM(Digitizer):
-    def __init__(self, shn, raw=False):
-        Digitizer.__init__(self, shn, name='MHC')
-
-        self.IO_mds = IOMdsAUG(shn, diag='MHC', raw=raw)
-        self.IO_file = IOFileAUG(shn, suffix='_MEM')
-        
-        self.nodes = ('Isat_m05', 'Isat_m10', 't')
+class DigitizerMEM(DigitizerAUG):
+    def __init__(self, shn, raw=False, s=slice(None, None, 4), **kw):
+        DigitizerAUG.__init__(self, shn, diag='MHC', suffix='_MEM', raw=raw, s=s,
+            nodes=('Isat_m05', 'Isat_m10'), **kw)
 
         #self.nodes = ('Usat_m09', 'Isat_m09', 'I_m07', 
         #              'Ufl_m03', 'Ufl_m08', 'I_0', 'I_1', 't')
 
+        #self.nodes = ('Usat_m05', 'Isat_m05', 'Usat_m10', 'Isat_m10', 
+        #              'Ufl_m02', 'Ufl_m04', 'U_m03', 'I_m03', 't')
+
 
 class DigitizerMEMPos(DigitizerMEM):
-    def __init__(self, shn, raw=False):
-        DigitizerMEM.__init__(self, shn)
+    def __init__(self, shn, **kw):
+        DigitizerMEM.__init__(self, shn, **kw)
 
-        self.dig_lsm = DigitizerLSM(shn)
+        self.dig_lsm = DigitizerAUG(shn, diag='LSM', suffix='_MEM', nodes=('S-posi',))
 
     def _load_raw_factory(name):
         def load_raw(self, **kw):
@@ -52,19 +41,5 @@ class DigitizerMEMPos(DigitizerMEM):
     load_raw      = _load_raw_factory('load_raw')
     load_raw_mds  = _load_raw_factory('load_raw_mds')
     load_raw_file = _load_raw_factory('load_raw_file')
-
-    def save(self):
-        DigitizerMEM.save(self)
-        self.dig_lsm.save()
-
-
-class DigitizerMEMCombi(Digitizer):
-    def __init__(self, shn, raw=False):
-        Digitizer.__init__(self, shn, name='MHC')
-
-        self.IO_mds = IOMdsAUG(shn, diag='MHC', raw=raw)
-        self.IO_file = IOFileAUG(shn, suffix='_MEM_combi')
-        self.nodes = ('Usat_m05', 'Isat_m05', 'Usat_m10', 'Isat_m10', 
-                      'Ufl_m02', 'Ufl_m04', 'U_m03', 'I_m03', 't')
 
 
