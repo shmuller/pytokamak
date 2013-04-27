@@ -2,9 +2,13 @@ from distutils.core import setup, Extension
 import numpy as np
 import os
 
-is_pyfile = lambda s: s.endswith('.py') and not s.startswith('_')
+def is_pyfile(s):
+    return s.endswith('.py') and not s.startswith('_')
 
-py_modules = ['LP.' + s[:-3] for s in os.listdir('LP') if is_pyfile(s)]
+def pyfiles(subdir):
+    return [subdir + '.' + s[:-3] for s in os.listdir(subdir) if is_pyfile(s)]
+
+py_modules = pyfiles('LP') + pyfiles('tokamak')
 
 mag_fit = Extension('LP.mag_fit',
                      sources = ['mag_fit/python/mag_fitmodule.c', 

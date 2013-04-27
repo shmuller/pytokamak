@@ -61,9 +61,9 @@ class FluxSurf:
         return ax
 
 
-class EQI:
-    def __init__(self, shn, DigitizerClass):
-        self.digitizer = DigitizerClass(shn=shn)
+class Eqi:
+    def __init__(self, digitizer):
+        self.digitizer = digitizer
 
     @memoized_property
     def R_z_psi(self):
@@ -104,11 +104,13 @@ class EQI:
 if __name__ == "__main__":
     Lvls = np.linspace(0., 1., 10)
 
-    eqi_AUG = EQI(shn=30017, DigitizerClass=DigitizerEQIAUG)
+    dig_AUG = DigitizerEQIAUG(shn=30017)
+    eqi_AUG = Eqi(dig_AUG)
     ax = eqi_AUG.get_flux_surf(3.45, Lvls).plot()
     ax = eqi_AUG.get_separatrix(3.45).plot(ax, color='b', linewidth=2)
 
-    eqi_D3D = EQI(shn=141451, DigitizerClass=DigitizerEFITD3D)
+    dig_D3D = DigitizerEFITD3D(shn=141451)
+    eqi_D3D = Eqi(dig_D3D)
     ax = eqi_D3D.get_flux_surf(1.65, Lvls).plot(ax=ax)
     ax = eqi_D3D.get_separatrix(1.65).plot(ax, color='r', linewidth=2)
     ax.axis('equal')

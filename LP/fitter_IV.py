@@ -14,7 +14,7 @@ import fitfun as ff
 #import fitfun_cython as ff
 #import fitfun_cffi as ff
 
-import LP.mag_fit as mag_fit
+import mag_fit
 
 from sm_pyplot.contextmenupicker import ContextMenuPicker
 from sm_pyplot.observer_viewer import ToggleViewer, ToggleViewerIntegrated

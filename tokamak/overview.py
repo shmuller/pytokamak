@@ -1,19 +1,19 @@
 import numpy as np
 import numpy.ma as ma
 
-from sig import memoized_property, Digitizer, Signal
-
 from sm_pyplot.tight_figure import get_tfig, get_axes
 
-from probe_xpr import TdiError, IOMdsAUG, IOFileAUG, ProbeXPR, ShotNotFoundError
+from LP.sig import memoized_property, Digitizer, Signal
+from LP.probe_xpr import TdiError, IOMdsAUG, IOFileAUG, ProbeXPR, ShotNotFoundError
 
+from equilibrium import Eqi
 
 class DigitizerAUG(Digitizer):
-    def __init__(self, shn, diag, nodes, name="", **kw):
-        Digitizer.__init__(self, shn, name, **kw)
+    def __init__(self, shn, diag, nodes, subgrp='', **kw):
+        Digitizer.__init__(self, shn, name=diag, **kw)
 
         self.IO_mds = IOMdsAUG(shn, diag=diag, raw=False)
-        self.IO_file = IOFileAUG(shn, suffix='_AUG', group=name + '/' + diag)
+        self.IO_file = IOFileAUG(shn, suffix='_AUG', group=diag + '/' + subgrp)
         if self.tnode not in nodes:
             nodes += (self.tnode,)
         self.nodes = nodes
@@ -31,21 +31,45 @@ class DigitizerAUG(Digitizer):
         Digitizer.calib(self)
 
 
+class DigitizerAUGMAC(DigitizerAUG):
+    def __init__(self, shn):
+        DigitizerAUG.__init__(self, shn, diag='MAC', nodes=('Ipolsola', 'Ipolsoli'))
+        self.dig_Tdiv = DigitizerAUG(shn, diag='MAC', subgrp='Tdiv', nodes=('Tdiv',))
+
+    def __getitem__(self, indx):
+        try:
+            return DigitizerAUG.__getitem__(self, indx)
+        except KeyError:
+            return self.dig_Tdiv[indx]
+
+
+class DigitizerAUGEQI(DigitizerAUG):
+    def __init__(self, shn):
+        DigitizerAUG.__init__(self, shn, diag='EQI', 
+                              nodes=('Ri', 'Zj', 'PFM', 'ikCAT', 'RPFx', 'zPFx', 'PFxx'))
+        self.mapspec = dict(magnaxis=0, xpoint=1, innerlim=2, xpoint2=3, outerlim=4)
+   
+    def get_R_z_psi(self):
+        return self.x['Ri'][0], self.x['Zj'][0], self['PFM']
+
+    def get_R_z_psi_special(self, spec):
+        i = self.mapspec[spec]
+        return self['RPFx'][:,i], self['zPFx'][:,i], self['PFxx'][:,i]
+
+
 AUG_diags = dict(
-    dens = dict(diag='DCN', nodes=('H-1', 'H-2', 'H-3', 'H-4', 'H-5')),
-    ncor = dict(diag='TOT', nodes=('H-1_corr', 'H-2_corr', 'H-3_corr', 'H-4_corr', 'H-5_corr')),
-    pnbi = dict(diag='NIS', nodes=('PNI',)),
-    pech = dict(diag='ECS', nodes=('PECRH',)),
-    wmhd = dict(diag='FPG', nodes=('Wmhd',)),
-    isol = dict(diag='MAC', nodes=('Ipolsola', 'Ipolsoli')),
-    tdiv = dict(diag='MAC', nodes=('Tdiv',)),
-    elmh = dict(diag='POT', nodes=('ELMa-Han', 'ELMi-Han')),
-    gasv = dict(diag='UVS', nodes=('D_tot',)),
-    prad = dict(diag='BPD', nodes=('Pradtot',)),
-    ipvl = dict(diag='MAG', nodes=('Ipa', 'ULid12')),
-    mirn = dict(diag='MHE', nodes=('C09-23',), s=slice(None, None, 4)),
-    cxrs = dict(diag='CEZ', nodes=('R', 'z', 'phi', 'vrot', 'Ti', 'inte', 
-                                   'err_vrot', 'err_Ti', 'err_inte'), tnode='time'))
+    DCN = dict(nodes=('H-1', 'H-2', 'H-3', 'H-4', 'H-5')),
+    TOT = dict(nodes=('H-1_corr', 'H-2_corr', 'H-3_corr', 'H-4_corr', 'H-5_corr')),
+    NIS = dict(nodes=('PNI',)),
+    ECS = dict(nodes=('PECRH',)),
+    FPG = dict(nodes=('Wmhd',)),
+    POT = dict(nodes=('ELMa-Han', 'ELMi-Han')),
+    UVS = dict(nodes=('D_tot',)),
+    BPD = dict(nodes=('Pradtot',)),
+    MAG = dict(nodes=('Ipa', 'ULid12')),
+    MHE = dict(nodes=('C09-23',), s=slice(None, None, 4)),
+    CEZ = dict(nodes=('R', 'z', 'phi', 'vrot', 'Ti', 'inte', 
+                      'err_vrot', 'err_Ti', 'err_inte')))
 
 
 class AUGOverview:
@@ -60,39 +84,52 @@ class AUGOverview:
 
         self.all_plots = self.def_plots + ('Tdiv', 'Da', 'gas')
         
-    @memoized_property
-    def S(self):
-        return {k: DigitizerAUG(self.shn, name=k, **v) for k, v in AUG_diags.iteritems()}
-
     def __getitem__(self, indx):
         return self.S[indx]
 
-    def plot_power(self, ax):
+    @memoized_property
+    def S(self):
+        S = {k: DigitizerAUG(self.shn, diag=k, **v) for k, v in AUG_diags.iteritems()}
+        S['MAC'] = DigitizerAUGMAC(self.shn)
+        S['EQI'] = DigitizerAUGEQI(self.shn)
+        return S
+
+    @memoized_property
+    def eqi(self):
+        return Eqi(self.S['EQI'])
+
+    def plot_eqi(self, ax=None, Lvls=np.linspace(0., 1., 10)):
+        ax = get_axes(ax)
+        ax = self.eqi.get_flux_surf(3.45, Lvls).plot(ax)
+        ax = self.eqi.get_separatrix(3.45).plot(ax, color='b', linewidth=2)
+        return ax
+
+    def plot_power(self, ax=None):
         S = self.S
         ax = get_axes(ax)
         ax.set_ylabel('Power (MW)')
         
-        (S['pech']['PECRH']*1e-6).plot(ax, label="ECRH")
-        (S['pnbi']['PNI']*1e-6).plot(ax, label="NBI")
-        (S['wmhd']['Wmhd']*1e-5).plot(ax, label="WMHD (x10)")
+        (S['ECS']['PECRH']*1e-6).plot(ax, label="ECRH")
+        (S['NIS']['PNI']*1e-6).plot(ax, label="NBI")
+        (S['FPG']['Wmhd']*1e-5).plot(ax, label="WMHD (x10)")
         ax.legend()
         return ax
 
-    def plot_rad(self, ax):
+    def plot_rad(self, ax=None):
         ax = get_axes(ax)
         ax.set_ylabel('Power (MW)')
 
-        S = self.S['prad']['Pradtot']*1e-6
+        S = self.S['BPD']['Pradtot']*1e-6
         S.masked(S.t > 6.).plot(ax)
         ax.legend()
         return ax
 
-    def plot_power_rad(self, ax):
+    def plot_power_rad(self, ax=None):
         ax = self.plot_power(ax)
         return self.plot_rad(ax)
 
-    def plot_density(self, ax, chn=('H-1', 'H-4', 'H-5')):
-        S = self.S['dens']
+    def plot_density(self, ax=None, chn=('H-1', 'H-4', 'H-5')):
+        S = self.S['DCN']
         ax = get_axes(ax)
         ax.set_ylabel('n (10$^{\mathdefault{19}}$ m$^{\mathdefault{-3}}$)')
         
@@ -101,8 +138,8 @@ class AUGOverview:
         ax.legend()
         return ax
 
-    def plot_n(self, ax, chn=('H-1_corr', 'H-4_corr', 'H-5_corr')):
-        S = self.S['ncor']
+    def plot_n(self, ax=None, chn=('H-1_corr', 'H-4_corr', 'H-5_corr')):
+        S = self.S['TOT']
         ax = get_axes(ax)
         ax.set_ylabel('n (10$^{\mathdefault{19}}$ m$^{\mathdefault{-3}}$)')
         
@@ -111,10 +148,10 @@ class AUGOverview:
         ax.legend()
         return ax
 
-    def plot_H1(self, ax):
+    def plot_H1(self, ax=None):
         return self.plot_density(ax, chn=('H-1',))
 
-    def plot_XPR_I(self, ax, no_Mach=False, no_single=False):
+    def plot_XPR_I(self, ax=None, no_Mach=False, no_single=False):
         ax = get_axes(ax)
         ax.set_ylabel('Current (A)')
         
@@ -133,13 +170,13 @@ class AUGOverview:
         ax.legend()
         return ax
 
-    def plot_XPR_I_Mach(self, ax):
+    def plot_XPR_I_Mach(self, ax=None):
         return self.plot_XPR_I(ax, no_single=True)
 
-    def plot_XPR_I_single(self, ax):
+    def plot_XPR_I_single(self, ax=None):
         return self.plot_XPR_I(ax, no_Mach=True)
 
-    def plot_XPR_V(self, ax, no_Mach=False, no_single=False):
+    def plot_XPR_V(self, ax=None, no_Mach=False, no_single=False):
         ax = get_axes(ax)
         ax.set_ylabel('Voltage (V)')
 
@@ -158,13 +195,13 @@ class AUGOverview:
         ax.legend()
         return ax
 
-    def plot_XPR_V_Mach(self, ax):
+    def plot_XPR_V_Mach(self, ax=None):
         return self.plot_XPR_V(ax, no_single=True)
 
-    def plot_XPR_V_single(self, ax):
+    def plot_XPR_V_single(self, ax=None):
         return self.plot_XPR_V(ax, no_Mach=True)
 
-    def plot_XPR_R(self, ax):
+    def plot_XPR_R(self, ax=None):
         ax = get_axes(ax)
         ax.set_ylabel('Pos (cm)')
 
@@ -177,7 +214,7 @@ class AUGOverview:
         return ax
 
     def plot_Ipolsol(self, ax):
-        S = self.S['isol']
+        S = self.S['MAC']
         ax = get_axes(ax)
         ax.set_ylabel('Div. cur. (kA)')
 
@@ -187,8 +224,8 @@ class AUGOverview:
         ax.legend()
         return ax
 
-    def plot_Tdiv(self, ax):
-        S = self.S['tdiv']['Tdiv']
+    def plot_Tdiv(self, ax=None):
+        S = self.S['MAC']['Tdiv']
         ax = get_axes(ax)
         ax.set_ylabel('Temp (eV)')
 
@@ -196,8 +233,8 @@ class AUGOverview:
         ax.legend()
         return ax
 
-    def plot_Da(self, ax):
-        S = self.S['elmh']
+    def plot_Da(self, ax=None):
+        S = self.S['POT']
         ax = get_axes(ax)
         ax.set_ylabel('Photons (au)')
 
@@ -207,8 +244,8 @@ class AUGOverview:
         ax.legend()
         return ax
 
-    def plot_gas(self, ax):
-        S = self.S['gasv']['D_tot']*1e-21
+    def plot_gas(self, ax=None):
+        S = self.S['UVS']['D_tot']*1e-21
         ax = get_axes(ax)
         ax.set_ylabel('Gas (10$^{\mathdefault{21}}$ el s$^{\mathdefault{-1}}$)')
 
@@ -216,8 +253,8 @@ class AUGOverview:
         ax.legend()
         return ax
 
-    def plot_ipvl(self, ax):
-        S = self.S['ipvl']
+    def plot_ipvl(self, ax=None):
+        S = self.S['MAG']
         ax = get_axes(ax)
         Ip, Vl = S['Ipa']*1e-6, S['ULid12']
 
@@ -226,8 +263,8 @@ class AUGOverview:
         ax.legend()
         return ax
 
-    def plot_mirn(self, ax):
-        S = self.S['mirn']['C09-23']
+    def plot_mirn(self, ax=None):
+        S = self.S['MHE']['C09-23']
         ax = get_axes(ax)
         S.plot(ax)
         ax.legend()
