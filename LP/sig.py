@@ -1236,7 +1236,10 @@ class IOMds(IO):
             mdsopen(s, self.mdstree, self.shn)
         return s
 
-    def _mdsstr(self, node):
+    def _mdsslicestr(self, s):
+        return '[%s:%s:%s]' % (str(s.start or '*'), str(s.stop or '*'), str(s.step or '*'))
+
+    def _mdsstr(self, node, s=None):
         mdsfmt = self.mdsfmt
         if node == 't':
             node = self.last_node
@@ -1246,14 +1249,15 @@ class IOMds(IO):
         else:
             self.last_node = node
             mdsfmt = self.datadeco % mdsfmt
-
+        if s is not None:
+            mdsfmt += self._mdsslicestr(s)
         return mdsfmt % node
 
-    def get_size(self, node, t0=None, t1=None):
-        return self.mdsvalue(self.sizedeco % self._mdsstr(node), t0, t1)
+    def get_size(self, node, t0=None, t1=None, s=None):
+        return self.mdsvalue(self.sizedeco % self._mdsstr(node, s), t0, t1)
 
-    def get_node(self, node, t0=None, t1=None):
-        return self.mdsvalue(self._mdsstr(node), t0, t1)
+    def get_node(self, node, t0=None, t1=None, s=None):
+        return self.mdsvalue(self._mdsstr(node, s), t0, t1)
 
     def save(self, x):
         raise NotImplementedError("Saving to MDS not implemented")
@@ -1281,7 +1285,7 @@ class IOMds(IO):
 
     def mdsvalue(self, mdsfmt, *args):
         mdsfmt, args = self._fix_args(mdsfmt, args)
-
+        print mdsfmt
         ret = mdsvalue(self.sock, mdsfmt, *args)
         if isinstance(ret, str) and (ret.startswith("Tdi") or ret.startswith('%')):
             raise TdiError(ret, mdsfmt, args)
@@ -1289,15 +1293,16 @@ class IOMds(IO):
 
 
 class Digitizer(IO, Mapping):
-    def __init__(self, shn=0, name=""):
-        self.shn, self.name = shn, name
-        self.tnode, self.tunits = 't', 's'
+    def __init__(self, shn=0, name="", s=None, tnode='t', tunits='s'):
+        self.shn, self.name, self.s = shn, name, s
+        self.tnode, self.tunits = tnode, tunits
 
         self.IO_mds = self.IO_file = None
         self.nodes = ()
         self.window = slice(None)
+        self.perm = dict()
         self.amp = dict()
-
+        
         IO.__init__(self)
 
     def __repr__(self):
@@ -1341,13 +1346,13 @@ class Digitizer(IO, Mapping):
         try:
             return self.IO_file.get_size(node, **kw)
         except (IOError, KeyError):
-            return self.IO_mds.get_size(node, **kw)
+            return self.IO_mds.get_size(node, s=self.s, **kw)
 
     def get_node(self, node, **kw):
         try:
             return self.IO_file.get_node(node, **kw)
         except (IOError, KeyError):
-            val = self.IO_mds.get_node(node, **kw).astype(np.float32)
+            val = self.IO_mds.get_node(node, s=self.s, **kw).astype(np.float32)
             self.put_node(node, val)
             return val
 
@@ -1362,11 +1367,10 @@ class Digitizer(IO, Mapping):
         self.IO_file.save(self.x, self.nodes)
 
     def calib(self):
-        for node in self.nodes:
-            try:
-                self.amp[node].apply(self.x[node])
-            except KeyError:
-                pass
+        for node in self.perm:
+            self.x[node][:] = self.x[node].transpose(self.perm[node])
+        for node in self.amp:
+            self.amp[node].apply(self.x[node])
 
     def _load_calib_factory(name):
         def load_calib(self, **kw):

@@ -9,18 +9,26 @@ from probe_xpr import TdiError, IOMdsAUG, IOFileAUG, ProbeXPR, ShotNotFoundError
 
 
 class DigitizerAUG(Digitizer):
-    def __init__(self, shn, diag, nodes, name=""):
-        Digitizer.__init__(self, shn, name=name)
+    def __init__(self, shn, diag, nodes, name="", **kw):
+        Digitizer.__init__(self, shn, name, **kw)
 
         self.IO_mds = IOMdsAUG(shn, diag=diag, raw=False)
         self.IO_file = IOFileAUG(shn, suffix='_AUG', group=name + '/' + diag)
-        self.nodes = nodes + ('t',)
+        if self.tnode not in nodes:
+            nodes += (self.tnode,)
+        self.nodes = nodes
 
     def load(self, **kw):
         try:
             return Digitizer.load(self, **kw)
         except TdiError:
             return {node: np.zeros(1) for node in self.nodes}
+
+    def calib(self):
+        for node, x in self.x.iteritems():
+            if x.ndim > 1:
+                self.x[node] = x.transpose(np.roll(np.arange(x.ndim), 1))
+        Digitizer.calib(self)
 
 
 AUG_diags = dict(
@@ -33,7 +41,11 @@ AUG_diags = dict(
     tdiv = dict(diag='MAC', nodes=('Tdiv',)),
     elmh = dict(diag='POT', nodes=('ELMa-Han', 'ELMi-Han')),
     gasv = dict(diag='UVS', nodes=('D_tot',)),
-    prad = dict(diag='BPD', nodes=('Pradtot',)))
+    prad = dict(diag='BPD', nodes=('Pradtot',)),
+    ipvl = dict(diag='MAG', nodes=('Ipa', 'ULid12')),
+    mirn = dict(diag='MHE', nodes=('C09-23',), s=slice(None, None, 4)),
+    cxrs = dict(diag='CEZ', nodes=('R', 'z', 'phi', 'vrot', 'Ti', 'inte', 
+                                   'err_vrot', 'err_Ti', 'err_inte'), tnode='time'))
 
 
 class AUGOverview:
@@ -51,6 +63,9 @@ class AUGOverview:
     @memoized_property
     def S(self):
         return {k: DigitizerAUG(self.shn, name=k, **v) for k, v in AUG_diags.iteritems()}
+
+    def __getitem__(self, indx):
+        return self.S[indx]
 
     def plot_power(self, ax):
         S = self.S
@@ -198,6 +213,23 @@ class AUGOverview:
         ax.set_ylabel('Gas (10$^{\mathdefault{21}}$ el s$^{\mathdefault{-1}}$)')
 
         S.masked((S.t < 0.5) | (S.t > 6.)).plot(ax, label='D total')
+        ax.legend()
+        return ax
+
+    def plot_ipvl(self, ax):
+        S = self.S['ipvl']
+        ax = get_axes(ax)
+        Ip, Vl = S['Ipa']*1e-6, S['ULid12']
+
+        Ip.plot(ax, label='Ip (MA)')
+        Vl.masked((Vl.t < 0.5) | (Vl.t > 6.)).plot(ax, label='V loop (V)')
+        ax.legend()
+        return ax
+
+    def plot_mirn(self, ax):
+        S = self.S['mirn']['C09-23']
+        ax = get_axes(ax)
+        S.plot(ax)
         ax.legend()
         return ax
 

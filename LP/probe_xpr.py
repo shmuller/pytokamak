@@ -34,7 +34,7 @@ amp14Bit = Amp(fact=20./16383, offs=-10.)
 
 class IOMdsAUG(IOMds):
     def __init__(self, shn, diag='XPR', raw=False):
-        # augsignal(_shot, _diag, _signame, _experiment, _edition, 
+        # augdiag(_shot, _diag, _signame, _experiment, _edition, 
         #   _t1, _t2, _oshot, _oedition, _qual)
 
         IOMds.__init__(self, shn)
@@ -48,14 +48,10 @@ class IOMdsAUG(IOMds):
 
         fmtargs = '%d,"%s","%%s","AUGD",*,f_float($),f_float($)' % (self.shn, diag)
         if raw:
-            self.mdsfmt = '_s = augsignal(%s,*,*,"raw")' % fmtargs
-            self.datadeco = '%s; word(data(_s))'
+            self.mdsfmt = 'augdiag(%s,*,*,"raw")' % fmtargs
+            self.datadeco = 'word(data(%s))'
         else:
-            self.mdsfmt = '_s = augsignal(%s)' % fmtargs
-            self.datadeco = '%s; data(_s)'
-
-        self.timedeco = '%s; dim_of(_s)'
-        self.sizedeco = '%s; size(_s)'
+            self.mdsfmt = 'augdiag(%s)' % fmtargs
 
 
 class IOFileAUG(IOFile):

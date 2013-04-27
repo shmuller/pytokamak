@@ -8,20 +8,15 @@ from sm_pyplot.tight_figure import get_axes, show
 from sm_pyplot.vtk_contour import VtkContour
 
 
-class DigitizerEQI(Digitizer):
+class DigitizerEQIAUG(Digitizer):
     def __init__(self, shn):
         Digitizer.__init__(self, shn, name='EQI')
+        self.IO_mds = IOMdsAUG(shn, diag='EQI')
+        self.IO_file = IOFileAUG(shn, suffix='_AUG', group='EQI')
         self.tnode, self.tunits = 'time', 's'
         self.nodes = ('time', 'Ri', 'Zj', 'PFM', 'ikCAT', 'RPFx', 'zPFx', 'PFxx')
         self.mapspec = dict(magnaxis=0, xpoint=1, innerlim=2, xpoint2=3, outerlim=4)
-
-    def __getitem__(self, indx):
-        t = self.x['time']
-        x = self.x[indx][:t.shape[0]]
-        if indx == 'PFM':
-            x = x[:, :self.x['Zj'].shape[1], :self.x['Ri'].shape[1]]
-        return self.assignal(x, t, name=indx)
-
+   
     def get_R_z_psi(self):
         return self.x['Ri'][0], self.x['Zj'][0], self['PFM']
 
@@ -29,20 +24,20 @@ class DigitizerEQI(Digitizer):
         i = self.mapspec[spec]
         return self['RPFx'][:,i], self['zPFx'][:,i], self['PFxx'][:,i]
 
-
-class DigitizerEQIAUG(DigitizerEQI):
-    def __init__(self, shn):
-        DigitizerEQI.__init__(self, shn)
-        self.IO_mds = IOMdsAUG(shn, diag='EQI')
-        self.IO_file = IOFileAUG(shn, suffix='_AUG', group='EQI')
+    def calib(self):
+        for node, x in self.x.iteritems():
+            if x.ndim > 1:
+                self.x[node] = x.transpose(np.roll(np.arange(x.ndim), 1))
 
 
-class DigitizerEFIT(Digitizer):
+class DigitizerEFITD3D(Digitizer):
     def __init__(self, shn):
         Digitizer.__init__(self, shn, name='EFIT')
+        self.IO_mds = IOMdsD3D(shn, diag='EFIT01')
+        self.IO_file = IOFileD3D(shn, suffix='_D3D', group='EFIT01')
         self.tnode, self.tunits = 'GTIME', 's'
         self.nodes = ('GTIME', 'R', 'Z', 'PSIRZ', 
-                      'RMAXIS', 'ZMAXIS', 'SSIMAG', 'SSIBRY')
+                      'RMAXIS', 'ZMAXIS', 'SSIMAG', 'SSIBRY', 'BDRY')
 
         self.amp = dict(GTIME=Amp(1e-3))
 
@@ -54,13 +49,6 @@ class DigitizerEFIT(Digitizer):
             return self['RMAXIS'], self['ZMAXIS'], self['SSIMAG']
         elif spec == 'xpoint':
             return None, None, self['SSIBRY']
-
-
-class DigitizerEFITD3D(DigitizerEFIT):
-    def __init__(self, shn):
-        DigitizerEFIT.__init__(self, shn)
-        self.IO_mds = IOMdsD3D(shn, diag='EFIT01')
-        self.IO_file = IOFileD3D(shn, suffix='_D3D', group='EFIT01')
 
 
 class FluxSurf:
