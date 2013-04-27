@@ -22,24 +22,17 @@ class DigitizerMEMPos(DigitizerMEM):
 
         self.dig_lsm = DigitizerAUG(shn, diag='LSM', suffix='_MEM', nodes=('S-posi',))
 
-    def _load_raw_factory(name):
-        def load_raw(self, **kw):
-            x = getattr(self.dig_lsm, name)()
-            R = PositionSignal(-x['S-posi'].astype('d'), x['t'].astype('d'))
+    def load_raw_mds(self, **kw):
+        R = -self.dig_lsm['S-posi'].astype(np.float64)
+        i0, iM, i1 = PositionSignal(R.x, R.t).t_ind
+        t0, t1 = R.t[i0[0]] - 0.2, R.t[i1[-1]] + 0.2
 
-            i0, iM, i1 = R.t_ind
-            t0, t1 = R.t[i0[0]] - 0.2, R.t[i1[-1]] + 0.2
+        kw.setdefault('t0', t0)
+        kw.setdefault('t1', t1)
+        return DigitizerMEM.load_raw_mds(self, **kw)
 
-            kw.setdefault('t0', t0)
-            kw.setdefault('t1', t1)
-
-            getattr(DigitizerMEM, name)(self, **kw)
-            self.x['S-posi'] = R(self.x['t']).x.astype(np.float32)
-            return self.x
-        return load_raw
-
-    load_raw      = _load_raw_factory('load_raw')
-    load_raw_mds  = _load_raw_factory('load_raw_mds')
-    load_raw_file = _load_raw_factory('load_raw_file')
-
+    def calib(self):
+        DigitizerMEM.calib(self)
+        R = self.dig_lsm['S-posi'].astype(np.float64)
+        self.x['XPOS'] = R(self.x['t']).x.astype(np.float32)
 
