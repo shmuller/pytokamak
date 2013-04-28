@@ -61,6 +61,9 @@ class TipXPR(CylindricalTip):
 
 
 class HeadXPR(Head):
+    def __init__(self, tips, R_keys=None, R0=1.645, z0=-0.966, d=0.01):
+        Head.__init__(self, tips, R_keys, R0, z0, d)
+
     def calib(self, get_amp):
         Head.calib(self, get_amp)
 

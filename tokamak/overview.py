@@ -26,6 +26,20 @@ AUG_diags = dict(
                       'err_vrot', 'err_Ti', 'err_inte')))
 
 
+class EqiViewerXPR(EqiViewer):
+    def __init__(self, eqi, head):
+        EqiViewer.__init__(self, eqi)
+        self.head = head
+
+    def plotfun(self, event):
+        EqiViewer.plotfun(self, event)
+
+        t_event = event.xdata
+        ax = self.ax
+        self.head.plot(ax, t_event)
+        return ax.collections
+
+
 class AUGOverview:
     def __init__(self, shn):
         self.shn = shn
@@ -250,7 +264,10 @@ class AUGOverview:
         fig = get_tfig(fig, shape=(len(plots), 1), figsize=(6,6), xlab='t (s)')
         fig.axes[0].set_xlim((1,7))
 
-        self.viewers = (EqiViewer(self.eqi),)
+        try:
+            self.viewers = (EqiViewerXPR(self.eqi, self.XPR.config.head),)
+        except AttributeError:
+            self.viewers = (EqiViewer(self.eqi),)
 
         menu_entries_ax = []
         for v in self.viewers:

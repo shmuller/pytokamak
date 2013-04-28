@@ -7,6 +7,9 @@ from collections import OrderedDict
 
 from sig import ensure_tuple, Container, PositionSignal, VoltageSignal, CurrentSignal
 
+from matplotlib.path import Path
+from matplotlib.collections import PathCollection
+
 class Tip:
     def __init__(self, area, proj_area, number, pos, 
             V_keys=None, I_keys=None, name=None):
@@ -35,10 +38,12 @@ class CylindricalTip(Tip):
 
 
 class Head:
-    def __init__(self, tips, R_keys=None):
-        self.tips = tips
-        self.R_keys = R_keys
+    def __init__(self, tips, R_keys=None, R0=None, z0=None, d=None):
+        self.tips, self.R_keys, self.R0, self.z0, self.d = tips, R_keys, R0, z0, d
         self.unique_sigs = None
+
+        zp, zm = z0 + d/2., z0 - d/2.
+        self.xy = np.array([(R0, zp), (R0, zm), (2.5, zm), (2.5, zp)])
 
     @staticmethod
     def _unique(x):
@@ -123,6 +128,15 @@ class Head:
 
     def __str__(self):
         return self.__repr__() + ":\n%s" % pformat(self.tips)
+
+    def plot(self, ax, ti, *args, **kw):
+        self.xy[:2,0] = self.R0 - self.S['R'](ti).x[0]
+        paths = [Path(self.xy)]
+        kw.setdefault('facecolors', 'k')
+        kw.setdefault('edgecolors', 'none')
+        pc = PathCollection(paths, **kw)
+        ax.add_collection(pc)
+        return ax
 
 
 def recursive_dictcopy(d):

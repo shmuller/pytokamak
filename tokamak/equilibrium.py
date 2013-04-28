@@ -11,8 +11,10 @@ class FluxSurf:
         self.vtk_ctr = vtk_ctr
 
     def plot(self, ax=None, **kw):
+        kw.setdefault('edgecolors', 'r')
         ax = get_axes(ax)
-        ax.add_collection(self.vtk_ctr.as_path_collection())
+        pc = self.vtk_ctr.as_path_collection(**kw)
+        ax.add_collection(pc)
         return ax
 
 
@@ -65,9 +67,9 @@ class EqiViewer(ToggleViewer):
 
     def plotfun(self, event):
         t_event = event.xdata
-        FS = self.eqi.get_flux_surf(t_event, Lvls=self.Lvls)
         ax = self.ax
         ax.collections = []
+        FS = self.eqi.get_flux_surf(t_event, Lvls=self.Lvls)
         FS.plot(ax)
         return ax.collections
 
