@@ -7,7 +7,7 @@ from sm_pyplot.contextmenupicker import ContextMenuPicker
 from LP.sig import memoized_property
 from LP.probe_xpr import ProbeXPR, ShotNotFoundError
 
-from digitizer_aug import DigitizerAUG, DigitizerAUGMAC, DigitizerAUGEQI
+from digitizer_aug import DigitizerAUG, DigitizerAUGMAC, DigitizerAUGEQI, dig_YGC
 from equilibrium import Eqi, EqiViewer
 
 
@@ -26,13 +26,20 @@ AUG_diags = dict(
                       'err_vrot', 'err_Ti', 'err_inte')))
 
 
-class EqiViewerXPR(EqiViewer):
+class EqiViewerAUG(EqiViewer):
+    def viewer(self, event):
+        fig = get_tfig(figsize=(4.5, 6), xlab="R (m)", ylab="z (m)")
+        self.ax = fig.axes[0]
+        dig_YGC.plot(self.ax)
+
+
+class EqiViewerAUGXPR(EqiViewerAUG):
     def __init__(self, eqi, head):
-        EqiViewer.__init__(self, eqi)
+        EqiViewerAUG.__init__(self, eqi)
         self.head = head
 
     def plotfun(self, event):
-        collections = EqiViewer.plotfun(self, event)
+        collections = EqiViewerAUG.plotfun(self, event)
 
         t_event = event.xdata
         ax = self.ax
@@ -265,9 +272,9 @@ class AUGOverview:
         fig.axes[0].set_xlim((1,7))
 
         try:
-            self.viewers = (EqiViewerXPR(self.eqi, self.XPR.config.head),)
+            self.viewers = (EqiViewerAUGXPR(self.eqi, self.XPR.config.head),)
         except AttributeError:
-            self.viewers = (EqiViewer(self.eqi),)
+            self.viewers = (EqiViewerAUG(self.eqi),)
 
         menu_entries_ax = []
         for v in self.viewers:
