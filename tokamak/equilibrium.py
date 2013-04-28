@@ -68,17 +68,18 @@ class EqiViewer(ToggleViewer):
     def plotfun(self, event):
         t_event = event.xdata
         ax = self.ax
-        ax.collections = []
+        self.clear()
         FS = self.eqi.get_flux_surf(t_event, Lvls=self.Lvls)
         FS.plot(ax)
-        return ax.collections
+        return ax.collections[-1:]
 
     def viewer(self, event):
-        fig = get_tfig(figsize=(4,4), xlab="R (m)", ylab="z (m)")
+        fig = get_tfig(figsize=(5, 5), xlab="R (m)", ylab="z (m)")
         self.ax = fig.axes[0]
+        self.ax.set_aspect('equal')
         self.ax.set_xlim((0., 2.5))
         self.ax.set_ylim((-1.5, 1.))
-
+                
 
 if __name__ == "__main__":
     from digitizer_aug import DigitizerAUGEQI

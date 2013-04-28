@@ -8,7 +8,7 @@ from collections import OrderedDict
 from sig import ensure_tuple, Container, PositionSignal, VoltageSignal, CurrentSignal
 
 from matplotlib.path import Path
-from matplotlib.collections import PathCollection
+from matplotlib.patches import PathPatch
 
 class Tip:
     def __init__(self, area, proj_area, number, pos, 
@@ -130,12 +130,12 @@ class Head:
         return self.__repr__() + ":\n%s" % pformat(self.tips)
 
     def plot(self, ax, ti, *args, **kw):
+        kw.setdefault('facecolor', 'k')
+        kw.setdefault('edgecolor', 'none')
+
         self.xy[:2,0] = self.R0 - self.S['R'](ti).x[0]
-        paths = [Path(self.xy)]
-        kw.setdefault('facecolors', 'k')
-        kw.setdefault('edgecolors', 'none')
-        pc = PathCollection(paths, **kw)
-        ax.add_collection(pc)
+        pp = PathPatch(Path(self.xy), **kw)
+        ax.add_patch(pp)
         return ax
 
 

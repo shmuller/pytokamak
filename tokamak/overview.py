@@ -32,12 +32,12 @@ class EqiViewerXPR(EqiViewer):
         self.head = head
 
     def plotfun(self, event):
-        EqiViewer.plotfun(self, event)
+        collections = EqiViewer.plotfun(self, event)
 
         t_event = event.xdata
         ax = self.ax
         self.head.plot(ax, t_event)
-        return ax.collections
+        return collections + ax.patches[-1:]
 
 
 class AUGOverview:
