@@ -2,7 +2,8 @@ import numpy as np
 
 from LP.sig import memoized_property
 
-from sm_pyplot.tight_figure import get_axes, show
+from sm_pyplot.tight_figure import get_tfig, get_axes, show
+from sm_pyplot.observer_viewer import ToggleViewer
 from sm_pyplot.vtk_contour import VtkContour
 
 class FluxSurf:
@@ -11,7 +12,7 @@ class FluxSurf:
 
     def plot(self, ax=None, **kw):
         ax = get_axes(ax)
-        self.vtk_ctr.plot(ax=ax, **kw)
+        ax.add_collection(self.vtk_ctr.as_path_collection())
         return ax
 
 
@@ -53,6 +54,28 @@ class Eqi:
 
     def get_separatrix(self, ti):
         return self.get_flux_surf(ti, Lvls=np.array([1.]))
+
+
+class EqiViewer(ToggleViewer):
+    def __init__(self, eqi):
+        self.eqi = eqi
+        self.Lvls = np.linspace(0., 1., 10)
+
+        ToggleViewer.__init__(self, 'Eqi viewer')
+
+    def plotfun(self, event):
+        t_event = event.xdata
+        FS = self.eqi.get_flux_surf(t_event, Lvls=self.Lvls)
+        ax = self.ax
+        ax.collections = []
+        FS.plot(ax)
+        return ax.collections
+
+    def viewer(self, event):
+        fig = get_tfig(figsize=(4,4), xlab="R (m)", ylab="z (m)")
+        self.ax = fig.axes[0]
+        self.ax.set_xlim((0., 2.5))
+        self.ax.set_ylim((-1.5, 1.))
 
 
 if __name__ == "__main__":

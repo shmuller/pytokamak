@@ -2,12 +2,13 @@ import numpy as np
 import numpy.ma as ma
 
 from sm_pyplot.tight_figure import get_tfig, get_axes
+from sm_pyplot.contextmenupicker import ContextMenuPicker
 
 from LP.sig import memoized_property
 from LP.probe_xpr import ProbeXPR, ShotNotFoundError
 
 from digitizer_aug import DigitizerAUG, DigitizerAUGMAC, DigitizerAUGEQI
-from equilibrium import Eqi
+from equilibrium import Eqi, EqiViewer
 
 
 AUG_diags = dict(
@@ -55,6 +56,7 @@ class AUGOverview:
         ax = get_axes(ax)
         ax = self.eqi.get_flux_surf(3.45, Lvls).plot(ax)
         ax = self.eqi.get_separatrix(3.45).plot(ax, color='b', linewidth=2)
+        ax.axis('equal')
         return ax
 
     def plot_power(self, ax=None):
@@ -223,12 +225,39 @@ class AUGOverview:
         ax.legend()
         return ax
 
+    def plot_CER(self, ax=None, name='vrot', ylab='vrot (km s$^{\mathdefault{-1}}$)'):
+        S = self.S['CEZ']
+        ax = get_axes(ax)
+        ax.set_ylabel(ylab)
+        
+        i = [0, 14, 23]
+        R = S['R'].x[i]
+        S = S[name][:,i]*1e-3
+        S.plot(ax)
+        ax.legend(['R = %.2f m' % x for x in R])
+        return ax
+
+    def plot_vrot(self, ax=None):
+        return self.plot_CER(ax, 'vrot', 'vrot (km s$^{\mathdefault{-1}}$)')
+
+    def plot_Ti(self, ax=None):
+        return self.plot_CER(ax, 'Ti', 'Ti (keV)')
+
     def plot(self, plots=None, fig=None):
         if plots is None:
             plots = self.def_plots
 
         fig = get_tfig(fig, shape=(len(plots), 1), figsize=(6,6), xlab='t (s)')
         fig.axes[0].set_xlim((1,7))
+
+        self.viewers = (EqiViewer(self.eqi),)
+
+        menu_entries_ax = []
+        for v in self.viewers:
+            menu_entries_ax += v.menu_entries_ax
+
+        fig.context_menu_picker = ContextMenuPicker(
+            fig, menu_entries_ax=menu_entries_ax)
 
         for p, ax in zip(plots, fig.axes):
             getattr(self, 'plot_' + p)(ax)
