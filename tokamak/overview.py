@@ -10,6 +10,7 @@ from LP.probe_xpr import ProbeXPR, ShotNotFoundError
 from digitizer_aug import DigitizerAUG, DigitizerAUGMAC, DigitizerAUGEQI, dig_YGC
 from equilibrium import Eqi, EqiViewer
 
+from sm_pyplot.observer_viewer import ToggleViewer
 
 AUG_diags = dict(
     DCN = dict(nodes=('H-1', 'H-2', 'H-3', 'H-4', 'H-5')),
@@ -45,6 +46,25 @@ class EqiViewerAUGXPR(EqiViewerAUG):
         ax = self.ax
         self.head.plot(ax, t_event)
         return collections + ax.patches[-1:]
+
+
+class ProfViewerAUG(ToggleViewer):
+    def __init__(self, x, y):
+        self.x, self.y = x, y
+
+        ToggleViewer.__init__(self, 'Prof viewer')
+
+    def plotfun(self, event):
+        t_event = event.xdata
+        self.clear()
+        x, y = self.x, self.y(t_event).x[0]
+        return self.ax.plot(x, y, 'b')
+
+    def viewer(self, event):
+        fig = get_tfig(figsize=(5, 5), xlab="R (m)", ylab="vrot (km s$^{\mathdefault{-1}}$)")
+        self.ax = fig.axes[0]
+        self.ax.set_xlim((1.5, 2.5))
+        self.ax.set_ylim((-50, 100))
 
 
 class AUGOverview:
@@ -275,6 +295,9 @@ class AUGOverview:
             self.viewers = (EqiViewerAUGXPR(self.eqi, self.XPR.config.head),)
         except AttributeError:
             self.viewers = (EqiViewerAUG(self.eqi),)
+
+        S = self.S['CEZ']
+        self.viewers += (ProfViewerAUG(S['R'].x[:24], S['vrot'][:,:24]*1e-3),)
 
         menu_entries_ax = []
         for v in self.viewers:
