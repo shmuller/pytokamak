@@ -296,8 +296,11 @@ class AUGOverview:
         except AttributeError:
             self.viewers = (EqiViewerAUG(self.eqi),)
 
-        S = self.S['CEZ']
-        self.viewers += (ProfViewerAUG(S['R'].x[:24], S['vrot'][:,:24]*1e-3),)
+        try:
+            S = self.S['CEZ']
+            self.viewers += (ProfViewerAUG(S['R'].x[:24], S['vrot'][:,:24]*1e-3),)
+        except:
+            pass
 
         menu_entries_ax = []
         for v in self.viewers:

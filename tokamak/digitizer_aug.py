@@ -52,6 +52,9 @@ class DigitizerAUG(Digitizer):
         self.nodes = nodes
 
     def load(self, **kw):
+        """
+        If any node fails to load, assume that all will fail and return dummy
+        """
         try:
             return Digitizer.load(self, **kw)
         except TdiError:
