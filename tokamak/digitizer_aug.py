@@ -48,17 +48,24 @@ class DigitizerAUG(Digitizer):
         self.IO_file = IOFileAUG(shn, suffix=suffix, group=group)
 
         if self.tnode not in nodes:
-            nodes += (self.tnode,)
+            nodes = nodes[:1] + (self.tnode,) + nodes[1:]
         self.nodes = nodes
 
+    def get_node(self, node, **kw):
+        try:
+            return Digitizer.get_node(self, node, **kw)
+        except TdiError:
+            return np.zeros(1)
+
+    """
     def load(self, **kw):
-        """
-        If any node fails to load, assume that all will fail and return dummy
-        """
+        '''If any node fails to load, assume that all will fail and return dummy
+        '''
         try:
             return Digitizer.load(self, **kw)
         except TdiError:
             return {node: np.zeros(1) for node in self.nodes}
+    """
 
     def calib(self):
         for node, x in self.x.iteritems():
@@ -79,18 +86,49 @@ class DigitizerAUGMAC(DigitizerAUG):
             return self.dig_Tdiv[indx]
 
 
-class DigitizerAUGEQI(DigitizerAUG):
-    def __init__(self, shn):
-        DigitizerAUG.__init__(self, shn, diag='EQI', 
-                nodes=('Ri', 'Zj', 'PFM', 'ikCAT', 'RPFx', 'zPFx', 'PFxx'))
+class DigitizerAUGFPP(DigitizerAUG):
+    def __init__(self, shn, diag='FPP'):
+        DigitizerAUG.__init__(self, shn, diag=diag, 
+                nodes=('PFM', 'Ri', 'Zj', 'ikCAT', 'RPFx', 'zPFx', 'PFxx',
+                       'PFL', 'TFLx', 'Qpsi', 'Jpol', 'Pres', 'Vol', 'Area', 'CLE'))
+        
+        self.alias = dict(psii='PFL', q='Qpsi')
+        self.alias_primed = dict(jpol='Jpol', p='Pres', V='Vol', A='Area')
+        
         self.mapspec = dict(magnaxis=0, xpoint=1, innerlim=2, xpoint2=3, outerlim=4)
-   
+
+    def get(self, indx):
+        return DigitizerAUG.__getitem__(self, indx)
+
+    def __getitem__(self, indx):
+        try:
+            return self.get(self.alias[indx])
+        except KeyError:
+            pass
+
+        indx, prime, tail = indx.partition('prime')
+        try:
+            return self.get(self.alias_primed[indx])[:,bool(prime)::2]
+        except KeyError:
+            return self.get(indx)
+
     def get_R_z_psi(self):
         return self.x['Ri'][0], self.x['Zj'][0], self['PFM']
 
     def get_R_z_psi_special(self, spec):
         i = self.mapspec[spec]
         return self['RPFx'][:,i], self['zPFx'][:,i], self['PFxx'][:,i]
+
+
+class DigitizerAUGEQI(DigitizerAUGFPP):
+    def __init__(self, shn, diag='EQI'):
+        DigitizerAUGFPP.__init__(self, shn, diag=diag)
+
+        self.nodes += ('FFP', 'CLD', 'Rinv', 'R2inv', 'Bave', 'B2ave', 'FTRA')
+        self.alias.update(ffprime='FFP', Bt='Bave')
+
+
+eqi_digitizers = dict(FPP=DigitizerAUGFPP, EQI=DigitizerAUGEQI)
 
 
 class DigitizerAUGYGC(DigitizerAUG):

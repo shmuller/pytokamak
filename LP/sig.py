@@ -287,13 +287,15 @@ class PiecewisePolynomial:
         index = (slice(None), slice(None)) + index
         return self.__class__(self.c[index], self.x, **self.kw)
 
-    def __call__(self, X, **kw):
+    def __call__(self, X, masked=False, **kw):
         X = np.atleast_1d(X)
         ind, outl, outr = self._findind(X, **kw)
         Y = self._polyval(X, ind)
 
         if self.fill is not None:
             Y[outl | outr] = self.fill
+        if masked:
+            Y = ma.masked_array(Y, outl | outr)
         return Y
 
     def _findind(self, X, side='right'):
@@ -584,8 +586,10 @@ class Amp:
 
 class Signal:
     def __init__(self, x, t, **kw):
-        self.x, self.t, self.kw = x, t, kw
-        self.size, self.shape = x.size, x.shape
+        self.x, self.t = np.atleast_1d(x, t)
+        self.size, self.shape = self.x.size, self.x.shape
+
+        self.kw = kw
         self.number = kw.get('number', -1)
         self.name = kw.get('name', "")
         self.type = kw.get('type', None)
@@ -599,9 +603,9 @@ class Signal:
     def __str__(self):
         return self.__repr__() + ", with:\n%s" % pformat(self.__dict__)
 
-    def __call__(self, t):
+    def __call__(self, t, masked=False):
         t = np.atleast_1d(t)
-        return self.__class__(self.PP(t), t, **self.kw)
+        return self.__class__(self.PP(t, masked), t, **self.kw)
 
     def __getitem__(self, indx):
         if not isinstance(indx, tuple):

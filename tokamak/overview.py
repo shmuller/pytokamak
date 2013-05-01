@@ -7,12 +7,12 @@ from sm_pyplot.contextmenupicker import ContextMenuPicker
 from LP.sig import memoized_property
 from LP.probe_xpr import ProbeXPR, ShotNotFoundError
 
-from digitizer_aug import DigitizerAUG, DigitizerAUGMAC, DigitizerAUGEQI, dig_YGC
+from digitizer_aug import DigitizerAUG, DigitizerAUGMAC, eqi_digitizers, dig_YGC
 from equilibrium import Eqi, EqiViewer
 
 from sm_pyplot.observer_viewer import ToggleViewer
 
-AUG_diags = dict(
+aug_diags = dict(
     DCN = dict(nodes=('H-1', 'H-2', 'H-3', 'H-4', 'H-5')),
     TOT = dict(nodes=('H-1_corr', 'H-2_corr', 'H-3_corr', 'H-4_corr', 'H-5_corr')),
     NIS = dict(nodes=('PNI',)),
@@ -68,8 +68,8 @@ class ProfViewerAUG(ToggleViewer):
 
 
 class AUGOverview:
-    def __init__(self, shn):
-        self.shn = shn
+    def __init__(self, shn, eqi_dig='EQI'):
+        self.shn, self.eqi_dig = shn, eqi_dig
 
         try:
             self.XPR = ProbeXPR(shn=shn)
@@ -84,9 +84,9 @@ class AUGOverview:
 
     @memoized_property
     def S(self):
-        S = {k: DigitizerAUG(self.shn, diag=k, **v) for k, v in AUG_diags.iteritems()}
+        S = {k: DigitizerAUG(self.shn, diag=k, **v) for k, v in aug_diags.iteritems()}
         S['MAC'] = DigitizerAUGMAC(self.shn)
-        S['EQI'] = DigitizerAUGEQI(self.shn)
+        S['EQI'] = eqi_digitizers[self.eqi_dig](self.shn)
         return S
 
     @memoized_property
