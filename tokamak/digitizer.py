@@ -190,16 +190,21 @@ class IOMds(IO):
 
 
 class Digitizer(IO, Mapping):
-    def __init__(self, shn=0, name="", s=None, tnode='t', tunits='s'):
+    def __init__(self, shn=0, name="", s=None, nodes=(), tnode='t', tunits='s',
+            IO_mds=None, IO_file=None):
         self.shn, self.name, self.s = shn, name, s
-        self.tnode, self.tunits = tnode, tunits
+        self.nodes, self.tnode, self.tunits = nodes, tnode, tunits
+        self.IO_mds, self.IO_file = IO_mds, IO_file
 
-        self.IO_mds = self.IO_file = None
-        self.nodes = ()
         self.window = slice(None)
         self.perm = dict()
         self.amp = dict()
-        
+
+        if tnode in nodes:
+            self.all_nodes = nodes
+        else:
+            self.all_nodes = nodes[:1] + (tnode,) + nodes[1:]
+
         IO.__init__(self)
 
     def __repr__(self):
@@ -230,13 +235,13 @@ class Digitizer(IO, Mapping):
             yield k
 
     def load_raw_mds(self, **kw):
-        self.x = self.IO_mds.load(self.nodes, **kw)
+        self.x = self.IO_mds.load(self.all_nodes, **kw)
         for k in self.x.keys():
             self.x[k] = self.x[k].astype(np.float32)
         return self.x
         
     def load_raw_file(self, **kw):
-        self.x = self.IO_file.load(self.nodes, **kw)
+        self.x = self.IO_file.load(self.all_nodes, **kw)
         return self.x
 
     def get_size(self, node, **kw):
@@ -259,11 +264,11 @@ class Digitizer(IO, Mapping):
         return self.IO_file.put_node(node, val)
         
     def load_raw(self, **kw):
-        self.x = IO.load(self, self.nodes, **kw)
+        self.x = IO.load(self, self.all_nodes, **kw)
         return self.x
     
     def save(self):
-        self.IO_file.save(self.x, self.nodes)
+        self.IO_file.save(self.x, self.all_nodes)
 
     def calib(self):
         for node in self.perm:
@@ -282,8 +287,8 @@ class Digitizer(IO, Mapping):
     load_file = _load_calib_factory('load_raw_file')
     load      = _load_calib_factory('load_raw')
 
-    def calib_offset(self):
-        self.load_raw()
+    def calib_offset(self, **kw):
+        self.load_raw(**kw)
         offs = [median(self.x[node]) for node in self.nodes]
         return offs
 

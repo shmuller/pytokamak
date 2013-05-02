@@ -19,16 +19,22 @@ class IOFileD3D(IOFile):
         IOFile.__init__(self, *args, **kw)
 
 
-class DigitizerD3DEFIT(Digitizer):
-    def __init__(self, shn):
-        Digitizer.__init__(self, shn, name='EFIT')
-        self.IO_mds = IOMdsD3D(shn, diag='EFIT01')
-        self.IO_file = IOFileD3D(shn, suffix='_D3D', group='EFIT01')
-        self.tnode, self.tunits = 'GTIME', 's'
-        self.nodes = ('GTIME', 'R', 'Z', 'PSIRZ', 
-                      'RMAXIS', 'ZMAXIS', 'SSIMAG', 'SSIBRY', 'BDRY')
+class DigitizerD3D(Digitizer):
+    def __init__(self, shn, diag, suffix='_D3D', group=None, **kw):
+        if group is None:
+            group = diag
+        
+        Digitizer.__init__(self, shn, name=diag, 
+                IO_mds = IOMdsD3D(shn, diag=diag),
+                IO_file = IOFileD3D(shn, suffix=suffix, group=group), **kw)
 
-        self.amp = dict(GTIME=Amp(1e-3))
+
+class DigitizerD3DEFIT(DigitizerD3D):
+    def __init__(self, shn):
+        DigitizerD3D.__init__(self, shn, diag='EFIT01', tnode='GTIME', tunits='s',
+                nodes = ('PSIRZ', 'GTIME', 'R', 'Z', 
+                         'RMAXIS', 'ZMAXIS', 'SSIMAG', 'SSIBRY', 'BDRY'),
+                amp = dict(GTIME=Amp(1e-3)))
 
     def get_R_z_psi(self):
         return self.x['R'], self.x['Z'], self['PSIRZ']

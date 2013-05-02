@@ -1,4 +1,5 @@
 import numpy as np
+import numpy.ma as ma
 
 import textwrap
 
@@ -133,7 +134,11 @@ class Head:
         kw.setdefault('facecolor', 'k')
         kw.setdefault('edgecolor', 'none')
 
-        self.xy[:2,0] = self.R0 - self.S['R'](ti).x[0]
+        R = self.R0 - self.S['R'](ti, masked=True).x[0]
+        if R is ma.masked:
+            R = np.nan
+
+        self.xy[:2,0] = R
         pp = PathPatch(Path(self.xy), **kw)
         ax.add_patch(pp)
         return ax

@@ -23,8 +23,8 @@ aug_diags = dict(
     BPD = dict(nodes=('Pradtot',)),
     MAG = dict(nodes=('Ipa', 'ULid12')),
     MHE = dict(nodes=('C09-23',), s=slice(None, None, 4)),
-    CEZ = dict(nodes=('R', 'z', 'phi', 'vrot', 'Ti', 'inte', 
-                      'err_vrot', 'err_Ti', 'err_inte')))
+    CEZ = dict(nodes=('vrot', 'Ti', 'inte', 'err_vrot', 'err_Ti', 'err_inte',
+                      'R', 'z', 'phi')))
 
 
 class EqiViewerAUG(EqiViewer):

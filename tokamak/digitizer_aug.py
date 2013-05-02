@@ -39,17 +39,13 @@ class IOFileAUG(IOFile):
 
 
 class DigitizerAUG(Digitizer):
-    def __init__(self, shn, diag, nodes, suffix='_AUG', group=None, raw=False, **kw):
-        Digitizer.__init__(self, shn, name=diag, **kw)
+    def __init__(self, shn, diag, suffix='_AUG', group=None, raw=False, **kw):
         if group is None:
             group = diag
-
-        self.IO_mds = IOMdsAUG(shn, diag=diag, raw=raw)
-        self.IO_file = IOFileAUG(shn, suffix=suffix, group=group)
-
-        if self.tnode not in nodes:
-            nodes = nodes[:1] + (self.tnode,) + nodes[1:]
-        self.nodes = nodes
+        
+        Digitizer.__init__(self, shn, name=diag, 
+                IO_mds = IOMdsAUG(shn, diag=diag, raw=raw),
+                IO_file = IOFileAUG(shn, suffix=suffix, group=group), **kw)
 
     def get_node(self, node, **kw):
         try:

@@ -22,14 +22,21 @@ head = HeadXPR(tips=(tip1, tip2, tip3), R_keys='ampR')
 tip3I = TipXPR(number=3, pos='upper', V_keys='ampV1', I_keys='ampI3')
 headI = HeadXPR(tips=(tip1, tip2, tip3I), R_keys='ampR')
 
+tip3_disc = TipXPR(number=3, pos='upper', V_keys=None, I_keys=None)
+head_tip3_disc = HeadXPR(tips=(tip1, tip2, tip3_disc), R_keys='ampR')
+
+tip2_on_I3 = TipXPR(number=2, pos='lower right', V_keys='ampV1', I_keys='ampI3')
+head_tip3_disc_tip2_on_I3 = HeadXPR(tips=(tip1, tip2_on_I3, tip3_disc), R_keys='ampR')
+
 
 ############################################
 E = campaign.add_experiment(date="20120405")
 
-E.add(27684, "Plunge to 10 cm", 
+# Hans-Werner Mueller
+E.add(27684, "Plunge to 10 cm, Mach tips swept at 1 kHz, single tip disconnected", 
         times = 1.2, 
         posit = 0.10,
-        head = head,
+        head = head_tip3_disc,
         ampI1 = ampInv*CurrentProbe1[10]*Preamp1[5],
         ampI2 = ampInv*CurrentProbe2[10]*Preamp2[5], 
         descr = "Nice L-mode data", 
@@ -41,7 +48,9 @@ E.rep(27685, 27684, "Repeat",
 
 E.rep(27686, 27685, "Technical shot: Both current probes on tip 1",
         posit = 0.13,
-        descr = "Plunge in L-mode to 13 cm. Current measurements agree well.",
+        descr = """\
+            Plunge in L-mode to 13 cm. Current measurements agree well.
+            Tip 2 saturates in electron branch due to signal offset.""",
         stars = '')
 
 E.rep(27687, 27686, "Changed direction of 2nd current probe",
@@ -50,13 +59,14 @@ E.rep(27687, 27686, "Changed direction of 2nd current probe",
         descr = "Plunge in L-mode to 15 cm. Arcs on way out.",
         stars = '***')
 
+# Leena Aho-Mantila
 E.rep(27688, 27687, "2.5 cm at 3.9 s",
         times = 3.9,
         posit = 0.025,
         descr = "Plunge only to 2.5 cm.",
         stars = '*')
 
-E.rep(27689, 27688, "First shot of Leena's experiment",
+E.rep(27689, 27688, "First shot of Leena's experiment with probe",
         posit = 0.10,
         descr = "Good L-mode measurements, but not far in.",
         stars = '**')
@@ -77,6 +87,7 @@ E.rep(27692, 27691, "All the way through, but signals saturated",
         descr = "Really nice measurements, but signals saturated on HFS",
         stars = "****")
 
+# Hans-Werner Mueller
 E.rep(27693, 27692, "Current probes 50 mA/div, go to 20 cm",
         posit = 0.20,
         ampI1 = ampInv*CurrentProbe1[50]*Preamp1[5],
@@ -88,8 +99,8 @@ E.rep(27694, 27693, "HWM resumed experiment",
         times = 1.3,
         posit = 0.34,
         descr = """\
-            Very nice L-mode data.
-            Looks like the plunge is going through the core""",
+            Very nice L-mode data. Looks like the plunge is going through the core. 
+            No equilibrium data!!""",
         stars = '*****')
 
 E.rep(27695, 27694, "Calibration after this shot", 
@@ -103,10 +114,10 @@ E.rep(27695, 27694, "Calibration after this shot",
 E = campaign.add_experiment(date="20120621")
 
 # Hendrik Meyer
-E.add(28232, "304 mm, 1.5 s",
+E.add(28232, "304 mm, 1.5 s, Mach tips at 1 kHz, single tip disconnected",
         times = 1.65,
         posit = 0.20,
-        head = head,
+        head = head_tip3_disc,
         ampI1 = ampInv*CurrentProbe1[20]*Preamp1[5],
         ampI2 = CurrentProbe2[20]*Preamp2[5], 
         descr = """\
@@ -131,61 +142,77 @@ E.rep(28234, 28233, "204 mm, 4.8 s, disrupted before",
 E = campaign.add_experiment(date="20120622")
 
 # Rachael McDermott
-E.add(28239, "304 mm, 3.8 s, 20 mA/div, I2 also on I3",
-        times = 3.95,
+E.add(28239, "20 mA/div, I2 also on I3, Mach swept at 1 kHz, single tip disconnected",
+        times = 3.8,
         posit = 0.20,
-        head = head,
+        head = head_tip3_disc,
         ampI1 = ampInv*CurrentProbe1[20]*Preamp1[5],
         ampI2 = CurrentProbe2[20]*Preamp2[5],
-        descr = "Very cold L-mode, very turbulent.",
+        ampI3 = CurrentProbe3[20],
+        descr = """\
+            Very cold L-mode, very turbulent. Shot has several L-I-phase
+            transitions triggered by beam blips.""",
         stars = '***', **def_LPS)
 
-E.rep(28240, 28239, "440 mm, 3.8 s, 50 mA/div",
-        times = 4.0,
+E.rep(28240, 28239, "440 mm, 50 mA/div",
+        times = 3.8,
         posit = 0.34,
         ampI1 = ampInv*CurrentProbe1[50]*Preamp1[5],
         ampI2 = CurrentProbe2[50]*Preamp2[5],
+        ampI3 = CurrentProbe3[50],
         descr = """\
-            Plasma touches wall before plunge.
-            Very low n and Te.""",
+            Plasma touches wall before plunge. Very low n and Te.
+            In EQI, separatrix is still 3 cm away from inner wall when
+            density rises!""",
         stars = '**')
 
-E.rep(28241, 28240, "440 mm, 3.8 s, 20 mA/div",
+E.rep(28241, 28240, "Repeat, 20 mA/div",
         ampI1 = ampInv*CurrentProbe1[20]*Preamp1[5],
         ampI2 = CurrentProbe2[20]*Preamp2[5],
+        ampI3 = CurrentProbe3[20],
         descr = "Almost identical to last shot.",
         stars = '**')
 
-E.rep(28242, 28241, "440 mm, 3.2 s, 20 mA/div",
-        times = 3.4,
+E.rep(28242, 28241, "Density ramp",
+        times = 3.2,
+        posit = 0.34,
         descr = """\
-            Very nice cold L-mode. Density LFS > HFS.
-            I2 goes up on way out""",
-        stars = '****')
+            Mini I-phases triggered by beam blips! First I-phase at 2.24 s is 
+            triggered *after* the beam is already off! The density stays constant
+            during the beam blip between 2.2 s and 2.215 s, and rises between 2.24 s
+            and 2.28 s, where clear I-phase pulsing is visible in Ipolsola and
+            Ipolsoli. I-phase pulsing becomes weaker as density rises.
+            Probe dwells on HFS at 3.4 s when I-phase transition happens. In contrast
+            to usual case, density measured by probe rises!
+            """,
+        stars = '*****')
 
-E.rep(28243, 28242, "440 mm, 3.2 s, 20 mA/div -> saturated I2",
+E.rep(28243, 28242, "Repeat",
+        head = head_tip3_disc_tip2_on_I3,
         descr = """\
-            Very similar to last shot. Saturated signals on I2
-            only concern way out.""",
+            Very similar to last shot. I2 saturates, while I3 does not.""",
         stars = '****')
 
 # Tim Happel
-E.rep(28244, 28243, "204 mm, 1.5 s, 20 mA/div -> 440 mm acc.",
-        times = 1.7,
+E.rep(28244, 28243, "204 mm -> 440 mm acc.",
+        times = 1.5,
+        posit = 0.34,
         descr = """\
             Too much power, lots of intermittent arcing.""",
         stars = '*')
 
-E.rep(28245, 28244, "204 mm, 1.0 s, 20 mA/div, preamps 2x (was 5x)",
-        times = 1.1,
+E.rep(28245, 28244, "204 mm, preamps 2x (was 5x)",
+        times = 1.0,
         posit = 0.10,
+        head = head_tip3_disc,
         ampI1 = ampInv*CurrentProbe1[20]*Preamp1[2],
         ampI2 = CurrentProbe2[20]*Preamp2[2],
+        ampI3 = CurrentProbe3[20],
         descr = "ELM-ing H-mode. Nice flow patterns during ELMs.",
         stars = "****")
 
-E.rep(28246, 28245, "254 mm, 0.85 s, 20 mA/div, preamps 2x -> L-H transition!",
-        times = 0.98,
+E.rep(28246, 28245, "254 mm",
+        times = 0.85,
         posit = 0.15,
         descr = """\
             L-H transition at 0.9 s, right before plunge.
@@ -193,16 +220,16 @@ E.rep(28246, 28245, "254 mm, 0.85 s, 20 mA/div, preamps 2x -> L-H transition!",
         stars = '*****')
 
 # Hendrik Meyer
-E.rep(28250, 28246, "304 mm, 4.0 s, 20 mA/div, preamps 2x",
-        times = 4.15,
+E.rep(28250, 28246, "304 mm",
+        times = 4.0,
         posit = 0.20,
         descr = """\
             Caught L-H transition at 4.15 s, but no reliable biasing anymore.
             Kepco saturates due to high n. ELMing starts immediately.""",
         stars = '***')
 
-E.rep(28251, 28250, "304 mm, 1.8 s, 20 mA/div, preamps 2x, (bias voltage less positive)",
-        times = 1.95,
+E.rep(28251, 28250, "304 mm, bias voltage less positive",
+        times = 1.8,
         descr = """\
             L-H transition at 1.95 s, pretty much at the dwell point in 
             the private flux region. Very high flows on LFS divertor leg 
@@ -210,26 +237,26 @@ E.rep(28251, 28250, "304 mm, 1.8 s, 20 mA/div, preamps 2x, (bias voltage less po
             during L-H transition""",
         stars = '****')
 
-E.rep(28252, 28251, "354 mm, 1.75 s, 20 mA/div, preamps 2x -> 1.8 s acc.",
-        times = 1.96,
+E.rep(28252, 28251, "354 mm",
+        times = 1.8,
         posit = 0.25,
         descr = """\
             L-H transition at 1.97 s. X-point further inside.
             More arcing than on previous shot""",
         stars = '**')
 
-E.rep(28253, 28252, "304 mm, 1.75 s, 20 mA/div, preamps 2x (repeat 28250)",
-        times = 1.9,
+E.rep(28253, 28252, "Repeat 28250, 304 mm",
+        times = 1.75,
         posit = 0.20,
         descr = """\
             L-H transition at 1.93. Saturation and arcing as in last shot.""",
         stars = '**')
 
-E.rep(28254, 28253, "304 mm, 1.75 s, 20 mA/div, preamps 2x (repeat 28251)",
+E.rep(28254, 28253, "Repeat 28251",
         descr = """\
             L-H transition at 1.935 s, when probe is in private flux region
             (on the way back). Flows in private flux region turn off immediately 
-            at transition. H-mode starts with ELM.""",
+            at transition. H-mode starts with ELM. Mach -2 on LFS.""",
         stars = '****')
 
 
@@ -244,7 +271,9 @@ E.add(28379, "Fixed probe @2564.05 mm",
         head = head,
         ampI1 = ampInv*CurrentProbe1[20]*Preamp1[2],
         ampI2 = CurrentProbe2[20]*Preamp2[2], 
-        descr = "Probe very far out, almost no signals.",
+        descr = """\
+            Probe very far out, almost no signals. LPS digitizer between
+            0 and 1 s. Acquired sweeps agree with XPR.""",
         stars = '', **def_XPR_LPS)
 
 E.rep(28380, 28379, "Fixed probe @2569.05 mm -> no data",
@@ -267,12 +296,14 @@ E.rep(28383, 28379, "@2589.08 mm, DC offset with small sweep -> worked",
 ############################################
 E = campaign.add_experiment(date="20120713")
 
-E.add(28389, "Fixed probe @2569.05 mm, -180 V with sweep", 
+E.add(28389, "Fixed probe @2569.05 mm, -180 V with sweep, single tip not connected", 
         head = head,
         ampI1 = ampInv*CurrentProbe1[20]*Preamp1[2],
         ampI2 = CurrentProbe2[20]*Preamp2[2], 
-        descr = "Data already on tape.",
-        stars = '', **def_XPR_LPS)
+        descr = """\
+            First L-mode, then H-mode with Type I ELMs. Probe goes into
+            emission then. Both digitizers working.""",
+        stars = '**', **def_XPR_LPS)
 
 E.rep(28390, 28389, "-80 V / 150 V sweep at 100 Hz",
         descr = "Timebase error.",

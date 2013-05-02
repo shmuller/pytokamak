@@ -43,13 +43,14 @@ class DigitizerXPRRaw(DigitizerXPR):
     def __init__(self, shn):
         DigitizerXPR.__init__(self, shn, raw=True)
 
-        self.amp = {node: amp14Bit.copy() for node in self.nodes[:-1]}
+        self.amp = {node: amp14Bit.copy() for node in self.nodes}
 
 
 class DigitizerXPRRawPos(DigitizerXPRRaw):
     def __init__(self, shn):
         DigitizerXPRRaw.__init__(self, shn)
         self.nodes += ('PosL', 'PosH')
+        self.all_nodes += ('PosL', 'PosH')
 
     def calib(self):
         DigitizerXPRRaw.calib(self)
@@ -72,7 +73,7 @@ class DigitizerLPSRaw(DigitizerLPS):
     def __init__(self, shn):
         DigitizerLPS.__init__(self, shn, raw=True)
 
-        self.amp = {node: amp12Bit.copy() for node in self.nodes[:-1]}
+        self.amp = {node: amp12Bit.copy() for node in self.nodes}
 
         for node in ('CUR1', 'VOL3'):
             self.amp[node] *= ampInv
@@ -82,11 +83,11 @@ class DigitizerLPSOld(DigitizerLPS):
     def __init__(self, shn):
         DigitizerLPS.__init__(self, shn)
 
-        self.dig_xpos = DigitizerAUG(shn, diag='LPS', suffix='_LPS', group='XPOS',
-                nodes=('XPOS',))
-
         for node in ('CUR1', 'CUR2', 'VOL3'):
             self.amp[node] = ampInv.copy()
+
+        self.dig_xpos = DigitizerAUG(shn, diag='LPS', suffix='_LPS', group='XPOS',
+                nodes=('XPOS',))
 
     def calib(self):
         DigitizerLPS.calib(self)
