@@ -43,6 +43,11 @@ class Head:
         zp, zm = d/2., -d/2.
         self.xy = np.array([(0., zp), (0., zm), (2.5, zm), (2.5, zp)])
    
+    def get_tip_by_name(self, name):
+        for tip in self.tips:
+            if tip.name == name:
+                return tip
+
     def get_tip_number_by_position(self, pos):
         for tip in self.tips:
             if tip.pos == pos:
@@ -82,7 +87,7 @@ class Shot:
         self.stars = kw.pop('stars', '*')
 
         self.attrs = ('expt', 'shn', 'dig', 'head', 'amp_default', 
-                'lines', 'times', 'posit')
+                'lines', 'times', 'posit', 'tipmap')
         
         kw.setdefault('times', ())
         kw.setdefault('posit', ())

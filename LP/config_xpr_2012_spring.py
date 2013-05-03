@@ -13,20 +13,44 @@ amp_LPS['ampR'] = Amp(fixpoints=fixpoints)
 fixpoints = (3.6812, -0.072), (7.0382, 0.170)
 amp_XPR['ampR'] = Amp(fixpoints=fixpoints)
 
+
 tip1 = TipXPR(number=1, pos='lower left', V_keys='ampV1', I_keys='ampI1')
 tip2 = TipXPR(number=2, pos='lower right', V_keys='ampV1', I_keys='ampI2')
 tip3 = TipXPR(number=3, pos='upper', V_keys='ampVF', I_keys=None)
 
 head = HeadXPR(tips=(tip1, tip2, tip3))
 
+tipmap = dict(
+        tip1 = dict(V='ampV1', I='ampI1'),
+        tip2 = dict(V='ampV1', I='ampI2'),
+        tip3 = dict(V='ampVF', I=None))
+
+
 tip3I = TipXPR(number=3, pos='upper', V_keys='ampV1', I_keys='ampI3')
 headI = HeadXPR(tips=(tip1, tip2, tip3I))
+
+tipmapI = dict(
+        tip1 = dict(V='ampV1', I='ampI1'),
+        tip2 = dict(V='ampV1', I='ampI2'),
+        tip3 = dict(V='ampV1', I='ampI3'))
+
 
 tip3_disc = TipXPR(number=3, pos='upper', V_keys=None, I_keys=None)
 head_tip3_disc = HeadXPR(tips=(tip1, tip2, tip3_disc))
 
+tipmap_tip3_disc = dict(
+        tip1 = dict(V='ampV1', I='ampI1'),
+        tip2 = dict(V='ampV1', I='ampI2'),
+        tip3 = dict(V=None, I=None))
+
+
 tip2_on_I3 = TipXPR(number=2, pos='lower right', V_keys='ampV1', I_keys='ampI3')
 head_tip3_disc_tip2_on_I3 = HeadXPR(tips=(tip1, tip2_on_I3, tip3_disc))
+
+tipmap_tip3_disc_tip2_on_I3 = dict(
+        tip1 = dict(V='ampV1', I='ampI1'),
+        tip2 = dict(V='ampV1', I='ampI3'),
+        tip3 = dict(V=None, I=None))
 
 
 ############################################
@@ -37,6 +61,7 @@ E.add(27684, "Plunge to 10 cm, Mach tips swept at 1 kHz, single tip disconnected
         times = 1.2, 
         posit = 0.10,
         head = head_tip3_disc,
+        tipmap = tipmap_tip3_disc,
         ampI1 = ampInv*CurrentProbe1[10]*Preamp1[5],
         ampI2 = ampInv*CurrentProbe2[10]*Preamp2[5], 
         descr = "Nice L-mode data", 
@@ -118,6 +143,7 @@ E.add(28232, "304 mm, 1.5 s, Mach tips at 1 kHz, single tip disconnected",
         times = 1.65,
         posit = 0.20,
         head = head_tip3_disc,
+        tipmap = tipmap_tip3_disc,
         ampI1 = ampInv*CurrentProbe1[20]*Preamp1[5],
         ampI2 = CurrentProbe2[20]*Preamp2[5], 
         descr = """\
@@ -146,6 +172,7 @@ E.add(28239, "20 mA/div, I2 also on I3, Mach swept at 1 kHz, single tip disconne
         times = 3.8,
         posit = 0.20,
         head = head_tip3_disc,
+        tipmap = tipmap_tip3_disc,
         ampI1 = ampInv*CurrentProbe1[20]*Preamp1[5],
         ampI2 = CurrentProbe2[20]*Preamp2[5],
         ampI3 = CurrentProbe3[20],
@@ -189,6 +216,7 @@ E.rep(28242, 28241, "Density ramp",
 
 E.rep(28243, 28242, "Repeat",
         head = head_tip3_disc_tip2_on_I3,
+        tipmap = tipmap_tip3_disc_tip2_on_I3,
         descr = """\
             Very similar to last shot. I2 saturates, while I3 does not.""",
         stars = '****')
@@ -205,6 +233,7 @@ E.rep(28245, 28244, "204 mm, preamps 2x (was 5x)",
         times = 1.0,
         posit = 0.10,
         head = head_tip3_disc,
+        tipmap = tipmap_tip3_disc,
         ampI1 = ampInv*CurrentProbe1[20]*Preamp1[2],
         ampI2 = CurrentProbe2[20]*Preamp2[2],
         ampI3 = CurrentProbe3[20],
@@ -269,6 +298,7 @@ E = campaign.add_experiment(date="20120712")
 
 E.add(28379, "Fixed probe @2564.05 mm, Mach swept at 1 kHz, single disconnected", 
         head = head_tip3_disc,
+        tipmap = tipmap_tip3_disc,
         ampI1 = ampInv*CurrentProbe1[20]*Preamp1[2],
         ampI2 = CurrentProbe2[20]*Preamp2[2], 
         descr = """\
@@ -299,6 +329,7 @@ E = campaign.add_experiment(date="20120713")
 
 E.add(28389, "Fixed probe @2569.05 mm, -180 V with sweep, single tip not connected", 
         head = head,
+        tipmap = tipmap,
         ampI1 = ampInv*CurrentProbe1[20]*Preamp1[2],
         ampI2 = CurrentProbe2[20]*Preamp2[2], 
         descr = """\
@@ -362,6 +393,7 @@ E = campaign.add_experiment(date="20120717")
 
 E.add(28419, "Fcn gen. 20 Vpp, +8 VDC, 0.5 kHz (let saturate), plunge at 2.7 s", 
         head = head,
+        tipmap = tipmap,
         ampI1 = CurrentProbe1[5],
         ampI2 = CurrentProbe2[5], 
         descr = """\
@@ -420,6 +452,7 @@ E.rep(28429, 28428, "Back to 5 mA/div -> no plunge",
 
 E.rep(28434, 28429, "20 mA/div, 0.1 kHz, all 3 tips on bias voltage", 
         head = headI,
+        tipmap = tipmapI,
         ampI1 = CurrentProbe1[20],
         ampI2 = CurrentProbe2[20], 
         ampI3 = CurrentProbe3[20], 
@@ -447,6 +480,7 @@ E.add(28442, "0.5 kHz, 3rd pin VF",
         times = (1.86, 4.06),
         posit = (0.10, 0.10),
         head = head,
+        tipmap = tipmap,
         ampI1 = CurrentProbe1[20],
         ampI2 = CurrentProbe2[20], 
         descr = """\
@@ -515,6 +549,7 @@ E = campaign.add_experiment(date="20120720")
 
 E.add(28455, "Acquisition with turned-off Kepco", 
         head = head,
+        tipmap = tipmap,
         ampI1 = CurrentProbe1[20],
         ampI2 = CurrentProbe2[20], 
         descr = "Acquisition works.",
@@ -576,7 +611,7 @@ E.rep(28473, 28472, "He again: 1 plunges at 150 mm",
 E = campaign.add_experiment(date="20120726")
 
 E.add(28504, "Calibration, no signals attached", 
-        dig='XPR', head=head, amp_default=amp_default_unity, 
+        dig='XPR', head=head, tipmap=tipmap, amp_default=amp_default_unity, 
         lines=dict(XPR=dict(amp={}, mapping=mapping_XPR), 
                    LPS=dict(amp={}, mapping=mapping_LPS)),
         ampI1 = CurrentProbe1[20],

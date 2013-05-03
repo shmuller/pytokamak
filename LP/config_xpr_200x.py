@@ -11,11 +11,18 @@ class TipLPS(CylindricalTip):
     def __init__(self, *args, **kw):
         CylindricalTip.__init__(self, 0.00045, 0.002, *args, **kw)
 
+
 tip1 = TipLPS(number=1, pos='lower left', V_keys='ampV1', I_keys='ampI2')
 tip2 = TipLPS(number=2, pos='lower right', V_keys='ampV1', I_keys='ampI3')
 tip3 = TipLPS(number=3, pos='upper', V_keys='ampV1', I_keys='ampI1')
 
 head = HeadXPR(tips=(tip1, tip2, tip3))
+
+tipmap = dict(
+        tip1 = dict(V='ampV1', I='ampI2'),
+        tip2 = dict(V='ampV1', I='ampI3'),
+        tip3 = dict(V='ampV1', I='ampI1'))
+
 
 tip1_V2 = TipLPS(number=1, pos='lower left', V_keys='ampV2', I_keys='ampI2')
 tip2_V2 = TipLPS(number=2, pos='lower right', V_keys='ampV2', I_keys='ampI3')
@@ -23,15 +30,21 @@ tip3_V2 = TipLPS(number=3, pos='upper', V_keys='ampV2', I_keys='ampI1')
 
 head_V2 = HeadXPR(tips=(tip1_V2, tip2_V2, tip3_V2))
 
+tipmap_V2 = dict(
+        tip1 = dict(V='ampV2', I='ampI2'),
+        tip2 = dict(V='ampV2', I='ampI3'),
+        tip3 = dict(V='ampV2', I='ampI1'))
+
+
 amp_LPS_old = dict(ampR = Amp(fact=0.004, offs=-2745*0.004))
 
 mapping_LPS_old = dict(
-            ampR  = 'XPOS', 
-            ampV1 = 'VOL1',
-            ampI1 = 'CUR1',
-            ampI2 = 'CUR2',
-            ampI3 = 'VOL3',
-            ampV2 = 'VOL2')
+        ampR  = 'XPOS', 
+        ampV1 = 'VOL1',
+        ampI1 = 'CUR1',
+        ampI2 = 'CUR2',
+        ampI3 = 'VOL3',
+        ampV2 = 'VOL2')
 
 lines_LPS = dict(amp=amp_LPS_old, mapping=mapping_LPS_old)
 
@@ -42,9 +55,10 @@ def_LPS_old = dict(dig='LPS_old', amp_default=amp_default_unity, lines=dict(LPS=
 E = campaign.add_experiment(date="19990323")
 
 E.add(11816, "",
-        head = head,
         times = 1.2,
         posit = 0.13,
+        head = head,
+        tipmap = tipmap,
         descr = "XXX mapping incorrect!",
         stars = '**', **def_LPS_old)
 
@@ -61,6 +75,7 @@ E = campaign.add_experiment(date="20040318")
 
 E.add(18786, "No plunge",
         head = head_V2,
+        tipmap = tipmap_V2,
         descr = "XXX mapping incorrect!",
         stars = '', **def_LPS_old)
 
@@ -89,9 +104,10 @@ E.rep(18789, 18788, "",
 E = campaign.add_experiment(date="20050330")
 
 E.add(19951, "Standard Ohmic, sweeps",
-        head = head_V2,
         times = 3.9,
         posit = 0.31,
+        head = head_V2,
+        tipmap = tipmap_V2,
         descr = """\
             Nice swept data, some arcs. (2007_Tsalas_PPCF)""",
         stars = '****', **def_LPS_old)
@@ -108,6 +124,7 @@ E = campaign.add_experiment(date="20050621")
 
 E.add(20326, "Standard Ohmic, Maximos fitting demo",
         head = head_V2,
+        tipmap = tipmap_V2,
         descr = """\
             Nice shot. Sinusoidal sweep. Isat slanting visible.""",
         stars = '****', **def_LPS_old)
@@ -150,6 +167,7 @@ E.add(20372, "Standard Ohmic",
         times = 3.4,
         posit = 0.31,
         head = head_V2,
+        tipmap = tipmap_V2,
         descr = """\
             All tips DC biased. Nice flow data from Mach -2 to Mach 2.
             No arcs. (2007_Tsalas_PPCF)""",
@@ -170,6 +188,7 @@ E.add(21194, "Standard Ohmic",
         times = 1.9,
         posit = 0.31,
         head = head_V2,
+        tipmap = tipmap_V2,
         descr = """\
             All tips swept. Very nice flow data from Mach -1 to Mach 1.
             No arcs. (2007_Tsalas_PPCF)""",
@@ -183,6 +202,7 @@ E.add(21258, "Maximos high density data",
         times = 3.4,
         posit = 0.31,
         head = head_V2,
+        tipmap = tipmap_V2,
         descr = "Excellent profiles, low HFS density. (2007_Tsalas_PPCF)",
         stars = '*****', **def_LPS_old)
 
@@ -220,6 +240,7 @@ E.add(21320, "",
         times = 2.2,
         posit = 0.31,
         head = head_V2,
+        tipmap = tipmap_V2,
         descr = """\
             Data quality OK. Mach signals get very high, while 
             single tip signal is very low.""",
@@ -252,6 +273,7 @@ E.add(21380, "Standard Ohmic",
         times = 3.6,
         posit = 0.31,
         head = head_V2,
+        tipmap = tipmap_V2,
         LPS_mapping_ampI1='CUR2',
         LPS_mapping_ampI2='CUR1',
         descr = """\

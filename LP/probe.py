@@ -273,6 +273,9 @@ class Probe:
         self.calib()
         return self.S
 
+    def get_keys(self, name):
+        raise NotImplementedError
+
     def get_mapping(self, key):
         raise NotImplementedError
 
@@ -298,8 +301,9 @@ class Probe:
 
         for tip in self.head.tips:
             i = tip.number
-            x_V = get_sig(tip.V_keys)
-            x_I = get_sig(tip.I_keys)
+            keys = self.get_keys(tip.name)
+            x_V = get_sig(keys['V'])
+            x_I = get_sig(keys['I'])
 
             V = VoltageSignal(x_V, t, number=i, name='V%d' % i)
             I = CurrentSignal(x_I, t, V=V, number=i, name='I%d' % i)

@@ -14,15 +14,27 @@ campaign = Campaign()
 fixpoints = (2.46, 0), (7.06, 0.34)
 amp_XPR['ampR'] = Amp(fixpoints=fixpoints)
 
+
 tip1 = TipXPR(number=1, pos='lower left', V_keys='ampV1', I_keys='ampI3')
 tip2 = TipXPR(number=2, pos='lower right', V_keys='ampV1', I_keys='ampI1')
 tip3 = TipXPR(number=3, pos='upper', V_keys='ampV1', I_keys='ampI2')
 
 headI = HeadXPR(tips=(tip1, tip2, tip3))
 
-tip3sep = TipXPR(number=3, pos='upper', V_keys='ampV2', I_keys='ampI2')
+tipmapI = dict(
+        tip1 = dict(V='ampV1', I='ampI3'),
+        tip2 = dict(V='ampV1', I='ampI1'),
+        tip3 = dict(V='ampV1', I='ampI2'))
 
+
+tip3sep = TipXPR(number=3, pos='upper', V_keys='ampV2', I_keys='ampI2')
 headI_tip3sep = HeadXPR(tips=(tip1, tip2, tip3sep))
+
+tipmapI_tip3sep = dict(
+        tip1 = dict(V='ampV1', I='ampI3'),
+        tip2 = dict(V='ampV1', I='ampI1'),
+        tip3 = dict(V='ampV2', I='ampI2'))
+
 
 fact = 4 * 5.54630/27. / 2**16
 offs = -47578968*fact - 0.105
@@ -51,11 +63,13 @@ E = campaign.add_experiment(date="20121011")
 
 E.add(28633, "DAQ test",
         head = headI,
+        tipmap = tipmapI,
         stars = '', **def_XPR)
 
 E.add(28634, "Sweep attached to 2x100 V Kepco pair, all tips on sweep, plunges behind wall",
-        head = headI,
         times = (0.950, 1.850),
+        head = headI,
+        tipmap = tipmapI,
         ampI1 = CurrentProbe1[5000],
         ampI2 = CurrentProbe2[5000],
         ampI3 = CurrentProbe3[5000], 
@@ -118,6 +132,7 @@ E = campaign.add_experiment(date="20121016")
 
 E.add(28657, "No plunges",
         head = headI,
+        tipmap = tipmapI,
         ampI1 = CurrentProbe1[20],
         ampI2 = CurrentProbe2[20],
         ampI3 = CurrentProbe3[20], 
@@ -178,6 +193,7 @@ E.add(28747, "After repair of short circuit, 3 plunges to 2 cm",
         times = (0.9, 1.7, 3.1),
         posit = (0.02, 0.02, 0.02),
         head = headI,
+        tipmap = tipmapI,
         ampI1 = CurrentProbe1[20],
         ampI2 = CurrentProbe2[20],
         ampI3 = CurrentProbe3[20], 
@@ -213,6 +229,7 @@ E.add(28794, "Ref. 27692, 1 plunge at 2.8 s, all the way through",
         times = 2.8,
         posit = 0.34,
         head = headI,
+        tipmap = tipmapI,
         ampI1 = CurrentProbe1[20],
         ampI2 = CurrentProbe2[20],
         ampI3 = CurrentProbe3[20], 
@@ -251,6 +268,7 @@ E.add(28818, "1 plunge at 2.8 s, all the way through, NO flow measurement",
         times = 2.8,
         posit = 0.34,
         head = headI,
+        tipmap = tipmapI,
         ampI1 = CurrentProbe1[20],
         ampI2 = CurrentProbe2[20],
         ampI3 = CurrentProbe3[20], 
@@ -276,6 +294,7 @@ E.add(28871, "DC biasing test: -200 V",
         times = 3.2,
         posit = 0.05,
         head = headI,
+        tipmap = tipmapI,
         ampI1 = CurrentProbe1[20],
         ampI2 = CurrentProbe2[20],
         ampI3 = CurrentProbe3[20], 
@@ -345,6 +364,7 @@ E = campaign.add_experiment(date="20121123")
 # DC biasing testing - NO POSITION SIGNAL
 E.add(28894, "Continue from yesterday: Only V signal again.",
         head = headI,
+        tipmap = tipmapI,
         ampI1 = CurrentProbe1[20],
         ampI2 = CurrentProbe2[20],
         ampI3 = CurrentProbe3[20], 
@@ -393,6 +413,7 @@ E = campaign.add_experiment(date="20121127")
 # Reversed IpBt
 E.add(28911, "Single/double Kepco on single/Mach tip, no plasma",
         head = headI_tip3sep,
+        tipmap = tipmapI_tip3sep,
         ampV1 = ampVF,
         ampV2 = ampVF,
         ampI1 = CurrentProbe1[20],
@@ -412,6 +433,7 @@ E.add(28913, "All on swept double Kepco, V on S1 and S3, multimeter @0.01 Hz: -2
         times = 1.,
         posit = 0.02,
         head = headI,
+        tipmap = tipmapI,
         ampV1 = ampVF,
         ampV2 = ampVF,
         ampI1 = CurrentProbe1[20],
@@ -442,6 +464,7 @@ E.rep(28916, 28915, "Lemo2BNC adapter on S8. Go to 10 cm",
 
 E.rep(28917, 28916, "Isolated tip at -200 V (1A Kepco)",
         head = headI_tip3sep,
+        tipmap = tipmapI_tip3sep,
         descr = """\
             Good data, but 35 kHz pickup on single tip.
             Good electron branch on swept Mach tips.""",
@@ -454,12 +477,14 @@ E.rep(28918, 28917, "Both Kepco's at -200 V. Plasma died before plunge.",
 
 E.rep(28919, 28918, "All tips at -200 V (4A Kepco)",
         head = headI,
+        tipmap = tipmapI,
         descr = """\
             35 kHz went away. All signals DC and very good.""",
         stars = '****')
 
 E.rep(28920, 28919, "Mach on DC (4A), single on AC (1A), plunge to 15 cm",
         head = headI_tip3sep,
+        tipmap = tipmapI_tip3sep,
         posit = 0.15,
         descr = """\
             Bad arc.""",
@@ -540,6 +565,7 @@ E.add(28960, "Go to 10 cm at 0.9 s. Mach on DC, single on AC",
         times = 0.9,
         posit = 0.1,
         head = headI_tip3sep,
+        tipmap = tipmapI_tip3sep,
         ampI1 = CurrentProbe1[20],
         ampI2 = CurrentProbe2[20],
         ampI3 = CurrentProbe3[20], 
@@ -613,6 +639,7 @@ E.rep(28974, 28968, "All tips on swept 4A Kepco, 15 cm at 0.6 s, bias 17 Vpp",
         times = 0.6,
         posit = 0.15,
         head = headI,
+        tipmap = tipmapI,
         descr = """\
             Arcs again. Too much positive bias.""",
         stars = '*')
@@ -632,6 +659,7 @@ E = campaign.add_experiment(date="20121204")
 # Rev IpBt
 E.add(28983, "Bias Voltage off, offset calibration",
         head = headI,
+        tipmap = tipmapI,
         ampI1 = CurrentProbe1[20],
         ampI2 = CurrentProbe2[20],
         ampI3 = CurrentProbe3[20], 
@@ -660,6 +688,7 @@ E.rep(28988, 28987, "Single tip on 1A Kepco (save Mach signals)",
         times = (1.0, 3.0),
         posit = (0.2, 0.12),
         head = headI_tip3sep,
+        tipmap = tipmapI_tip3sep,
         descr = """\
             Caught L-H transition on 2nd plunge!""",
         stars = '****')
@@ -681,6 +710,7 @@ E.add(28998, "Two plunges at 1.0 and 2.5 s to 20 cm",
         times = (1.0, 2.5),
         posit = (0.2, 0.2),
         head = headI_tip3sep,
+        tipmap = tipmapI_tip3sep,
         ampI1 = CurrentProbe1[20],
         ampI2 = CurrentProbe2[20],
         ampI3 = CurrentProbe3[20], 
@@ -710,6 +740,7 @@ E = campaign.add_experiment(date="20121213")
 
 E.add(29065, "Offset calibration",
         head = headI_tip3sep,
+        tipmap = tipmapI_tip3sep,
         ampI1 = CurrentProbe1[20],
         ampI2 = CurrentProbe2[20],
         ampI3 = CurrentProbe3[20], 
