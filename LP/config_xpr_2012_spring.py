@@ -267,20 +267,21 @@ E.rep(28254, 28253, "Repeat 28251",
 ############################################
 E = campaign.add_experiment(date="20120712")
 
-E.add(28379, "Fixed probe @2564.05 mm", 
-        head = head,
+E.add(28379, "Fixed probe @2564.05 mm, Mach swept at 1 kHz, single disconnected", 
+        head = head_tip3_disc,
         ampI1 = ampInv*CurrentProbe1[20]*Preamp1[2],
         ampI2 = CurrentProbe2[20]*Preamp2[2], 
         descr = """\
-            Probe very far out, almost no signals. LPS digitizer between
-            0 and 1 s. Acquired sweeps agree with XPR.""",
+            Position signal not correct on both LPS and XPR. LPS digitizer 
+            between 0 s and 1 s.  Acquired sweeps agree with XPR.
+            Probe very far out, almost no current signals.""",
         stars = '', **def_XPR_LPS)
 
 E.rep(28380, 28379, "Fixed probe @2569.05 mm -> no data",
         descr = "No plasma.",
         stars = '')
 
-E.rep(28381, 28380, "-200 V bias -> Kepco breaks in at 0.5 s",
+E.rep(28381, 28380, "LPS at 1.5 s, -200 V bias -> Kepco breaks in at 0.5 s",
         descr = "DC biasing doesn't work.",
         stars = '')
 

@@ -64,16 +64,6 @@ class HeadXPR(Head):
     def __init__(self, tips, R_keys=None, R0=1.645, z0=-0.966, d=0.01):
         Head.__init__(self, tips, R_keys, R0, z0, d)
 
-    def calib(self, get_amp):
-        Head.calib(self, get_amp)
-
-        s = slice(5000)
-        self.norm_to_region(s)
-        
-        S = self.S
-        S['Rs'] = S['R'].copy().mediansmooth(100)
-        S['tip1+tip2'] = S['tip1'] + S['tip2']
-
 
 amp_default_unity = dict(
             ampR  = ampUnity, 

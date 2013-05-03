@@ -196,7 +196,7 @@ class Digitizer(IO, Mapping):
         self.nodes, self.tnode, self.tunits = nodes, tnode, tunits
         self.IO_mds, self.IO_file = IO_mds, IO_file
 
-        self.window = slice(None)
+        self.window = None
         self.perm = dict()
         self.amp = dict()
 
@@ -275,6 +275,9 @@ class Digitizer(IO, Mapping):
             self.x[node][:] = self.x[node].transpose(self.perm[node])
         for node in self.amp:
             self.amp[node].apply(self.x[node])
+        if self.window is not None:
+            for node in self.all_nodes:
+                self.x[node] = self.x[node][self.window]
 
     def _load_calib_factory(name):
         def load_calib(self, **kw):

@@ -4,9 +4,8 @@ import numpy.ma as ma
 import textwrap
 
 from pprint import pformat
-from collections import OrderedDict
 
-from sig import ensure_tuple, Container, PositionSignal, VoltageSignal, CurrentSignal
+from sig import ensure_tuple, Container
 
 from matplotlib.path import Path
 from matplotlib.patches import PathPatch
@@ -75,50 +74,7 @@ class Head:
     @property
     def unique_keys(self):
         return [self.R_keys] + self.unique_V_keys + self.unique_I_keys
-        
-    def unique_signals(self, get_x):
-        return {k: get_x(k) for k in self.unique_keys}
-
-    def mapsig(self, get_x, t):
-        self.unique_sigs = self.unique_signals(get_x)
-
-        R = self.unique_sigs[self.R_keys]
-        self.S = OrderedDict(R=PositionSignal(R, t, name='R'))
-
-        nans = np.zeros_like(t)
-        nans.fill(np.nan)
-
-        def get_sig(key):
-            try:
-                return self.unique_sigs[key]
-            except KeyError:
-                return nans
-
-        for tip in self.tips:
-            i = tip.number
-            x_V = get_sig(tip.V_keys)
-            x_I = get_sig(tip.I_keys)
-
-            V = VoltageSignal(x_V, t, number=i, name='V%d' % i)
-            I = CurrentSignal(x_I, t, V=V, number=i, name='I%d' % i)
-            self.S[tip.name] = I
-        
-        return self.S
-
-    def calib(self, get_amp):
-        for k in self.unique_sigs.iterkeys():
-            amp = get_amp(k)
-            amp.apply(self.unique_sigs[k])
-
-    def norm_to_region(self, s):
-        for tip in self.tips:
-            S = self.S[tip.name]
-            S.norm_to_region(s)
-
-            # I_keys is None: floating potential
-            if tip.I_keys is None:
-                S.V.norm_to_region(s)
-
+   
     def get_tip_number_by_position(self, pos):
         for tip in self.tips:
             if tip.pos == pos:
@@ -199,18 +155,6 @@ class Shot:
     def print_descr(self):
         print self.descr
 
-    def mapsig(self, x, line):
-        def get_x(key):
-            return x[self.get(line, 'mapping', key)].astype('d')
-
-        return self.head.mapsig(get_x, x['t'].astype('d'))
-
-    def calib(self, line):
-        def get_amp(key):
-            return self.get(line, 'amp', key)
-
-        self.head.calib(get_amp)
-        
 
 class ShotContainer(Container):
     @property

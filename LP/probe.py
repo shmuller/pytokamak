@@ -6,7 +6,7 @@ reload(logging)
 logging.basicConfig(level=logging.WARN)
 logger = logging
 
-from pdb import set_trace
+from collections import OrderedDict
 
 import fitter_IV
 reload(fitter_IV)
@@ -16,7 +16,8 @@ IVContainer = fitter_IV.IVContainer
 
 from sm_pyplot.tight_figure import get_fig, get_tfig, get_axes
 
-from sig import memoized_property, DictView, math_sel, usetex
+from sig import memoized_property, DictView, math_sel, usetex, \
+        PositionSignal, VoltageSignal, CurrentSignal
 
 
 class PhysicalResults:
@@ -251,30 +252,73 @@ class PhysicalResults:
 
 
 class Probe:
-    def __init__(self, digitizer=None):
-        self.digitizer = digitizer
+    def __init__(self, head, digitizer):
+        self.head, self.digitizer = head, digitizer
 
         self.xlab = "t (s)"
         self.ylab = ("Isat (A)", "Vf (V)", "Te (eV)")
 
     def __getitem__(self, index):
         return self.S[index]
-        
-    def mapsig(self):
-        pass
-
-    def calib(self):
-        pass
-    
+   
     @memoized_property
     def x(self):
         return self.digitizer.x
 
     @memoized_property
     def S(self):
-        self.mapsig()
+        self.S = self.mapsig()
         self.calib()
         return self.S
+
+    def get_mapping(self, key):
+        raise NotImplementedError
+
+    def get_amp(self, key):
+        raise NotImplementedError
+
+    @memoized_property
+    def unique_sigs(self):
+        return {k: self.x[self.get_mapping(k)].astype('d') 
+                for k in self.head.unique_keys}
+
+    def mapsig(self):
+        t = self.x['t'].astype('d')
+        R = self.unique_sigs[self.head.R_keys]
+        S = OrderedDict(R=PositionSignal(R, t, name='R'))
+
+        nans = np.zeros_like(t)
+        nans.fill(np.nan)
+
+        def get_sig(key):
+            try:
+                return self.unique_sigs[key]
+            except KeyError:
+                return nans
+
+        for tip in self.head.tips:
+            i = tip.number
+            x_V = get_sig(tip.V_keys)
+            x_I = get_sig(tip.I_keys)
+
+            V = VoltageSignal(x_V, t, number=i, name='V%d' % i)
+            I = CurrentSignal(x_I, t, V=V, number=i, name='I%d' % i)
+            S[tip.name] = I
+
+        return S
+
+    def calib(self):
+        for k, v in self.unique_sigs.iteritems():
+            self.get_amp(k).apply(v)
+
+    def norm_to_region(self, s):
+        for tip in self.head.tips:
+            S = self.S[tip.name]
+            S.norm_to_region(s)
+
+            # I_keys is None: floating potential
+            if tip.I_keys is None:
+                S.V.norm_to_region(s)
 
     def load_raw(self, loadfun='load', plunge=None, calib=True, corr_capa=False, **kw):
         self.x = getattr(self.digitizer, loadfun)(**kw)

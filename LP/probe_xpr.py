@@ -22,8 +22,8 @@ class DigitizerXPR(DigitizerAUG):
             nodes=('S1', 'S2', 'S3', 'S4', 'S5', 'S6', 'S7', 'S8'), **kw)
 
     def update_window(self):
-        """Detect failing data readout and cut window
-        """
+        '''Detect failing data readout and cut window
+        '''
         t = self.x['t']
         dt = np.abs(np.diff(t))
         cnd = dt > 2*dt[0]
@@ -103,28 +103,37 @@ DigitizerClasses = dict(
 
 
 class ProbeXPR(Probe):
-    def __init__(self, shn, dig=None):
-        
-        reload(config)
-        
-        self.config = config.campaign.find_shot(shn)
+    def __init__(self, shn, shot=None, head=None, dig=None):
+        if shot is None:
+            reload(config)
+            shot = config.campaign.find_shot(shn)
+        if head is None:
+            head = shot.head
         if dig is None:
-            dig = self.config.dig
+            dig = shot.dig
 
+        self.shot = shot
         digitizer = DigitizerClasses[dig](shn)
-        Probe.__init__(self, digitizer)
+        Probe.__init__(self, head, digitizer)
 
-    def mapsig(self):
-        w = self.digitizer.window
-        x = {k: v[w] for k, v in self.x.iteritems()}
+    def get_mapping(self, key):
+        return self.shot.get(self.digitizer.name, 'mapping', key)
 
-        self.S = self.config.mapsig(x, self.digitizer.name)
+    def get_amp(self, key):
+        return self.shot.get(self.digitizer.name, 'amp', key)
 
     def calib(self):
-        self.config.calib(self.digitizer.name)
+        Probe.calib(self)
+
+        s = slice(5000)
+        self.norm_to_region(s)
+        
+        S = self.S
+        S['Rs'] = S['R'].copy().mediansmooth(100)
+        S['tip1+tip2'] = S['tip1'] + S['tip2']
 
     def calc_res(self, ID='IV'):
-        tips = self.config.head.tips
+        tips = self.head.tips
 
         A = (0.5*tips[0].area, 0.5*tips[1].area, tips[2].area)
 
