@@ -16,7 +16,7 @@ IVContainer = fitter_IV.IVContainer
 
 from sm_pyplot.tight_figure import get_fig, get_tfig, get_axes
 
-from sig import memoized_property, DictView, math_sel, usetex, \
+from sig import memoized_property, DictView, GeneratorDict, math_sel, usetex, \
         PositionSignal, VoltageSignal, CurrentSignal
 
 
@@ -252,8 +252,10 @@ class PhysicalResults:
 
 
 class Probe:
-    def __init__(self, head, digitizer):
-        self.head, self.digitizer = head, digitizer
+    def __init__(self, head, digitizer, R0, z0):
+        self.head, self.digitizer, self.R0, self.z0 = head, digitizer, R0, z0
+
+        self.unique_sigs = GeneratorDict(generator=self.get_sig)
 
         self.xlab = "t (s)"
         self.ylab = ("Isat (A)", "Vf (V)", "Te (eV)")
@@ -277,10 +279,8 @@ class Probe:
     def get_amp(self, key):
         raise NotImplementedError
 
-    @memoized_property
-    def unique_sigs(self):
-        return {k: self.x[self.get_mapping(k)].astype('d') 
-                for k in self.head.unique_keys}
+    def get_sig(self, key):
+        return self.x[self.get_mapping(key)].astype('d')
 
     def mapsig(self):
         t = self.x['t'].astype('d')
@@ -423,4 +423,12 @@ class Probe:
     @memoized_property
     def res(self):
         return self.calc_res()
+
+    def plot_head(self, ax, ti):
+        R = self.R0 - self.S['R'](ti, masked=True).x[0]
+        if R is ma.masked:
+            R = np.nan
+
+        self.head.plot(ax, R, self.z0)
+
 

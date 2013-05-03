@@ -35,16 +35,16 @@ class EqiViewerAUG(EqiViewer):
 
 
 class EqiViewerAUGXPR(EqiViewerAUG):
-    def __init__(self, eqi, head):
+    def __init__(self, eqi, XPR):
         EqiViewerAUG.__init__(self, eqi)
-        self.head = head
+        self.XPR = XPR
 
     def plotfun(self, event):
         collections = EqiViewerAUG.plotfun(self, event)
 
         t_event = event.xdata
         ax = self.ax
-        self.head.plot(ax, t_event)
+        self.XPR.plot_head(ax, t_event)
         return collections + ax.patches[-1:]
 
 
@@ -292,7 +292,7 @@ class AUGOverview:
         fig.axes[0].set_xlim((1,7))
 
         try:
-            self.viewers = (EqiViewerAUGXPR(self.eqi, self.XPR.config.head),)
+            self.viewers = (EqiViewerAUGXPR(self.eqi, self.XPR),)
         except AttributeError:
             self.viewers = (EqiViewerAUG(self.eqi),)
 

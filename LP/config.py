@@ -1,5 +1,4 @@
 import numpy as np
-import numpy.ma as ma
 
 import textwrap
 
@@ -38,42 +37,11 @@ class CylindricalTip(Tip):
 
 
 class Head:
-    def __init__(self, tips, R_keys=None, R0=None, z0=None, d=None):
-        self.tips, self.R_keys, self.R0, self.z0, self.d = tips, R_keys, R0, z0, d
-        self.unique_sigs = None
+    def __init__(self, tips, R_keys=None, d=None):
+        self.tips, self.R_keys, self.d = tips, R_keys, d
 
-        zp, zm = z0 + d/2., z0 - d/2.
-        self.xy = np.array([(R0, zp), (R0, zm), (2.5, zm), (2.5, zp)])
-
-    @staticmethod
-    def _unique(x):
-        s = set(x)
-        s.discard(None)
-        return list(s)
-
-    @property
-    def V_keys(self):
-        return [tip.V_keys for tip in self.tips]
-
-    @property
-    def I_keys(self):
-        return [tip.I_keys for tip in self.tips]
-
-    @property
-    def all_keys(self):
-        return [self.R_keys] + self.V_keys + self.I_keys
-
-    @property
-    def unique_V_keys(self):
-        return self._unique(self.V_keys)
-
-    @property
-    def unique_I_keys(self):
-        return self._unique(self.I_keys)
-
-    @property
-    def unique_keys(self):
-        return [self.R_keys] + self.unique_V_keys + self.unique_I_keys
+        zp, zm = d/2., -d/2.
+        self.xy = np.array([(0., zp), (0., zm), (2.5, zm), (2.5, zp)])
    
     def get_tip_number_by_position(self, pos):
         for tip in self.tips:
@@ -86,16 +54,14 @@ class Head:
     def __str__(self):
         return self.__repr__() + ":\n%s" % pformat(self.tips)
 
-    def plot(self, ax, ti, *args, **kw):
+    def plot(self, ax, R, z, **kw):
         kw.setdefault('facecolor', 'k')
         kw.setdefault('edgecolor', 'none')
 
-        R = self.R0 - self.S['R'](ti, masked=True).x[0]
-        if R is ma.masked:
-            R = np.nan
-
-        self.xy[:2,0] = R
-        pp = PathPatch(Path(self.xy), **kw)
+        xy = self.xy.copy()
+        xy[:2,0] += R
+        xy[:,1] += z
+        pp = PathPatch(Path(xy), **kw)
         ax.add_patch(pp)
         return ax
 
@@ -152,8 +118,8 @@ class Shot:
     def __repr__(self):
         return "%d %-5s: %s" % (self.shn, self.stars, self.comment)
 
-    def print_descr(self):
-        print self.descr
+    def __str__(self):
+        return self.__repr__() + ":\n%s" % self.descr
 
 
 class ShotContainer(Container):

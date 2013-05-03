@@ -1,4 +1,5 @@
 import numpy as np
+import numpy.ma as ma
 
 import scipy.interpolate as interp
 
@@ -114,7 +115,7 @@ class ProbeXPR(Probe):
 
         self.shot = shot
         digitizer = DigitizerClasses[dig](shn)
-        Probe.__init__(self, head, digitizer)
+        Probe.__init__(self, head, digitizer, R0=1.645, z0=-0.966)
 
     def get_mapping(self, key):
         return self.shot.get(self.digitizer.name, 'mapping', key)
