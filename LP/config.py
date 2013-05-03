@@ -37,8 +37,8 @@ class CylindricalTip(Tip):
 
 
 class Head:
-    def __init__(self, tips, R_keys=None, d=None):
-        self.tips, self.R_keys, self.d = tips, R_keys, d
+    def __init__(self, tips, d=None):
+        self.tips, self.d = tips, d
 
         zp, zm = d/2., -d/2.
         self.xy = np.array([(0., zp), (0., zm), (2.5, zm), (2.5, zp)])
@@ -155,7 +155,7 @@ class Experiment(ShotContainer):
         self.x[shn] = self.x[shn0].copy(comment, shn=shn, **kw)
 
     def __repr__(self):
-        s = ["  " + str(v) + "\n" for v in self.x.itervalues()]
+        s = ["  " + repr(v) + "\n" for v in self.x.itervalues()]
         return self.date + ":\n" + np.array(s).tostring()
 
 
@@ -182,7 +182,7 @@ class Campaign(ShotContainer):
         raise ShotNotFoundError("No config information for shot %d" % shn)
     
     def __repr__(self):
-        s = [str(v) + "\n" for v in self.x.itervalues()]
+        s = [repr(v) + "\n" for v in self.x.itervalues()]
         return np.array(s).tostring()
 
 

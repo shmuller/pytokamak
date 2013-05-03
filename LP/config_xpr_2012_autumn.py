@@ -18,11 +18,11 @@ tip1 = TipXPR(number=1, pos='lower left', V_keys='ampV1', I_keys='ampI3')
 tip2 = TipXPR(number=2, pos='lower right', V_keys='ampV1', I_keys='ampI1')
 tip3 = TipXPR(number=3, pos='upper', V_keys='ampV1', I_keys='ampI2')
 
-headI = HeadXPR(tips=(tip1, tip2, tip3), R_keys='ampR')
+headI = HeadXPR(tips=(tip1, tip2, tip3))
 
 tip3sep = TipXPR(number=3, pos='upper', V_keys='ampV2', I_keys='ampI2')
 
-headI_tip3sep = HeadXPR(tips=(tip1, tip2, tip3sep), R_keys='ampR')
+headI_tip3sep = HeadXPR(tips=(tip1, tip2, tip3sep))
 
 fact = 4 * 5.54630/27. / 2**16
 offs = -47578968*fact - 0.105

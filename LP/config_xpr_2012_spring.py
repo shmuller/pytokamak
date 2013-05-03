@@ -17,16 +17,16 @@ tip1 = TipXPR(number=1, pos='lower left', V_keys='ampV1', I_keys='ampI1')
 tip2 = TipXPR(number=2, pos='lower right', V_keys='ampV1', I_keys='ampI2')
 tip3 = TipXPR(number=3, pos='upper', V_keys='ampVF', I_keys=None)
 
-head = HeadXPR(tips=(tip1, tip2, tip3), R_keys='ampR')
+head = HeadXPR(tips=(tip1, tip2, tip3))
 
 tip3I = TipXPR(number=3, pos='upper', V_keys='ampV1', I_keys='ampI3')
-headI = HeadXPR(tips=(tip1, tip2, tip3I), R_keys='ampR')
+headI = HeadXPR(tips=(tip1, tip2, tip3I))
 
 tip3_disc = TipXPR(number=3, pos='upper', V_keys=None, I_keys=None)
-head_tip3_disc = HeadXPR(tips=(tip1, tip2, tip3_disc), R_keys='ampR')
+head_tip3_disc = HeadXPR(tips=(tip1, tip2, tip3_disc))
 
 tip2_on_I3 = TipXPR(number=2, pos='lower right', V_keys='ampV1', I_keys='ampI3')
-head_tip3_disc_tip2_on_I3 = HeadXPR(tips=(tip1, tip2_on_I3, tip3_disc), R_keys='ampR')
+head_tip3_disc_tip2_on_I3 = HeadXPR(tips=(tip1, tip2_on_I3, tip3_disc))
 
 
 ############################################

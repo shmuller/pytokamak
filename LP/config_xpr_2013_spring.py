@@ -11,7 +11,7 @@ tip1 = TipXPR(number=1, pos='lower left', V_keys='ampV1', I_keys='ampI3')
 tip2 = TipXPR(number=2, pos='lower right', V_keys='ampV1', I_keys='ampI1')
 tip3 = TipXPR(number=3, pos='upper', V_keys='ampV2', I_keys='ampI2')
 
-head = HeadXPR(tips=(tip1, tip2, tip3), R_keys='ampR')
+head = HeadXPR(tips=(tip1, tip2, tip3))
 
 
 tip1_20130130 = CylindricalTip(r=0.0005, z=0.00303,
@@ -21,7 +21,7 @@ tip2_20130130 = CylindricalTip(r=0.0005, z=0.00304,
 tip3_20130130 = CylindricalTip(r=0.0005, z=0.00183,
         number=3, pos='upper', V_keys='ampV2', I_keys='ampI2')
 
-head_20130130 = HeadXPR(tips=(tip1_20130130, tip2_20130130, tip3_20130130), R_keys='ampR')
+head_20130130 = HeadXPR(tips=(tip1_20130130, tip2_20130130, tip3_20130130))
 
 
 tip1_20130306 = CylindricalTip(r=0.0005, z=0.0026,
@@ -31,20 +31,19 @@ tip2_20130306 = CylindricalTip(r=0.0005, z=0.0026,
 tip3_20130306 = CylindricalTip(r=0.0005, z=0.002,
         number=3, pos='upper', V_keys='ampV2', I_keys='ampI2')
 
-head_20130306 = HeadXPR(tips=(tip1_20130306, tip2_20130306, tip3_20130306), R_keys='ampR')
+head_20130306 = HeadXPR(tips=(tip1_20130306, tip2_20130306, tip3_20130306))
 
 
 tip4_20130312 = CylindricalTip(r=0.0005, z=0.0052,
         number=4, pos='lower', V_keys='ampV1', I_keys='ampI4')
 
-head_20130312 = HeadXPR(tips=head_20130306.tips + (tip4_20130312,), R_keys='ampR')
+head_20130312 = HeadXPR(tips=head_20130306.tips + (tip4_20130312,))
 
 
 tip1_20130314 = CylindricalTip(r=0.0005, z=0.0026,
         number=1, pos='lower left', V_keys='ampV3', I_keys='ampI3')
 
-head_20130314 = HeadXPR(tips=(tip1_20130314, tip2_20130306, tip3_20130306, tip4_20130312), 
-                        R_keys='ampR')
+head_20130314 = HeadXPR(tips=(tip1_20130314, tip2_20130306, tip3_20130306, tip4_20130312))
 
 head_20130402 = head_20130314
 

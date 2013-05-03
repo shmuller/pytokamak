@@ -284,7 +284,7 @@ class Probe:
 
     def mapsig(self):
         t = self.x['t'].astype('d')
-        R = self.unique_sigs[self.head.R_keys]
+        R = self.unique_sigs['ampR']
         S = OrderedDict(R=PositionSignal(R, t, name='R'))
 
         nans = np.zeros_like(t)

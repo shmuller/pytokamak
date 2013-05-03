@@ -61,8 +61,8 @@ class TipXPR(CylindricalTip):
 
 
 class HeadXPR(Head):
-    def __init__(self, tips, R_keys=None, d=0.01):
-        Head.__init__(self, tips, R_keys, d)
+    def __init__(self, tips, d=0.01):
+        Head.__init__(self, tips, d)
 
 
 amp_default_unity = dict(
