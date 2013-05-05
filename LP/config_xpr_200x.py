@@ -18,10 +18,10 @@ tip3 = TipLPS(number=3, pos='upper', V_keys='ampV1', I_keys='ampI1')
 
 head = HeadXPR(tips=(tip1, tip2, tip3))
 
-tipmap = dict(
-        tip1 = dict(V='ampV1', I='ampI2'),
-        tip2 = dict(V='ampV1', I='ampI3'),
-        tip3 = dict(V='ampV1', I='ampI1'))
+tipmap = rdict(
+        tip1 = rdict(V='ampV1', I='ampI2'),
+        tip2 = rdict(V='ampV1', I='ampI3'),
+        tip3 = rdict(V='ampV1', I='ampI1'))
 
 
 tip1_V2 = TipLPS(number=1, pos='lower left', V_keys='ampV2', I_keys='ampI2')
@@ -30,10 +30,12 @@ tip3_V2 = TipLPS(number=3, pos='upper', V_keys='ampV2', I_keys='ampI1')
 
 head_V2 = HeadXPR(tips=(tip1_V2, tip2_V2, tip3_V2))
 
-tipmap_V2 = dict(
-        tip1 = dict(V='ampV2', I='ampI2'),
-        tip2 = dict(V='ampV2', I='ampI3'),
-        tip3 = dict(V='ampV2', I='ampI1'))
+tipmap_V2 = tipmap.rep(tip1_V='ampV2', tip2_V='ampV2', tip3_V='ampV2')
+
+#tipmap_V2 = rdict(
+#        tip1 = rdict(V='ampV2', I='ampI2'),
+#        tip2 = rdict(V='ampV2', I='ampI3'),
+#        tip3 = rdict(V='ampV2', I='ampI1'))
 
 
 amp_LPS_old = dict(ampR = Amp(fact=0.004, offs=-2745*0.004))
@@ -214,6 +216,7 @@ E.add(21288, "Standard Ohmic, Mach tips DC biased, single tip floating",
         times = 1.9, 
         posit = 0.31,
         head = head,
+        tipmap = tipmap,
         descr = """\
             Excellent fluctuation data. Compare with 21194 for swept profiles.""",
         stars = '*****', **def_LPS_old)

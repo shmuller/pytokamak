@@ -13,10 +13,10 @@ tip3 = TipXPR(number=3, pos='upper', V_keys='ampV2', I_keys='ampI2')
 
 head = HeadXPR(tips=(tip1, tip2, tip3))
 
-tipmap = dict(
-        tip1 = dict(V='ampV1', I='ampI3'),
-        tip2 = dict(V='ampV1', I='ampI1'),
-        tip3 = dict(V='ampV2', I='ampI2'))
+tipmap = rdict(
+        tip1 = rdict(V='ampV1', I='ampI3'),
+        tip2 = rdict(V='ampV1', I='ampI1'),
+        tip3 = rdict(V='ampV2', I='ampI2'))
 
 
 tip1_20130130 = CylindricalTip(r=0.0005, z=0.00303,
@@ -46,24 +46,26 @@ tip4_20130312 = CylindricalTip(r=0.0005, z=0.0052,
 
 head_20130312 = HeadXPR(tips=head_20130306.tips + (tip4_20130312,))
 
-tipmap_20130312 = dict(
-        tip1 = dict(V='ampV1', I='ampI3'),
-        tip2 = dict(V='ampV1', I='ampI1'),
-        tip3 = dict(V='ampV2', I='ampI2'),
-        tip4 = dict(V='ampV1', I='ampI4'))
+#tipmap_20130312 = dict(
+#        tip1 = dict(V='ampV1', I='ampI3'),
+#        tip2 = dict(V='ampV1', I='ampI1'),
+#        tip3 = dict(V='ampV2', I='ampI2'),
+#        tip4 = dict(V='ampV1', I='ampI4'))
 
+tipmap_20130312 = tipmap.rep(tip4=rdict(V='ampV1', I='ampI4'))
 
 tip1_20130314 = CylindricalTip(r=0.0005, z=0.0026,
         number=1, pos='lower left', V_keys='ampV3', I_keys='ampI3')
 
 head_20130314 = HeadXPR(tips=(tip1_20130314, tip2_20130306, tip3_20130306, tip4_20130312))
 
-tipmap_20130314 = dict(
-        tip1 = dict(V='ampV3', I='ampI3'),
-        tip2 = dict(V='ampV1', I='ampI1'),
-        tip3 = dict(V='ampV2', I='ampI2'),
-        tip4 = dict(V='ampV1', I='ampI4'))
+#tipmap_20130314 = dict(
+#        tip1 = dict(V='ampV3', I='ampI3'),
+#        tip2 = dict(V='ampV1', I='ampI1'),
+#        tip3 = dict(V='ampV2', I='ampI2'),
+#        tip4 = dict(V='ampV1', I='ampI4'))
 
+tipmap_20130314 = tipmap_20130312.rep(tip1_V='ampV3')
 
 head_20130402 = head_20130314
 tipmap_20130402 = tipmap_20130314

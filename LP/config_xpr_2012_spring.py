@@ -20,37 +20,43 @@ tip3 = TipXPR(number=3, pos='upper', V_keys='ampVF', I_keys=None)
 
 head = HeadXPR(tips=(tip1, tip2, tip3))
 
-tipmap = dict(
-        tip1 = dict(V='ampV1', I='ampI1'),
-        tip2 = dict(V='ampV1', I='ampI2'),
-        tip3 = dict(V='ampVF', I=None))
+tipmap = rdict(
+        tip1 = rdict(V='ampV1', I='ampI1'),
+        tip2 = rdict(V='ampV1', I='ampI2'),
+        tip3 = rdict(V='ampVF', I=None))
 
 
 tip3I = TipXPR(number=3, pos='upper', V_keys='ampV1', I_keys='ampI3')
 headI = HeadXPR(tips=(tip1, tip2, tip3I))
 
-tipmapI = dict(
-        tip1 = dict(V='ampV1', I='ampI1'),
-        tip2 = dict(V='ampV1', I='ampI2'),
-        tip3 = dict(V='ampV1', I='ampI3'))
+tipmapI = tipmap.rep(tip3_V='ampV1', tip3_I='ampI3')
+
+#tipmapI = dict(
+#        tip1 = dict(V='ampV1', I='ampI1'),
+#        tip2 = dict(V='ampV1', I='ampI2'),
+#        tip3 = dict(V='ampV1', I='ampI3'))
 
 
 tip3_disc = TipXPR(number=3, pos='upper', V_keys=None, I_keys=None)
 head_tip3_disc = HeadXPR(tips=(tip1, tip2, tip3_disc))
 
-tipmap_tip3_disc = dict(
-        tip1 = dict(V='ampV1', I='ampI1'),
-        tip2 = dict(V='ampV1', I='ampI2'),
-        tip3 = dict(V=None, I=None))
+tipmap_tip3_disc = tipmap.rep(tip3_V=None, tip3_I=None)
+
+#tipmap_tip3_disc = dict(
+#        tip1 = dict(V='ampV1', I='ampI1'),
+#        tip2 = dict(V='ampV1', I='ampI2'),
+#        tip3 = dict(V=None, I=None))
 
 
 tip2_on_I3 = TipXPR(number=2, pos='lower right', V_keys='ampV1', I_keys='ampI3')
 head_tip3_disc_tip2_on_I3 = HeadXPR(tips=(tip1, tip2_on_I3, tip3_disc))
 
-tipmap_tip3_disc_tip2_on_I3 = dict(
-        tip1 = dict(V='ampV1', I='ampI1'),
-        tip2 = dict(V='ampV1', I='ampI3'),
-        tip3 = dict(V=None, I=None))
+#tipmap_tip3_disc_tip2_on_I3 = dict(
+#        tip1 = dict(V='ampV1', I='ampI1'),
+#        tip2 = dict(V='ampV1', I='ampI3'),
+#        tip3 = dict(V=None, I=None))
+
+tipmap_tip3_disc_tip2_on_I3 = tipmap_tip3_disc.rep(tip2_I='ampI3')
 
 
 ############################################
@@ -329,7 +335,7 @@ E = campaign.add_experiment(date="20120713")
 
 E.add(28389, "Fixed probe @2569.05 mm, -180 V with sweep, single tip not connected", 
         head = head,
-        tipmap = tipmap,
+        tipmap = tipmap_tip3_disc,
         ampI1 = ampInv*CurrentProbe1[20]*Preamp1[2],
         ampI2 = CurrentProbe2[20]*Preamp2[2], 
         descr = """\
@@ -354,9 +360,10 @@ E.rep(28395, 28394, "Turn 2nd current probe",
         stars = '')
 
 # Peter Lang, Francois Ryter
-E.rep(28403, 28395, "5 plunges, DC biasing with small rect sweeps",
+E.rep(28403, 28395, "5 plunges, DC biasing with small rect sweeps, single tip Vf on S6",
         times = (0.7, 1.7, 2.7, 3.7, 4.7),
         posit = (0.01, 0.01, 0.01, 0.01, 0.01),
+        tipmap = tipmap,
         descr = "Effectively DC biasing. Probe at 1 cm.",
         stars = '*')
 

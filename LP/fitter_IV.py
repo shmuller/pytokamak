@@ -17,7 +17,6 @@ import fitfun as ff
 from LP import mag_fit
 
 from sm_pyplot.tight_figure import get_tfig
-from sm_pyplot.contextmenupicker import ContextMenuPicker
 from sm_pyplot.observer_viewer import ToggleViewer, ToggleViewerIntegrated
 
 
@@ -631,9 +630,6 @@ class IV:
 
     def plot_raw(self, ID='IV', ax=None):
         if ax is None:
-            fig = get_tfig(xlab=self.S.xlab, ylab=self.S.ylab)
-            ax = fig.axes[0]
-
             self.viewers = (IVViewer(self, ID=ID),
                             IVViewerIt(self, ID=ID),
                             IVViewerItIntegrated(self, ID=ID))
@@ -642,8 +638,10 @@ class IV:
             for v in self.viewers:
                 menu_entries_ax += v.menu_entries_ax
 
-            fig.context_menu_picker = ContextMenuPicker(
-                    fig, menu_entries_ax=menu_entries_ax)
+
+            fig = get_tfig(xlab=self.S.xlab, ylab=self.S.ylab,
+                           menu_entries_ax=menu_entries_ax)
+            ax = fig.axes[0]
 
         self.S.plot(ax=ax)
         self.get_Sfit(ID=ID).plot(ax=ax)
@@ -651,20 +649,16 @@ class IV:
 
     def plot(self, ID='IV', fig=None, **kw):
         if fig is None:
-            xlab = 't (s)'
-            ylab = ('Isat (A)', 'Vf (V)', 'Te (eV)')
-            fig = get_tfig(shape=(3, 1), figsize=(10, 10),
-                           xlab=xlab, ylab=ylab)
-
             self.viewers = (IVViewer(self, ID=ID),
                             IVViewerIt(self, ID=ID))
-            
+
             menu_entries_ax = []
             for v in self.viewers:
                 menu_entries_ax += v.menu_entries_ax
 
-            fig.context_menu_picker = ContextMenuPicker(
-                    fig, menu_entries_ax=menu_entries_ax)
+            fig = get_tfig(shape=(3, 1), figsize=(10, 10), 
+                           xlab='t (s)', ylab= ('Isat (A)', 'Vf (V)', 'Te (eV)'),
+                           menu_entries_ax=menu_entries_ax)
 
         for ax, p in zip(fig.axes, self.PP[ID]):
              p.plot(ax=ax, **kw)
@@ -715,11 +709,6 @@ class IVContainer(Container):
     
     def plot_raw(self, ID='IV', fig=None):
         if fig is None:
-            xlab = self.x.values()[0].S.xlab
-            ylab = [x.S.ylab for x in self]
-            fig = get_tfig(shape=(len(self.x), 1), figsize=(10, 10), 
-                           xlab=xlab, ylab=ylab)
-
             self.viewers = (IVViewer(self, ID=ID),
                             IVViewerIt(self, ID=ID))
 
@@ -727,8 +716,10 @@ class IVContainer(Container):
             for v in self.viewers:
                 menu_entries_ax += v.menu_entries_ax
 
-            fig.context_menu_picker = ContextMenuPicker(
-                    fig, menu_entries_ax=menu_entries_ax)
+            fig = get_tfig(shape=(len(self.x), 1), figsize=(10, 10), 
+                           xlab=self.x.values()[0].S.xlab, 
+                           ylab=[x.S.ylab for x in self],
+                           menu_entries_ax=menu_entries_ax)
 
         for ax, x in zip(fig.axes, self.x.values()):
             x.plot_raw(ax=ax, ID=ID)
@@ -736,11 +727,6 @@ class IVContainer(Container):
 
     def plot(self, ID='IV', fig=None, **kw):
         if fig is None:
-            xlab = "t (s)"
-            ylab = ('Isat (A)', 'Vf (V)', 'Te (eV)')
-            fig = get_tfig(shape=(3, 1), figsize=(10, 10), 
-                           xlab=xlab, ylab=ylab)
-
             self.viewers = (IVViewer(self, ID=ID),
                             IVViewerIt(self, ID=ID))
 
@@ -748,8 +734,9 @@ class IVContainer(Container):
             for v in self.viewers:
                 menu_entries_ax += v.menu_entries_ax
 
-            fig.context_menu_picker = ContextMenuPicker(
-                    fig, menu_entries_ax=menu_entries_ax)
+            fig = get_tfig(shape=(3, 1), figsize=(10, 10), 
+                           xlab='t (s)', ylab=('Isat (A)', 'Vf (V)', 'Te (eV)'),
+                           menu_entries_ax=menu_entries_ax)
 
         for x in self:
             for ax, p in zip(fig.axes, x.PP[ID]):

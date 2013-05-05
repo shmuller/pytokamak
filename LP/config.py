@@ -89,7 +89,7 @@ class Shot:
 
         ensure_tuple(self.__dict__, 'times', 'posit')
 
-        self.tipmap = recursive_dictcopy(self.tipmap)
+        self.tipmap = self.tipmap.copy()
 
         self.amp_default = self.amp_default.copy()
         for k in set(self.amp_default.keys()) & set(kw.keys()):

@@ -21,19 +21,21 @@ tip3 = TipXPR(number=3, pos='upper', V_keys='ampV1', I_keys='ampI2')
 
 headI = HeadXPR(tips=(tip1, tip2, tip3))
 
-tipmapI = dict(
-        tip1 = dict(V='ampV1', I='ampI3'),
-        tip2 = dict(V='ampV1', I='ampI1'),
-        tip3 = dict(V='ampV1', I='ampI2'))
+tipmapI = rdict(
+        tip1 = rdict(V='ampV1', I='ampI3'),
+        tip2 = rdict(V='ampV1', I='ampI1'),
+        tip3 = rdict(V='ampV1', I='ampI2'))
 
 
 tip3sep = TipXPR(number=3, pos='upper', V_keys='ampV2', I_keys='ampI2')
 headI_tip3sep = HeadXPR(tips=(tip1, tip2, tip3sep))
 
-tipmapI_tip3sep = dict(
-        tip1 = dict(V='ampV1', I='ampI3'),
-        tip2 = dict(V='ampV1', I='ampI1'),
-        tip3 = dict(V='ampV2', I='ampI2'))
+#tipmapI_tip3sep = dict(
+#        tip1 = dict(V='ampV1', I='ampI3'),
+#        tip2 = dict(V='ampV1', I='ampI1'),
+#        tip3 = dict(V='ampV2', I='ampI2'))
+
+tipmapI_tip3sep = tipmapI.rep(tip3_V='ampV2')
 
 
 fact = 4 * 5.54630/27. / 2**16

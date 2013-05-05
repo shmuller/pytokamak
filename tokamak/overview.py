@@ -2,7 +2,6 @@ import numpy as np
 import numpy.ma as ma
 
 from sm_pyplot.tight_figure import get_tfig, get_axes
-from sm_pyplot.contextmenupicker import ContextMenuPicker
 
 from LP.sig import memoized_property
 from LP.probe_xpr import ProbeXPR, ShotNotFoundError
@@ -288,9 +287,6 @@ class AUGOverview:
         if plots is None:
             plots = self.def_plots
 
-        fig = get_tfig(fig, shape=(len(plots), 1), figsize=(6,6), xlab='t (s)')
-        fig.axes[0].set_xlim((1,7))
-
         try:
             self.viewers = (EqiViewerAUGXPR(self.eqi, self.XPR),)
         except AttributeError:
@@ -306,8 +302,9 @@ class AUGOverview:
         for v in self.viewers:
             menu_entries_ax += v.menu_entries_ax
 
-        fig.context_menu_picker = ContextMenuPicker(
-            fig, menu_entries_ax=menu_entries_ax)
+        fig = get_tfig(fig, shape=(len(plots), 1), figsize=(6,6), xlab='t (s)',
+                       menu_entries_ax=menu_entries_ax)
+        fig.axes[0].set_xlim((1,7))
 
         for p, ax in zip(plots, fig.axes):
             getattr(self, 'plot_' + p)(ax)

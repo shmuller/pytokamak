@@ -2,7 +2,7 @@ import numpy as np
 
 from config import CylindricalTip, Head
 
-from sig import Amp
+from sig import rdict, Amp
 
 ampUnity = Amp(fact=1.)
 ampInv   = Amp(fact=-1.)
