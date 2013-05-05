@@ -102,16 +102,43 @@ class DictView(MutableMapping):
 
 
 class GeneratorDict(dict):
-    def __init__(self, *args, **kw):
-        self.generator = kw.pop('generator')
-        dict.__init__(self, *args, **kw)
+    def __init__(self, generator):
+        self.generator = generator
+        dict.__init__(self)
 
-    def __getitem__(self, indx):
-        try:
-            return dict.__getitem__(self, indx)
-        except KeyError:
-            self[indx] = result = self.generator(indx)
-            return result
+    def __missing__(self, indx):
+        self[indx] = result = self.generator(indx)
+        return result
+
+
+def recursive_dictcopy(d):
+    if isinstance(d, dict):
+        d = d.copy()
+        for k, v in d.iteritems():
+            d[k] = recursive_dictcopy(v)
+    return d
+
+
+class rdict(dict):
+    def copy(self):
+        # Can't use dict.copy(), since it returns dict not rdict
+        d = rdict(self)
+        for k, v in d.iteritems():
+            if isinstance(v, rdict):
+                d[k] = v.copy()
+        return d
+
+    def mod(self, **kw):
+        for k, v in kw.iteritems():
+            keys = k.split('_')
+            cur = self
+            for key in keys[:-1]:
+                cur = cur[key]
+            cur[keys[-1]] = v
+        return self
+
+    def rep(self, **kw):
+        return self.copy().mod(**kw)
 
 
 class Container(Iterable):

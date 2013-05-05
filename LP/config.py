@@ -4,7 +4,7 @@ import textwrap
 
 from pprint import pformat
 
-from sig import ensure_tuple, Container
+from sig import ensure_tuple, recursive_dictcopy, Container
 
 from matplotlib.path import Path
 from matplotlib.patches import PathPatch
@@ -71,14 +71,6 @@ class Head:
         return ax
 
 
-def recursive_dictcopy(d):
-    if isinstance(d, dict):
-        d = d.copy()
-        for k, v in d.iteritems():
-            d[k] = recursive_dictcopy(v)
-    return d
-
-
 class Shot:
     def __init__(self, comment="", **kw):
         self.comment = comment
@@ -96,6 +88,8 @@ class Shot:
             setattr(self, attr, kw.pop(attr, None))
 
         ensure_tuple(self.__dict__, 'times', 'posit')
+
+        self.tipmap = recursive_dictcopy(self.tipmap)
 
         self.amp_default = self.amp_default.copy()
         for k in set(self.amp_default.keys()) & set(kw.keys()):

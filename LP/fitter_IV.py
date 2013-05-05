@@ -455,7 +455,7 @@ class IVViewerItIntegrated(ToggleViewerIntegrated):
 class IV:
     def __init__(self, S, R):
         self.S, self.R = S, R
-        self.PP = GeneratorDict(generator=self._fit)
+        self.PP = GeneratorDict(self._fit)
 
     @staticmethod
     def _slices(N, n, incr):

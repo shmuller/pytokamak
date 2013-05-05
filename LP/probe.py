@@ -255,7 +255,7 @@ class Probe:
     def __init__(self, head, digitizer, R0, z0):
         self.head, self.digitizer, self.R0, self.z0 = head, digitizer, R0, z0
 
-        self.unique_sigs = GeneratorDict(generator=self.get_sig)
+        self.unique_sigs = GeneratorDict(self.get_sig)
 
         self.xlab = "t (s)"
         self.ylab = ("Isat (A)", "Vf (V)", "Te (eV)")
