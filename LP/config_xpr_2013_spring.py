@@ -7,68 +7,33 @@ from config import Campaign
 
 campaign = Campaign()
 
-tip1 = TipXPR(number=1, pos='lower left', V_keys='ampV1', I_keys='ampI3')
-tip2 = TipXPR(number=2, pos='lower right', V_keys='ampV1', I_keys='ampI1')
-tip3 = TipXPR(number=3, pos='upper', V_keys='ampV2', I_keys='ampI2')
+tip1 = TipXPR(number=1, pos='lower left')
+tip2 = TipXPR(number=2, pos='lower right')
+tip3 = TipXPR(number=3, pos='upper')
 
 head = HeadXPR(tips=(tip1, tip2, tip3))
 
 tipmap = rdict(
         tip1 = rdict(V='ampV1', I='ampI3'),
         tip2 = rdict(V='ampV1', I='ampI1'),
-        tip3 = rdict(V='ampV2', I='ampI2'))
+        tip3 = rdict(V='ampV2', I='ampI2'),
+        tip4 = rdict(V='ampV1', I='ampI4'))
 
+tipmap_tip1_V3 = tipmap.rep(tip1_V='ampV3')
 
-tip1_20130130 = CylindricalTip(r=0.0005, z=0.00303,
-        number=1, pos='lower left', V_keys='ampV1', I_keys='ampI3')
-tip2_20130130 = CylindricalTip(r=0.0005, z=0.00304,
-        number=2, pos='lower right', V_keys='ampV1', I_keys='ampI1')
-tip3_20130130 = CylindricalTip(r=0.0005, z=0.00183,
-        number=3, pos='upper', V_keys='ampV2', I_keys='ampI2')
+tip1_20130130 = CylindricalTip(number=1, r=0.0005, z=0.00303, pos='lower left')
+tip2_20130130 = CylindricalTip(number=2, r=0.0005, z=0.00304, pos='lower right')
+tip3_20130130 = CylindricalTip(number=3, r=0.0005, z=0.00183, pos='upper')
 
 head_20130130 = HeadXPR(tips=(tip1_20130130, tip2_20130130, tip3_20130130))
-tipmap_20130130 = tipmap
 
-
-tip1_20130306 = CylindricalTip(r=0.0005, z=0.0026,
-        number=1, pos='lower left', V_keys='ampV1', I_keys='ampI3')
-tip2_20130306 = CylindricalTip(r=0.0005, z=0.0026,
-        number=2, pos='lower right', V_keys='ampV1', I_keys='ampI1')
-tip3_20130306 = CylindricalTip(r=0.0005, z=0.002,
-        number=3, pos='upper', V_keys='ampV2', I_keys='ampI2')
+tip1_20130306 = CylindricalTip(number=1, r=0.0005, z=0.0026, pos='lower left')
+tip2_20130306 = CylindricalTip(number=2, r=0.0005, z=0.0026, pos='lower right')
+tip3_20130306 = CylindricalTip(number=3, r=0.0005, z=0.0020, pos='upper')
+tip4_20130306 = CylindricalTip(number=4, r=0.0005, z=0.0052, pos='lower')
 
 head_20130306 = HeadXPR(tips=(tip1_20130306, tip2_20130306, tip3_20130306))
-tipmap_20130306 = tipmap
-
-
-tip4_20130312 = CylindricalTip(r=0.0005, z=0.0052,
-        number=4, pos='lower', V_keys='ampV1', I_keys='ampI4')
-
-head_20130312 = HeadXPR(tips=head_20130306.tips + (tip4_20130312,))
-
-#tipmap_20130312 = dict(
-#        tip1 = dict(V='ampV1', I='ampI3'),
-#        tip2 = dict(V='ampV1', I='ampI1'),
-#        tip3 = dict(V='ampV2', I='ampI2'),
-#        tip4 = dict(V='ampV1', I='ampI4'))
-
-tipmap_20130312 = tipmap.rep(tip4=rdict(V='ampV1', I='ampI4'))
-
-tip1_20130314 = CylindricalTip(r=0.0005, z=0.0026,
-        number=1, pos='lower left', V_keys='ampV3', I_keys='ampI3')
-
-head_20130314 = HeadXPR(tips=(tip1_20130314, tip2_20130306, tip3_20130306, tip4_20130312))
-
-#tipmap_20130314 = dict(
-#        tip1 = dict(V='ampV3', I='ampI3'),
-#        tip2 = dict(V='ampV1', I='ampI1'),
-#        tip3 = dict(V='ampV2', I='ampI2'),
-#        tip4 = dict(V='ampV1', I='ampI4'))
-
-tipmap_20130314 = tipmap_20130312.rep(tip1_V='ampV3')
-
-head_20130402 = head_20130314
-tipmap_20130402 = tipmap_20130314
+head_20130306_4tips = HeadXPR(tips=head_20130306.tips + (tip4_20130306,))
 
 
 fact = 4 * 5.54630/27. / 2**16
@@ -325,7 +290,7 @@ E = campaign.add_experiment(date="20130131")
 
 E.add(29377, "DAQ test, all tips on sweeps at 14.5 Vpp",
         head = head_20130130,
-        tipmap = tipmap_20130130,
+        tipmap = tipmap,
         ampI1 = CurrentProbe1[20],
         ampI2 = CurrentProbe2[20],
         ampI3 = CurrentProbe3[20], 
@@ -348,7 +313,7 @@ E = campaign.add_experiment(date="20130205")
 
 E.add(29400, "DAQ test, all tips on sweeps at 13.5 Vpp",
         head = head_20130130,
-        tipmap = tipmap_20130130,
+        tipmap = tipmap,
         ampI1 = CurrentProbe1[20],
         ampI2 = CurrentProbe2[20],
         ampI3 = CurrentProbe3[20], 
@@ -427,7 +392,7 @@ E = campaign.add_experiment(date="20130208")
 # Stefan Muller
 E.add(29438, "DAQ test, single tip on sweeps at 13.5 Vpp, Mach at -200 V",
         head = head_20130130,
-        tipmap = tipmap_20130130,
+        tipmap = tipmap,
         ampI1 = CurrentProbe1[20],
         ampI2 = CurrentProbe2[20],
         ampI3 = CurrentProbe3[20], 
@@ -482,7 +447,7 @@ E.add(29676, "New probe head!",
         times = 6.5,
         posit = 0.05,
         head = head_20130306,
-        tipmap = tipmap_20130306,
+        tipmap = tipmap,
         ampI1 = CurrentProbe1[20],
         ampI2 = CurrentProbe2[20],
         ampI3 = CurrentProbe3[20], 
@@ -509,7 +474,7 @@ E = campaign.add_experiment(date="20130308")
 # arc protection tests
 E.add(29690, "Single tip current signal passes thru arc protection box",
         head = head_20130306,
-        tipmap = tipmap_20130306,
+        tipmap = tipmap,
         ampI1 = CurrentProbe1[20],
         ampI2 = CurrentProbe2[20],
         ampI3 = CurrentProbe3[20], 
@@ -581,7 +546,7 @@ E = campaign.add_experiment(date="20130312")
 # probe test
 E.add(29699, "Arc box switches 4 A Kepco (Mach tips), triggered by I2 at 1.9 V",
         head = head_20130306,
-        tipmap = tipmap_20130306,
+        tipmap = tipmap,
         ampI1 = CurrentProbe1[20],
         ampI2 = CurrentProbe2[20],
         ampI3 = CurrentProbe3[20], 
@@ -658,8 +623,8 @@ E.rep(29713, 29711, "I3 on 50 mA/div, no plunge",
 E.add(29715, "Even higher n, config as before, total Mach currents on I4",
         times = (2.0, 3.9),
         posit = (0.34, 0.34),
-        head = head_20130312,
-        tipmap = tipmap_20130312,
+        head = head_20130306_4tips,
+        tipmap = tipmap,
         ampI1 = CurrentProbe1[20],
         ampI2 = CurrentProbe2[20],
         ampI3 = CurrentProbe3[20],
@@ -699,8 +664,8 @@ E = campaign.add_experiment(date="20130314")
 
 # probe test
 E.add(29727, "I1 on 1 A Kepco, I2 on 4 A Kepco (13.5 Vpp at 1 kHz), single tip VF",
-        head = head_20130314,
-        tipmap = tipmap_20130314,
+        head = head_20130306_4tips,
+        tipmap = tipmap_tip1_V3,
         ampI1 = CurrentProbe1[20],
         ampI2 = CurrentProbe2[20],
         ampI3 = CurrentProbe3[20], 
@@ -744,8 +709,8 @@ E.rep(29731, 29730, "Full stroke at 3.8 s",
 E.add(29733, "Full stroke at 1.1 and 2.7 s for 1st and 2nd L-H transition",
         times = (1.1, 2.7),
         posit = (0.34, 0.34),
-        head = head_20130312,
-        tipmap = tipmap_20130312,
+        head = head_20130306_4tips,
+        tipmap = tipmap,
         ampI1 = CurrentProbe1[20],
         ampI2 = CurrentProbe2[20],
         ampI3 = CurrentProbe3[20], 
@@ -790,8 +755,8 @@ E = campaign.add_experiment(date="20130319")
 # Remove ground connection and digital position signal from
 # measurement rack, so that it is only grounded via the tips.
 E.add(29755, "Mach -200 V, single tip swept at 1 kHz at 13.5 Vpp.",
-        head = head_20130312,
-        tipmap = tipmap_20130312,
+        head = head_20130306_4tips,
+        tipmap = tipmap,
         ampI1 = CurrentProbe1[20],
         ampI2 = CurrentProbe2[20],
         ampI3 = CurrentProbe3[20], 
@@ -839,8 +804,8 @@ E = campaign.add_experiment(date="20130322")
 E.add(29811, "Mach -200 V, single tip swept at 1 kHz at 13.5 Vpp.",
         times = 0.5,
         posit = 0.05,
-        head = head_20130312,
-        tipmap = tipmap_20130312,
+        head = head_20130306_4tips,
+        tipmap = tipmap,
         ampI1 = CurrentProbe1[20],
         ampI2 = CurrentProbe2[20],
         ampI3 = CurrentProbe3[20], 
@@ -936,8 +901,8 @@ E = campaign.add_experiment(date="20130326")
 E.add(29828, "Mach -200 V, I4 on single tip shield",
         times = 1.0,
         posit = 0.15,
-        head = head_20130312,
-        tipmap = tipmap_20130312,
+        head = head_20130306_4tips,
+        tipmap = tipmap,
         ampI1 = CurrentProbe1[20],
         ampI2 = CurrentProbe2[20],
         ampI3 = CurrentProbe3[20], 
@@ -1047,8 +1012,8 @@ E = campaign.add_experiment(date="20130327")
 
 # Hans-Werner Mueller
 E.add(29856, "No plunge, Mach -200 V, single swept at 15.5 Vpp",
-        head = head_20130312,
-        tipmap = tipmap_20130312,
+        head = head_20130306_4tips,
+        tipmap = tipmap,
         ampI1 = CurrentProbe1[20],
         ampI2 = CurrentProbe2[20],
         ampI3 = CurrentProbe3[20], 
@@ -1156,8 +1121,8 @@ E = campaign.add_experiment(date="20130402")
 
 # Daniel Carralero - test of emissive probe
 E.add(29880, "20 cm at 4 s, Mach -200 V, single swept at 13.5 Vpp",
-        head = head_20130312,
-        tipmap = tipmap_20130312,
+        head = head_20130306_4tips,
+        tipmap = tipmap,
         ampI1 = CurrentProbe1[20],
         ampI2 = CurrentProbe2[20],
         ampI3 = CurrentProbe3[20], 
@@ -1170,8 +1135,7 @@ E.add(29880, "20 cm at 4 s, Mach -200 V, single swept at 13.5 Vpp",
         stars = '**', **def_XPR_pos)
 
 E.rep(29881, 29880, "Same, all tips floating (V1 on S8, shields on Kepco ground)",
-        head = head_20130402,
-        tipmap = tipmap_20130402,
+        tipmap = tipmap_tip1_V3,
         descr = """\
             Plasma went into H-mode before plunge, pulled back to L-mode
             by XPR. Lots of transitions in VF signals.""",
@@ -1179,8 +1143,7 @@ E.rep(29881, 29880, "Same, all tips floating (V1 on S8, shields on Kepco ground)
 
 # Daniel Carralero
 E.rep(29884, 29881, "Mach swept at 15 Vpp (decrease gain), single floating",
-        head = head_20130312,
-        tipmap = tipmap_20130312,
+        tipmap = tipmap,
         ampI1 = CurrentProbe1[50],
         ampI2 = CurrentProbe2[50],
         ampI3 = CurrentProbe3[50], 
@@ -1217,8 +1180,8 @@ E = campaign.add_experiment(date="20130404")
 
 # Std H-mode
 E.add(29904, "15 cm at 1 s, Mach -200 V, single swept at 14.0 Vpp, new arc box at 1.4 V",
-        head = head_20130312,
-        tipmap = tipmap_20130312,
+        head = head_20130306_4tips,
+        tipmap = tipmap,
         ampI1 = CurrentProbe1[20],
         ampI2 = CurrentProbe2[20],
         ampI3 = CurrentProbe3[20], 
@@ -1294,8 +1257,8 @@ E = campaign.add_experiment(date="20130405")
 
 # Stefan Muller
 E.add(29931, "Mach -200 V, single swept at 13.5 Vpp",
-        head = head_20130312,
-        tipmap = tipmap_20130312,
+        head = head_20130306_4tips,
+        tipmap = tipmap,
         ampI1 = CurrentProbe1[20],
         ampI2 = CurrentProbe2[20],
         ampI3 = CurrentProbe3[20], 
@@ -1360,8 +1323,8 @@ E = campaign.add_experiment(date="20130411")
 
 # Steffen Potzel
 E.add(29998, "Mach swept at 12.5 Vpp, single floating",
-        head = head_20130312,
-        tipmap = tipmap_20130312,
+        head = head_20130306_4tips,
+        tipmap = tipmap,
         ampI1 = CurrentProbe1[20],
         ampI2 = CurrentProbe2[20],
         ampI3 = CurrentProbe3[20], 
@@ -1379,8 +1342,8 @@ E = campaign.add_experiment(date="20130412")
 
 # Steffen Potzel
 E.add(30000, "Mach swept at 13.0 Vpp, single floating",
-        head = head_20130312,
-        tipmap = tipmap_20130312,
+        head = head_20130306_4tips,
+        tipmap = tipmap,
         ampI1 = CurrentProbe1[20],
         ampI2 = CurrentProbe2[20],
         ampI3 = CurrentProbe3[20], 
@@ -1394,13 +1357,17 @@ E.add(30000, "Mach swept at 13.0 Vpp, single floating",
 E.rep(30002, 30000, "Repeat",
         descr = """\
             Arc box triggered too early due to wrong gain settings.
-            Current gain on I4 was set incorrectly to 20 mA/div.""",
-        stars = '')
+            Current gain on I4 was set incorrectly to 20 mA/div. 
+            Mach ~ 2.5 on HFS! Currents are extremely different on HFS while OK 
+            on LFS on both inward and outward stroke. When arc box switches, Kepco 
+            voltage closely follows Vf.""",
+        stars = '***')
 
 # Stefan Muller
 E.rep(30017, 30002, "Mach at -200 V, single swept at 13.5 Vpp",
         times = (2.55, 3.75),
         posit = (0.34, 0.34),
+        ampI4 = CurrentProbe4[50],
         descr = """\
             2nd and 3rd L-H transitions triggered by ECRH, 50 ms before NBI.
             """,

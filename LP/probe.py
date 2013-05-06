@@ -321,7 +321,7 @@ class Probe:
             S.norm_to_region(s)
 
             # I_keys is None: floating potential
-            if tip.I_keys is None:
+            if self.get_keys(tip.name)['I'] is None:
                 S.V.norm_to_region(s)
 
     def load_raw(self, loadfun='load', plunge=None, calib=True, corr_capa=False, **kw):
