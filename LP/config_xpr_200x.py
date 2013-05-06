@@ -12,9 +12,9 @@ class TipLPS(CylindricalTip):
         CylindricalTip.__init__(self, 0.00045, 0.002, *args, **kw)
 
 
-tip1 = TipLPS(number=1, pos='lower left', V_keys='ampV1', I_keys='ampI2')
-tip2 = TipLPS(number=2, pos='lower right', V_keys='ampV1', I_keys='ampI3')
-tip3 = TipLPS(number=3, pos='upper', V_keys='ampV1', I_keys='ampI1')
+tip1 = TipLPS(number=1, pos='lower left')
+tip2 = TipLPS(number=2, pos='lower right')
+tip3 = TipLPS(number=3, pos='upper')
 
 head = HeadXPR(tips=(tip1, tip2, tip3))
 
@@ -23,20 +23,7 @@ tipmap = rdict(
         tip2 = rdict(V='ampV1', I='ampI3'),
         tip3 = rdict(V='ampV1', I='ampI1'))
 
-
-tip1_V2 = TipLPS(number=1, pos='lower left', V_keys='ampV2', I_keys='ampI2')
-tip2_V2 = TipLPS(number=2, pos='lower right', V_keys='ampV2', I_keys='ampI3')
-tip3_V2 = TipLPS(number=3, pos='upper', V_keys='ampV2', I_keys='ampI1')
-
-head_V2 = HeadXPR(tips=(tip1_V2, tip2_V2, tip3_V2))
-
 tipmap_V2 = tipmap.rep(tip1_V='ampV2', tip2_V='ampV2', tip3_V='ampV2')
-
-#tipmap_V2 = rdict(
-#        tip1 = rdict(V='ampV2', I='ampI2'),
-#        tip2 = rdict(V='ampV2', I='ampI3'),
-#        tip3 = rdict(V='ampV2', I='ampI1'))
-
 
 amp_LPS_old = dict(ampR = Amp(fact=0.004, offs=-2745*0.004))
 
@@ -76,7 +63,7 @@ E.rep(11817, 11816, "",
 E = campaign.add_experiment(date="20040318")
 
 E.add(18786, "No plunge",
-        head = head_V2,
+        head = head,
         tipmap = tipmap_V2,
         descr = "XXX mapping incorrect!",
         stars = '', **def_LPS_old)
@@ -108,7 +95,7 @@ E = campaign.add_experiment(date="20050330")
 E.add(19951, "Standard Ohmic, sweeps",
         times = 3.9,
         posit = 0.31,
-        head = head_V2,
+        head = head,
         tipmap = tipmap_V2,
         descr = """\
             Nice swept data, some arcs. (2007_Tsalas_PPCF)""",
@@ -125,7 +112,7 @@ E.rep(19952, 19951, "Higher density",
 E = campaign.add_experiment(date="20050621")
 
 E.add(20326, "Standard Ohmic, Maximos fitting demo",
-        head = head_V2,
+        head = head,
         tipmap = tipmap_V2,
         descr = """\
             Nice shot. Sinusoidal sweep. Isat slanting visible.""",
@@ -168,7 +155,7 @@ E = campaign.add_experiment(date="20050624")
 E.add(20372, "Standard Ohmic",
         times = 3.4,
         posit = 0.31,
-        head = head_V2,
+        head = head,
         tipmap = tipmap_V2,
         descr = """\
             All tips DC biased. Nice flow data from Mach -2 to Mach 2.
@@ -189,7 +176,7 @@ E = campaign.add_experiment(date="20060316")
 E.add(21194, "Standard Ohmic",
         times = 1.9,
         posit = 0.31,
-        head = head_V2,
+        head = head,
         tipmap = tipmap_V2,
         descr = """\
             All tips swept. Very nice flow data from Mach -1 to Mach 1.
@@ -203,7 +190,7 @@ E = campaign.add_experiment(date="20060404")
 E.add(21258, "Maximos high density data",
         times = 3.4,
         posit = 0.31,
-        head = head_V2,
+        head = head,
         tipmap = tipmap_V2,
         descr = "Excellent profiles, low HFS density. (2007_Tsalas_PPCF)",
         stars = '*****', **def_LPS_old)
@@ -242,7 +229,7 @@ E = campaign.add_experiment(date="20060411")
 E.add(21320, "", 
         times = 2.2,
         posit = 0.31,
-        head = head_V2,
+        head = head,
         tipmap = tipmap_V2,
         descr = """\
             Data quality OK. Mach signals get very high, while 
@@ -275,7 +262,7 @@ E = campaign.add_experiment(date="20060421")
 E.add(21380, "Standard Ohmic",
         times = 3.6,
         posit = 0.31,
-        head = head_V2,
+        head = head,
         tipmap = tipmap_V2,
         LPS_mapping_ampI1='CUR2',
         LPS_mapping_ampI2='CUR1',

@@ -417,10 +417,12 @@ E.rep(28904, 28903, "Everything on 2nd transformer, Kepco -200 V w/ ground conne
         descr = "Worked! Quite a long arc, but Voltage didn't collapse.")
 
 
+##########################################
+# NEW DIGITAL POSITION SIGNAL FROM HERE ON
+##########################################
+
 ############################################
 E = campaign.add_experiment(date="20121127")
-
-# New digital position signal from here on!
 
 # Reversed IpBt
 E.add(28911, "Single/double Kepco on single/Mach tip, no plasma",
