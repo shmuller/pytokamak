@@ -15,27 +15,18 @@ fixpoints = (2.46, 0), (7.06, 0.34)
 amp_XPR['ampR'] = Amp(fixpoints=fixpoints)
 
 
-tip1 = TipXPR(number=1, pos='lower left', V_keys='ampV1', I_keys='ampI3')
-tip2 = TipXPR(number=2, pos='lower right', V_keys='ampV1', I_keys='ampI1')
-tip3 = TipXPR(number=3, pos='upper', V_keys='ampV1', I_keys='ampI2')
+tip1 = TipXPR(number=1, pos='lower left')
+tip2 = TipXPR(number=2, pos='lower right')
+tip3 = TipXPR(number=3, pos='upper')
 
-headI = HeadXPR(tips=(tip1, tip2, tip3))
+head = HeadXPR(tips=(tip1, tip2, tip3))
 
-tipmapI = rdict(
+tipmap = rdict(
         tip1 = rdict(V='ampV1', I='ampI3'),
         tip2 = rdict(V='ampV1', I='ampI1'),
         tip3 = rdict(V='ampV1', I='ampI2'))
 
-
-tip3sep = TipXPR(number=3, pos='upper', V_keys='ampV2', I_keys='ampI2')
-headI_tip3sep = HeadXPR(tips=(tip1, tip2, tip3sep))
-
-#tipmapI_tip3sep = dict(
-#        tip1 = dict(V='ampV1', I='ampI3'),
-#        tip2 = dict(V='ampV1', I='ampI1'),
-#        tip3 = dict(V='ampV2', I='ampI2'))
-
-tipmapI_tip3sep = tipmapI.rep(tip3_V='ampV2')
+tipmap_tip3_V2 = tipmap.rep(tip3_V='ampV2')
 
 
 fact = 4 * 5.54630/27. / 2**16
@@ -64,14 +55,14 @@ def_XPR_pos = dict(dig='XPR_pos', amp_default=amp_default, lines=dict(XPR=lines_
 E = campaign.add_experiment(date="20121011")
 
 E.add(28633, "DAQ test",
-        head = headI,
-        tipmap = tipmapI,
+        head = head,
+        tipmap = tipmap,
         stars = '', **def_XPR)
 
 E.add(28634, "Sweep attached to 2x100 V Kepco pair, all tips on sweep, plunges behind wall",
         times = (0.950, 1.850),
-        head = headI,
-        tipmap = tipmapI,
+        head = head,
+        tipmap = tipmap,
         ampI1 = CurrentProbe1[5000],
         ampI2 = CurrentProbe2[5000],
         ampI3 = CurrentProbe3[5000], 
@@ -109,7 +100,10 @@ E.rep(28647, 28646, "Repeat",
         stars = '')
 
 E.rep(28648, 28647, "Reset local timer for PPG TS06", 
-        descr = "Worked, but tip 3 apparently short circuits",
+        descr = """\
+            Worked, but tip 3 apparently short circuits.
+            NOISY POSITION SIGNAL FROM HERE ON 
+            (was due to ground loop by connection two isolation transformers)""",
         stars = '')
 
 E.rep(28649, 28648, "Go to three plunges behind the wall", 
@@ -133,8 +127,8 @@ E.rep(28651, 28650, "Position signal on S8",
 E = campaign.add_experiment(date="20121016")
 
 E.add(28657, "No plunges",
-        head = headI,
-        tipmap = tipmapI,
+        head = head,
+        tipmap = tipmap,
         ampI1 = CurrentProbe1[20],
         ampI2 = CurrentProbe2[20],
         ampI3 = CurrentProbe3[20], 
@@ -145,6 +139,7 @@ E.rep(28668, 28657, "No plunges",
         descr = "Noisy position signal, tip 3 ok",
         stars = '')
 
+# H-mode transition for F. Wagner
 E.rep(28669, 28668, "First plasma plunge of the season", 
         times = 3.4, 
         descr = """\
@@ -153,7 +148,7 @@ E.rep(28669, 28668, "First plasma plunge of the season",
         stars = '')
 
 E.rep(28670, 28669, "Plunge at beginning of second heating phase", 
-        times = (2.35,), 
+        times = 2.35, 
         descr = """\
             Probe in plasma for first time, many small arcs on way in.
             Caught L-H transition. Wiggle in VF, at transition?""",
@@ -173,7 +168,7 @@ E.rep(28672, 28671, "repeat",
         stars = '')
 
 E.rep(28673, 28672, "Only one plunge", 
-        times = (3.5,), 
+        times = 3.5, 
         descr = "Went better",
         stars = '')
 
@@ -194,12 +189,13 @@ E = campaign.add_experiment(date="20121025")
 E.add(28747, "After repair of short circuit, 3 plunges to 2 cm",
         times = (0.9, 1.7, 3.1),
         posit = (0.02, 0.02, 0.02),
-        head = headI,
-        tipmap = tipmapI,
+        head = head,
+        tipmap = tipmap,
         ampI1 = CurrentProbe1[20],
         ampI2 = CurrentProbe2[20],
         ampI3 = CurrentProbe3[20], 
-        descr = "Cleaning arcs on 1st plunge, others OK", 
+        descr = """\
+            Cleaning arcs on 1st plunge, others OK. Position signal still noisy.""", 
         stars = '', **def_XPR)
 
 E.rep(28753, 28747, "No plunges, only test if Kepcos still work",
@@ -209,7 +205,9 @@ E.rep(28753, 28747, "No plunges, only test if Kepcos still work",
 E.rep(28754, 28753, "Gas puff imaging: Two plunges. Thermography on X-point",
         times = (1.6, 2.9),
         posit = (0.16, 0.16),
-        descr = "Tips still dirty. OK data on both plunges.",
+        descr = """\
+            Tips still dirty. OK data on both plunges. 
+            Very low I2, LFS Mach number -1.5.""",
         stars = '**')
 
 E.rep(28755, 28754, "All the way",
@@ -218,8 +216,10 @@ E.rep(28755, 28754, "All the way",
         descr = "Shot didn't run",
         stars = '')
 
-E.rep(28756, 28755, "Try again",
-        descr = "Very nice L-mode data",
+E.rep(28756, 28755, "High density",
+        descr = """\
+            Very nice Ohmic data, no arcing.
+            Mach -1.5 and +2 in the same shot, both on inward and outward plunges!""",
         stars = '****')
 
 
@@ -230,17 +230,19 @@ E = campaign.add_experiment(date="20121031")
 E.add(28794, "Ref. 27692, 1 plunge at 2.8 s, all the way through",
         times = 2.8,
         posit = 0.34,
-        head = headI,
-        tipmap = tipmapI,
+        head = head,
+        tipmap = tipmap,
         ampI1 = CurrentProbe1[20],
         ampI2 = CurrentProbe2[20],
         ampI3 = CurrentProbe3[20], 
-        descr = "Nice data, but arcs and current limit", 
+        descr = """\
+            Nice data, but arcs and current limit. Mach between -1 and +2.""", 
         stars = '****', **def_XPR)
 
 E.rep(28795, 28794, "N2 FF",
         times = 4.0,
-        descr = "Slightly better than last shot",
+        descr = """\
+            Slightly better than last shot. Mach between -1 and +1.5.""",
         stars = '****')
 
 E.rep(28796, 28795, "More N2 FF (puff without limit, disruption)",
@@ -248,16 +250,19 @@ E.rep(28796, 28795, "More N2 FF (puff without limit, disruption)",
         stars = '')
 
 E.rep(28797, 28796, "Less N2 FF",
-        descr = "Very low signal, but everything OK",
+        descr = """\
+            Very low signal, but everything OK. Mach between -0.5 and +1.""",
         stars = '*****')
 
 E.rep(28798, 28797, "N2 FF 3.4e21/s",
-        descr = "Same as last shot, except for density",
+        descr = """\
+            Higher density, very low Te. LFS flow feature at Mach -1 develops.
+            HFS stays at Mach 1.""",
         stars = '*****')
 
 E.rep(28799, 28798, "N2 FF 2e21/s (1 valve)",
         descr = """\
-            Almost identical to 28795. 
+            Almost identical to 28795, but very different from 28798 and 28797.
             On way out, cable 3 ripped inside vacuum,
             leading to loss of lower-left tip on channel S6""",
         stars = '****')
@@ -269,18 +274,21 @@ E = campaign.add_experiment(date="20121106")
 E.add(28818, "1 plunge at 2.8 s, all the way through, NO flow measurement",
         times = 2.8,
         posit = 0.34,
-        head = headI,
-        tipmap = tipmapI,
+        head = head,
+        tipmap = tipmap,
         ampI1 = CurrentProbe1[20],
         ampI2 = CurrentProbe2[20],
         ampI3 = CurrentProbe3[20], 
         descr = """\
             No flow measurement due to ripped cable on 28799.
-            Otherwise nice data, but arcs and current limit""",
+            Otherwise nice data, but arcs and current limit.
+            Useful shot for validating Mach probe measurements""",
         stars = '***', **def_XPR)
 
 E.rep(28819, 28818, "Go only to X-point",
-        descr = "OK data with upper tip up to X-point.",
+        descr = """\
+            OK data with upper tip up to X-point. Bias voltage too positive, so
+            that Kepco saturates and produces transient overshoots.""",
         stars = '**')
 
 E.rep(28820, 28819, "No plunge",
@@ -295,8 +303,8 @@ E = campaign.add_experiment(date="20121122")
 E.add(28871, "DC biasing test: -200 V",
         times = 3.2,
         posit = 0.05,
-        head = headI,
-        tipmap = tipmapI,
+        head = head,
+        tipmap = tipmap,
         ampI1 = CurrentProbe1[20],
         ampI2 = CurrentProbe2[20],
         ampI3 = CurrentProbe3[20], 
@@ -365,8 +373,8 @@ E = campaign.add_experiment(date="20121123")
 
 # DC biasing testing - NO POSITION SIGNAL
 E.add(28894, "Continue from yesterday: Only V signal again.",
-        head = headI,
-        tipmap = tipmapI,
+        head = head,
+        tipmap = tipmap,
         ampI1 = CurrentProbe1[20],
         ampI2 = CurrentProbe2[20],
         ampI3 = CurrentProbe3[20], 
@@ -412,12 +420,14 @@ E.rep(28904, 28903, "Everything on 2nd transformer, Kepco -200 V w/ ground conne
 ############################################
 E = campaign.add_experiment(date="20121127")
 
+# New digital position signal from here on!
+
 # Reversed IpBt
 E.add(28911, "Single/double Kepco on single/Mach tip, no plasma",
-        head = headI_tip3sep,
-        tipmap = tipmapI_tip3sep,
-        ampV1 = ampVF,
-        ampV2 = ampVF,
+        head = head,
+        tipmap = tipmap_tip3_V2,
+        XPR_amp_ampV1 = ampVF,
+        XPR_amp_ampV2 = ampVF,
         ampI1 = CurrentProbe1[20],
         ampI2 = CurrentProbe2[20],
         ampI3 = CurrentProbe3[20], 
@@ -434,16 +444,16 @@ E.rep(28912, 28911, "Voltage signals 1 on S1 and S3",
 E.add(28913, "All on swept double Kepco, V on S1 and S3, multimeter @0.01 Hz: -225 to +57 V",
         times = 1.,
         posit = 0.02,
-        head = headI,
-        tipmap = tipmapI,
-        ampV1 = ampVF,
-        ampV2 = ampVF,
+        head = head,
+        tipmap = tipmap,
+        XPR_amp_ampV1 = ampVF,
+        XPR_amp_ampV2 = ampVF,
         ampI1 = CurrentProbe1[20],
         ampI2 = CurrentProbe2[20],
         ampI3 = CurrentProbe3[20], 
         descr = """\
-            All signals on digitizer jumped down by 0.7 V.
-            Position signal no longer noisy.""",
+            All signals on digitizer jumped down by 0.7 V. The offset is now 
+            effectively 0. Position signal no longer noisy.""",
         stars = '*', **def_XPR_pos)
 
 E.rep(28914, 28913, "Plunge at 5 cm",
@@ -465,8 +475,7 @@ E.rep(28916, 28915, "Lemo2BNC adapter on S8. Go to 10 cm",
         stars = '****')
 
 E.rep(28917, 28916, "Isolated tip at -200 V (1A Kepco)",
-        head = headI_tip3sep,
-        tipmap = tipmapI_tip3sep,
+        tipmap = tipmap_tip3_V2,
         descr = """\
             Good data, but 35 kHz pickup on single tip.
             Good electron branch on swept Mach tips.""",
@@ -478,18 +487,16 @@ E.rep(28918, 28917, "Both Kepco's at -200 V. Plasma died before plunge.",
         stars = '')
 
 E.rep(28919, 28918, "All tips at -200 V (4A Kepco)",
-        head = headI,
-        tipmap = tipmapI,
+        tipmap = tipmap,
         descr = """\
             35 kHz went away. All signals DC and very good.""",
         stars = '****')
 
 E.rep(28920, 28919, "Mach on DC (4A), single on AC (1A), plunge to 15 cm",
-        head = headI_tip3sep,
-        tipmap = tipmapI_tip3sep,
+        tipmap = tipmap_tip3_V2,
         posit = 0.15,
         descr = """\
-            Bad arc.""",
+            Bad arc, burns for 2.5 s.""",
         stars = '*')
 
 E.rep(28921, 28920, "Plunge to 10 cm. No TS06",
@@ -540,7 +547,8 @@ E.rep(28928, 28927, "32 cm at 4.4 s, shift sweeps positively out of saturation",
         descr = """\
             Very nice Mach fluctuation measurements all the way across!
             Too much positive Vbias. Saturation in current leads to asymmetry 
-            in Isat phase at very low densities.""",
+            in Isat phase at very low densities. Sweeps influence low Mach currents
+            at very low densities.""",
         stars = '***')
 
 E.rep(28929, 28928, "Back to 14.5 Vpp, shifted out of saturation. Backwards plunge at 1 s",
@@ -558,21 +566,19 @@ E.rep(28930, 28929, "Go to 1.9 s",
         stars = '****')
 
 
-
-
 ############################################
 E = campaign.add_experiment(date="20121130")
 
-E.add(28960, "Go to 10 cm at 0.9 s. Mach on DC, single on AC",
+E.add(28960, "Go to 10 cm at 0.9 s. Mach on DC, single swept at 14.5 Vpp",
         times = 0.9,
         posit = 0.1,
-        head = headI_tip3sep,
-        tipmap = tipmapI_tip3sep,
+        head = head,
+        tipmap = tipmap_tip3_V2,
         ampI1 = CurrentProbe1[20],
         ampI2 = CurrentProbe2[20],
         ampI3 = CurrentProbe3[20], 
         descr = """\
-            Worked. Digitizer offset now different again!!!""",
+            Worked. Digitizer offset now different again!!! (as before)""",
         stars = '***', **def_XPR_pos)
 
 E.rep(28961, 28960, "Go to 12 cm",
@@ -640,8 +646,7 @@ E.rep(28973, 28968, "Digitizer offset calibration",
 E.rep(28974, 28968, "All tips on swept 4A Kepco, 15 cm at 0.6 s, bias 17 Vpp",
         times = 0.6,
         posit = 0.15,
-        head = headI,
-        tipmap = tipmapI,
+        tipmap = tipmap,
         descr = """\
             Arcs again. Too much positive bias.""",
         stars = '*')
@@ -660,8 +665,8 @@ E = campaign.add_experiment(date="20121204")
 
 # Rev IpBt
 E.add(28983, "Bias Voltage off, offset calibration",
-        head = headI,
-        tipmap = tipmapI,
+        head = head,
+        tipmap = tipmap,
         ampI1 = CurrentProbe1[20],
         ampI2 = CurrentProbe2[20],
         ampI3 = CurrentProbe3[20], 
@@ -673,8 +678,9 @@ E.rep(28986, 28983, "all tips on 4A Kepco, sweep 14.5 Vpp, at 1.5 and 2.5 s",
         times = (1.0, 1.5),
         posit = (0.34, 0.34),
         descr = """\
-            Accidentally programmed 1.0 and 1.5 s. Plunges too close together, VPE.
-            Data OK on 1st plunge, but not enough electron current.""",
+            Accidentally programmed 1.0 and 1.5 s. Plunges too close together, VPE,
+            but only *after* disruption. Data OK on 1st plunge, but not a lot of 
+            electron current. Mach 0.5 on HFS.""",
         stars = '***')
 
 # Gregor Birkenmeier
@@ -689,14 +695,14 @@ E.rep(28987, 28986, "sweep 15.5 Vpp, at 1.0 and 3.0 s",
 E.rep(28988, 28987, "Single tip on 1A Kepco (save Mach signals)",
         times = (1.0, 3.0),
         posit = (0.2, 0.12),
-        head = headI_tip3sep,
-        tipmap = tipmapI_tip3sep,
+        tipmap = tipmap_tip3_V2,
         descr = """\
-            Caught L-H transition on 2nd plunge!""",
-        stars = '****')
+            Caught fast L-H transition on 2nd plunge! I-phases only after
+            back-transition.""",
+        stars = '*****')
 
 # Steffen Potzel
-E.rep(28989, 28988, "All the way through at 1.0 and 2.5 s",
+E.rep(28989, 28988, "Low density, full plunges at 1.0 and 2.5 s",
         times = (1.0, 2.5),
         posit = (0.34, 0.34),
         descr = """\
@@ -711,8 +717,8 @@ E = campaign.add_experiment(date="20121205")
 E.add(28998, "Two plunges at 1.0 and 2.5 s to 20 cm",
         times = (1.0, 2.5),
         posit = (0.2, 0.2),
-        head = headI_tip3sep,
-        tipmap = tipmapI_tip3sep,
+        head = head,
+        tipmap = tipmap_tip3_V2,
         ampI1 = CurrentProbe1[20],
         ampI2 = CurrentProbe2[20],
         ampI3 = CurrentProbe3[20], 
@@ -741,8 +747,8 @@ E.rep(29005, 29003, "No plunge, check that Kepcos are still working.",
 E = campaign.add_experiment(date="20121213")
 
 E.add(29065, "Offset calibration",
-        head = headI_tip3sep,
-        tipmap = tipmapI_tip3sep,
+        head = head,
+        tipmap = tipmap_tip3_V2,
         ampI1 = CurrentProbe1[20],
         ampI2 = CurrentProbe2[20],
         ampI3 = CurrentProbe3[20], 
@@ -784,25 +790,37 @@ E.rep(29073, 29072, "3 plunges, sweeps, 14.5 Vpp, max neg offset",
         times = (1.25, 2.80, 4.35),
         posit = (0.34, 0.34, 0.34),
         descr = """\
-            Plunge 0:
+            Plunge 0: Good L-mode data up to dwell, L-I-phase transition on way out,
+            when signals are good again. Pulsing difficult to identify in swept signals.
+            Plunge 1: Similar to plunge 0, but earlier overheating. Overheating at
+            L-I-phase transition.
+            Plunge 2: Sudden reduction in fluctuation amplitude at 4.48 s, which is not
+            visible in plunge 1.
             """,
-        stars = '***')
+        stars = '*****')
 
 E.rep(29074, 29073, "No NBI, less density, plunge to 20 cm",
         times = (1.25, 2.80, 4.35),
         posit = (0.2, 0.2, 0.2),
-        descr = "No L-H transitions",
+        descr = """\
+            No L-H transitions or any interesting changes in fluctuations.
+            Plunge 0: Different profiles than on other plunges. Overheating on way out.
+            Plunge 1 and plunge 2: Very similar. Te significantly higher on way out.""",
         stars = '***')
 
 E.rep(29075, 29074, "Blips back in, bit higher density",
         times = (1.45, 3.00, 4.55),
         posit = (0.25, 0.25, 0.25),
         descr = """\
+            I-phases and H-modes strongly weakened by probe, with very clear density
+            reduction, but no back transitions to L-mode. Very strong pulsing activity.
+            Frequency increases as density decreases. Also transitions to intermittent
+            pulsing.
             Plunge 0: Mach OK on way in, emission on way out.
             Plunge 1: Mach OK, similar data on way in and out.
             Plunge 2: Mach OK, LFS flows higher on way out.
             """,
-        stars = '***')
+        stars = '*****')
 
 E.rep(29076, 29075, "Mach tips -200 V, single tip swept 500 Hz, 13.5 Vpp",
         times = (2.1, 3.6, 4.4),
@@ -812,12 +830,14 @@ E.rep(29076, 29075, "Mach tips -200 V, single tip swept 500 Hz, 13.5 Vpp",
             Plunge 1: 2.5 kHz, goes away at 3.6975 s, broadband in PF.
             Plunge 2: quiescent until PF region, jump at 4.486 s.
             """,
-        stars = '****')
+        stars = '*****')
 
 E.rep(29077, 29076, "Change timing, plunge to 20 cm",
         times = (1.3, 2.2, 3.8),
         posit = (0.2, 0.2, 0.2),
         descr = """\
+            First plunge I-phase-L back transition, 2nd and 3rd plunges I-phase until
+            probe arcs (very early).
             Plunge 0: 3 kHz until 1.403 s, Mach probe arcs at 1.4571 s.
             Plunge 1: Fluctuations look more ELM-like, arcs at 2.3103 s.
             Plunge 2: Similar to plunge 1, arcs at 3.9165 s. After arc
