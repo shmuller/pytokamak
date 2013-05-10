@@ -10,18 +10,15 @@ from matplotlib.path import Path
 from matplotlib.patches import PathPatch
 
 class Tip:
-    def __init__(self, area, proj_area, number, pos, 
-            V_keys=None, I_keys=None, name=None):
+    def __init__(self, area, proj_area, number, pos, name=None):
         self.area = area
         self.proj_area = proj_area
         self.number = number
         self.pos = pos
-        self.V_keys = V_keys
-        self.I_keys = I_keys
         self.name = name or 'tip%d' % self.number
 
     def __repr__(self):
-        fmtstr = "%s {number}, '{name}', {pos}, connected to '{V_keys}' and '{I_keys}'"
+        fmtstr = "%s {number}, '{name}', {pos}"
         return (fmtstr % self.__class__.__name__).format(**self.__dict__)
 
     def __str__(self):

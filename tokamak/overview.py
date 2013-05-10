@@ -28,7 +28,7 @@ aug_diags = dict(
 
 class EqiViewerAUG(EqiViewer):
     def viewer(self, event):
-        fig = get_tfig(figsize=(4.5, 6), xlab="R (m)", ylab="z (m)")
+        fig = get_tfig(pos=(50, 150), figsize=(4.5, 6), xlab="R (m)", ylab="z (m)")
         self.ax = fig.axes[0]
         dig_YGC.plot(self.ax)
 
@@ -60,7 +60,8 @@ class ProfViewerAUG(ToggleViewer):
         return self.ax.plot(x, y, 'b')
 
     def viewer(self, event):
-        fig = get_tfig(figsize=(5, 5), xlab="R (m)", ylab="vrot (km s$^{\mathdefault{-1}}$)")
+        fig = get_tfig(pos=(950, 150), figsize=(5, 5), 
+                xlab="R (m)", ylab="vrot (km s$^{\mathdefault{-1}}$)")
         self.ax = fig.axes[0]
         self.ax.set_xlim((1.5, 2.5))
         self.ax.set_ylim((-50, 100))
@@ -302,8 +303,8 @@ class AUGOverview:
         for v in self.viewers:
             menu_entries_ax += v.menu_entries_ax
 
-        fig = get_tfig(fig, shape=(len(plots), 1), figsize=(6,6), xlab='t (s)',
-                       menu_entries_ax=menu_entries_ax)
+        fig = get_tfig(fig, pos=(450, 150), figsize=(6,6), shape=(len(plots), 1), 
+                       xlab='t (s)', menu_entries_ax=menu_entries_ax)
         fig.axes[0].set_xlim((1,7))
 
         for p, ax in zip(plots, fig.axes):
