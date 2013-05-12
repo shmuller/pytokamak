@@ -3,7 +3,7 @@ from sig import Signal
 
 from sm_pyplot.tight_figure import show
 
-from scipy.interpolate import InterpolatedUnivariateSpline
+from scipy.interpolate import InterpolatedUnivariateSpline, RectBivariateSpline
 
 import dierckx
 
@@ -38,7 +38,24 @@ class Spline(InterpolatedUnivariateSpline):
         return Spline(data=data)
 
 
-if __name__ == "__main__":
+class Spline2D(RectBivariateSpline):
+    def eval(self, x, y):
+        tx, ty, c = self.tck[:3]
+        kx, ky = self.degrees
+        mx, my = x.size, y.size
+        
+        lwrk = mx*(kx+1)+my*(ky+1)
+        kwrk = mx+my
+        self.wrk = np.zeros(lwrk)
+        self.iwrk = np.zeros(kwrk, 'i')
+
+        z = np.zeros(mx*my)
+        ier = 0
+        dierckx.bispev(tx, ty, c, kx, ky, x, y, z, self.wrk, self.iwrk, ier)
+        return z.reshape(mx, my)
+
+
+def spline_test():
     x = np.linspace(0., 10., 100)
     y = np.sin(x)
     #y = np.exp(-x)
@@ -67,5 +84,25 @@ if __name__ == "__main__":
     Signal(dy2, x).plot(ax=ax)
     Signal(dy3, x).plot(ax=ax)
     Signal(dy4, x).plot(ax=ax)
-    show()
 
+
+if __name__ == "__main__":
+    #spline_test()
+    
+    x = np.linspace(0., 10., 100)
+    y = np.linspace(1., 2., 100)
+    X, Y = np.ix_(x, y)
+    Z = np.sin(X)*Y
+
+        
+    spl = Spline2D(x[::9], y[::9], Z[::9,::9])
+
+    
+    S = Signal(Z[:,::33], x)
+
+    Z2 = spl.eval(x, y)
+
+    ax = S.plot()
+    Signal(Z2[:,::33], x).plot(ax=ax)
+
+    show()
