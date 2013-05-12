@@ -39,6 +39,14 @@ class Spline(InterpolatedUnivariateSpline):
 
 
 class Spline2D(RectBivariateSpline):
+    def __init__(self, *args, **kw):
+        data = kw.pop('data', None)
+        if data is None:
+            RectBivariateSpline.__init__(self, *args, **kw)
+        else:
+            self.tck = data['tck']
+            self.degrees = data['degrees']
+
     def eval(self, x, y):
         tx, ty, c = self.tck[:3]
         kx, ky = self.degrees
@@ -46,16 +54,37 @@ class Spline2D(RectBivariateSpline):
         
         lwrk = mx*(kx+1)+my*(ky+1)
         kwrk = mx+my
-        self.wrk = np.zeros(lwrk)
-        self.iwrk = np.zeros(kwrk, 'i')
+        wrk = np.zeros(lwrk)
+        iwrk = np.zeros(kwrk, 'i')
 
         z = np.zeros(mx*my)
         ier = 0
-        dierckx.bispev(tx, ty, c, kx, ky, x, y, z, self.wrk, self.iwrk, ier)
+        dierckx.bispev(tx, ty, c, kx, ky, x, y, z, wrk, iwrk, ier)
         return z.reshape(mx, my)
 
+    def deriv(self, nux=0, nuy=0):
+        tx, ty, c = self.tck[:3]
+        nx, ny, n = tx.size, ty.size, c.size
+        kx, ky = self.degrees
+        x, y, z = tx[:1], ty[:1], np.zeros(1)
+        
+        lwrk = n + (kx+1-nux) + (ky+1-nuy)
+        self.wrk = np.zeros(lwrk)
+        self.iwrk = np.zeros(2)
+        ier = 0
 
-def spline_test():
+        dierckx.parder(tx, ty, c, kx, ky, nux, nuy, x, y, z, self.wrk, self.iwrk, ier)
+
+        nx, ny = nx-2*nux, ny-2*nuy
+        kx, ky = kx-nux, ky-nuy
+                
+        data = dict(
+            degrees = (kx, ky),
+            tck = (tx[nux:nx+nux], ty[nuy:ny+nuy], self.wrk[:(nx-kx-1)*(ny-ky-1)].copy()))
+        return Spline2D(data=data)
+
+
+def spline_test(nu=2):
     x = np.linspace(0., 10., 100)
     y = np.sin(x)
     #y = np.exp(-x)
@@ -66,15 +95,15 @@ def spline_test():
     spl = Spline(S2.t, S2.x)
     y2 = spl(x)
 
-    dy2 = spl(x, 2)
+    dy2 = spl(x, nu=nu)
 
     #dy2 = np.empty_like(x)
     #for i in xrange(x.size):
     #    dy2[i] = -spl.derivatives(x[i])[1]
 
-    dy3 = spl.eval(x, 2)
+    dy3 = spl.eval(x, nu=nu)
 
-    splprime = spl.deriv(nu=2)
+    splprime = spl.deriv(nu=nu)
     dy4 = splprime.eval(x)
 
 
@@ -86,23 +115,34 @@ def spline_test():
     Signal(dy4, x).plot(ax=ax)
 
 
-if __name__ == "__main__":
-    #spline_test()
-    
+def spline2d_test(nu=2):
     x = np.linspace(0., 10., 100)
-    y = np.linspace(1., 2., 100)
+    y = np.linspace(0., 10., 100)
     X, Y = np.ix_(x, y)
-    Z = np.sin(X)*Y
-
+    Z = np.sin(X)*Y*0.1
+    #Z = np.sin(Y)*X*0.1
         
     spl = Spline2D(x[::9], y[::9], Z[::9,::9])
-
+    splx = spl.deriv(nux=nu)
+    sply = spl.deriv(nuy=nu)
     
     S = Signal(Z[:,::33], x)
+    #S = Signal(Z[::33,:].T, y)
 
     Z2 = spl.eval(x, y)
+    Z2x = splx.eval(x, y)
+    Z2y = sply.eval(x, y)
 
     ax = S.plot()
-    Signal(Z2[:,::33], x).plot(ax=ax)
+    
+    ax = Signal(Z2[:,::33], x).plot(ax=ax)
+    ax = Signal(Z2x[:,::33], x).plot(ax=ax)
+    #ax = Signal(Z2[::33,:].T, y).plot(ax=ax)
+    #ax = Signal(Z2y[::33,:].T, y).plot(ax=ax)
 
+
+if __name__ == "__main__":
+    nu = 2
+    spline_test(nu=nu)
+    spline2d_test(nu=nu)
     show()
