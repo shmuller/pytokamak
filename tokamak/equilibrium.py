@@ -1,9 +1,9 @@
 import numpy as np
 
 from scipy.ndimage import map_coordinates
-from scipy.interpolate import RectBivariateSpline
 
 from LP.sig import memoized_property
+from LP.splines import Spline, Spline2D
 
 from sm_pyplot.tight_figure import get_tfig, get_axes, show
 from sm_pyplot.observer_viewer import ToggleViewer
@@ -34,7 +34,7 @@ class InterpolatorSlice(Interpolator):
     def get_spline(self, i):
         sp = self._splines[i]
         if sp is None:
-            sp = self._splines[i] = RectBivariateSpline(self.y, self.x, self.f[i])
+            sp = self._splines[i] = Spline2D(self.y, self.x, self.f[i])
         return sp
 
     def eval_path_on_slices(self, x, y):
@@ -46,7 +46,7 @@ class InterpolatorSlice(Interpolator):
 
     def get_path_spline(self, s, x, y):
         fs = self.eval_path_on_slices(x, y)
-        return RectBivariateSpline(self.t, s, fs)
+        return Spline2D(self.t, s, fs)
 
 
 class FluxSurf:
@@ -143,6 +143,51 @@ class Eqi:
     
     def get_path_spline(self, s, R, z):
         return self.interpolator_slice.get_path_spline(s, R, z)
+
+    def _psi(self, ti):
+        R, z, psi = self.R, self.z, self.psi(ti).x[0]
+        return Spline2D(z, R, psi)
+
+    def _grad_psi(self, ti):
+        psi = self._psi(ti)
+        return psi.derivy(), psi.derivx()
+
+    def get_psi(self, ti, R, z):
+        return self._psi(ti).ev(z, R)
+    
+    def get_psi_grid(self, ti, R, z):
+        return self._psi(ti).eval(z, R)
+
+    def get_Bpol(self, ti, R, z):
+        dRpsi, dzpsi = self._grad_psi(ti)
+        fact = 1./R
+        BR =  dRpsi.ev(z, R) * fact
+        Bz = -dzpsi.ev(z, R) * fact
+        return BR, Bz
+
+    def get_Bpol_grid(self, ti, R, z):
+        dRpsi, dzpsi = self._grad_psi(ti)
+        fact = (1./R)[None]
+        BR =  dRpsi.eval(z, R) * fact
+        Bz = -dzpsi.eval(z, R) * fact
+        return BR, Bz
+
+    def _f(self, ti):
+        psii, f = self['psii'](ti).x[0] , self['f'](ti).x[0]
+        cnd = f != 0
+        psii, f = psii[cnd], f[cnd]
+        perm = psii.argsort()
+        return Spline(psii[perm], f[perm])
+
+    def get_Btor(self, ti, R, z=None, psi=None):
+        if psi is None:
+            psi = self.get_psi(ti, R, z)
+        return self._f(ti).eval(psi) / R
+
+    def get_Btor_grid(self, ti, R, z=None, psi=None):
+        if psi is None:
+            psi = self.get_psi_grid(ti, R, z)
+        return self._f(ti).eval(psi) / R[None]
 
 
 class EqiViewer(ToggleViewer):

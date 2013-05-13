@@ -1,7 +1,7 @@
 import numpy as np
 import os
 
-from LP.sig import memoized_property
+from LP.sig import memoized_property, Amp
 
 from digitizer import TdiError, IOMds, IOFile, Digitizer
 
@@ -82,14 +82,18 @@ class DigitizerAUGMAC(DigitizerAUG):
             return self.dig_Tdiv[indx]
 
 
+amp_2pi     = Amp(fact=0.5/np.pi, offs=0)
+amp_mu0_2pi = Amp(fact=2e-7, offs=0)
+
 class DigitizerAUGFPP(DigitizerAUG):
     def __init__(self, shn, diag='FPP'):
         DigitizerAUG.__init__(self, shn, diag=diag, 
                 nodes=('PFM', 'Ri', 'Zj', 'ikCAT', 'RPFx', 'zPFx', 'PFxx',
-                       'PFL', 'TFLx', 'Qpsi', 'Jpol', 'Pres', 'Vol', 'Area', 'CLE'))
+                       'Lpf', 'PFL', 'TFLx', 'Qpsi', 'Jpol', 'Pres', 'Vol', 'Area', 'CLE'))
         
+        self.amp.update(PFM=amp_2pi, PFxx=amp_2pi, PFL=amp_2pi, Jpol=amp_mu0_2pi)
         self.alias = dict(psii='PFL', q='Qpsi')
-        self.alias_primed = dict(jpol='Jpol', p='Pres', V='Vol', A='Area')
+        self.alias_primed = dict(f='Jpol', p='Pres', V='Vol', A='Area')
         
         self.mapspec = dict(magnaxis=0, xpoint=1, innerlim=2, xpoint2=3, outerlim=4)
 
@@ -120,7 +124,10 @@ class DigitizerAUGEQI(DigitizerAUGFPP):
     def __init__(self, shn, diag='EQI'):
         DigitizerAUGFPP.__init__(self, shn, diag=diag)
 
-        self.nodes += ('FFP', 'CLD', 'Rinv', 'R2inv', 'Bave', 'B2ave', 'FTRA')
+        more_nodes = ('FFP', 'CLD', 'Rinv', 'R2inv', 'Bave', 'B2ave', 'FTRA')
+        self.nodes += more_nodes
+        self.all_nodes += more_nodes
+        self.amp.update(FFP=amp_mu0_2pi*amp_mu0_2pi)
         self.alias.update(ffprime='FFP', Bt='Bave')
 
 

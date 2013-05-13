@@ -612,14 +612,17 @@ class Amp:
 
 
 class Signal:
-    def __init__(self, x, t, **kw):
-        self.x, self.t = np.atleast_1d(x, t)
+    def __init__(self, x, t=None, **kw):
+        self.x = np.atleast_1d(x)
+        if t is None:
+            t = np.arange(x.size)
+        self.t = np.atleast_1d(t)
         self.size, self.shape = self.x.size, self.x.shape
 
         self.kw = kw
         self.number = kw.get('number', -1)
         self.name = kw.get('name', "")
-        self.type = kw.get('type', None)
+        self.type = kw.get('type', "")
         self.units = kw.get('units', "")
         self.tunits = kw.get('tunits', "s")
 
@@ -807,8 +810,10 @@ class Signal:
         return np.sqrt(((self - m)**2).move_mean(w)) / m
 
     def deriv(self, name=""):
-        delta = lambda x: np.r_[x[1]-x[0], x[2:]-x[:-2], x[-1]-x[-2]]
-        dx_dt = delta(self.x)/delta(self.t)
+        def delta(x):
+            return np.concatenate((x[1:2]-x[:1], x[2:]-x[:-2], x[-1:]-x[-2:-1]))
+
+        dx_dt = delta(self.x) / delta(self.t).reshape(self.bcast)
         return Signal(dx_dt, self.t, name=name, 
                       type="Derivative of " + self.type)
 
