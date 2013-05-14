@@ -1,6 +1,7 @@
 import numpy as np
 
 from scipy.ndimage import map_coordinates
+from scipy.integrate import odeint
 
 from LP.sig import memoized_property
 from LP.splines import Spline, Spline2D
@@ -59,6 +60,27 @@ class FluxSurf:
         pc = self.vtk_ctr.as_path_collection(**kw)
         ax.add_collection(pc)
         return ax
+
+
+class FieldLineIntegrator:
+    def __init__(self, splR, splz):
+        out = np.zeros(3)
+        twopi = 2.*np.pi
+
+        def dy_dt(y, t):
+            R, z, l = y
+            fact = twopi*R
+            BR_Bphi = splR.eval(z, R)
+            Bz_Bphi = splz.eval(z, R)
+            out[0] = fact*BR_Bphi
+            out[1] = fact*Bz_Bphi
+            out[2] = fact*np.sqrt(1. + BR_Bphi**2 + Bz_Bphi**2)
+            return out
+        
+        self.dy_dt = dy_dt
+
+    def solve(self, y0, t):
+        return odeint(self.dy_dt, y0, t)
 
 
 class Eqi:
@@ -169,16 +191,16 @@ class Eqi:
     def get_Bpol(self, ti, R, z):
         dRpsi, dzpsi = self._grad_psi(ti)
         fact = 1./R
-        BR =  dRpsi.ev(z, R) * fact
-        Bz = -dzpsi.ev(z, R) * fact
+        BR = -dzpsi.ev(z, R) * fact
+        Bz =  dRpsi.ev(z, R) * fact
         return BR, Bz
 
     def get_Bpol_grid(self, ti, R=None, z=None):
         R, z = self._check_grid(R, z)
         dRpsi, dzpsi = self._grad_psi(ti)
         fact = (1./R)[None]
-        BR =  dRpsi.eval(z, R) * fact
-        Bz = -dzpsi.eval(z, R) * fact
+        BR = -dzpsi.eval(z, R) * fact
+        Bz =  dRpsi.eval(z, R) * fact
         return BR, Bz
 
     def _f(self, ti):
@@ -210,6 +232,9 @@ class Eqi:
         splR = Spline2D(z, R, Bpol[0] / Bphi)
         splz = Spline2D(z, R, Bpol[1] / Bphi)
         return splR, splz
+
+    def get_field_line_integrator(self, ti):
+        return FieldLineIntegrator(*self.get_B_ratios_spline(ti))
 
 
 class EqiViewer(ToggleViewer):
