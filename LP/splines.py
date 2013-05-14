@@ -29,7 +29,7 @@ class Spline(InterpolatedUnivariateSpline):
         dierckx.splder(*(tck + (nu, x, y, self.wrk, ier)))
         return y
 
-    def eval(self, x, nu=0):
+    def eval(self, x, nu=0, fill=np.nan):
         '''
         Safe evaluation: Check for x values outside bbox and make sure x is
         sorted before passed to _eval().
@@ -48,7 +48,7 @@ class Spline(InterpolatedUnivariateSpline):
             i[1] += 1
 
         y = np.zeros_like(x)
-        y.fill(np.nan)
+        y.fill(fill)
 
         self._eval(x[i[0]:i[1]], nu, y[i[0]:i[1]])
         return y[iperm].reshape(shape)
@@ -65,11 +65,14 @@ class Spline(InterpolatedUnivariateSpline):
         data[9] = self.wrk[:n]
         return Spline(data=data)
 
-    def plot(self, ax=None):
-        ax = get_axes(ax)
+    def assignal(self):
         x = self.get_knots()
         y = self._eval(x)
-        return Signal(y, x).plot(ax=ax)
+        return Signal(y, x)
+        
+    def plot(self, ax=None):
+        ax = get_axes(ax)
+        return self.assignal().plot(ax=ax)
 
 
 class Spline2D(RectBivariateSpline):

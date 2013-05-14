@@ -155,7 +155,15 @@ class Eqi:
     def get_psi(self, ti, R, z):
         return self._psi(ti).ev(z, R)
     
-    def get_psi_grid(self, ti, R, z):
+    def _check_grid(self, R, z):
+        if R is None:
+            R = self.R
+        if z is None:
+            z = self.z
+        return R, z
+
+    def get_psi_grid(self, ti, R=None, z=None):
+        R, z = self._check_grid(R, z)
         return self._psi(ti).eval(z, R)
 
     def get_Bpol(self, ti, R, z):
@@ -165,7 +173,8 @@ class Eqi:
         Bz = -dzpsi.ev(z, R) * fact
         return BR, Bz
 
-    def get_Bpol_grid(self, ti, R, z):
+    def get_Bpol_grid(self, ti, R=None, z=None):
+        R, z = self._check_grid(R, z)
         dRpsi, dzpsi = self._grad_psi(ti)
         fact = (1./R)[None]
         BR =  dRpsi.eval(z, R) * fact
@@ -174,20 +183,33 @@ class Eqi:
 
     def _f(self, ti):
         psii, f = self['psii'](ti).x[0] , self['f'](ti).x[0]
-        cnd = f != 0
+        cnd = (f != 0)
         psii, f = psii[cnd], f[cnd]
         perm = psii.argsort()
         return Spline(psii[perm], f[perm])
 
-    def get_Btor(self, ti, R, z=None, psi=None):
+    def get_Bphi(self, ti, R, z=None, psi=None):
         if psi is None:
             psi = self.get_psi(ti, R, z)
-        return self._f(ti).eval(psi) / R
+        spl = self._f(ti)
+        fill = spl.assignal().x[0]
+        return spl.eval(psi, fill=fill) / R
 
-    def get_Btor_grid(self, ti, R, z=None, psi=None):
+    def get_Bphi_grid(self, ti, R=None, z=None, psi=None):
+        R, z = self._check_grid(R, z)
         if psi is None:
             psi = self.get_psi_grid(ti, R, z)
-        return self._f(ti).eval(psi) / R[None]
+        spl = self._f(ti)
+        fill = spl.assignal().x[0]
+        return spl.eval(psi, fill=fill) / R[None]
+
+    def get_B_ratios_spline(self, ti, R=None, z=None):
+        R, z = self._check_grid(R, z)
+        Bpol = self.get_Bpol_grid(ti, R, z)
+        Bphi = self.get_Bphi_grid(ti, R, z)
+        splR = Spline2D(z, R, Bpol[0] / Bphi)
+        splz = Spline2D(z, R, Bpol[1] / Bphi)
+        return splR, splz
 
 
 class EqiViewer(ToggleViewer):

@@ -131,7 +131,12 @@ class DigitizerAUGEQI(DigitizerAUGFPP):
         self.alias.update(ffprime='FFP', Bt='Bave')
 
 
-eqi_digitizers = dict(FPP=DigitizerAUGFPP, EQI=DigitizerAUGEQI)
+class DigitizerAUGEQH(DigitizerAUGEQI):
+    def __init__(self, shn, diag='EQH'):
+        DigitizerAUGEQI.__init__(self, shn, diag=diag)
+
+
+eqi_digitizers = dict(FPP=DigitizerAUGFPP, EQI=DigitizerAUGEQI, EQH=DigitizerAUGEQH)
 
 
 class DigitizerAUGYGC(DigitizerAUG):
