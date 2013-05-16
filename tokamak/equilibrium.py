@@ -2,6 +2,7 @@ import numpy as np
 
 from scipy.ndimage import map_coordinates
 from scipy.integrate import odeint
+from odepack import odesolve
 
 from LP.sig import memoized_property
 from LP.splines import Spline, Spline2D
@@ -62,25 +63,51 @@ class FluxSurf:
         return ax
 
 
+class StopIntegration(Exception):
+    pass
+
 class FieldLineIntegrator:
     def __init__(self, splR, splz):
+        self.bbox = bbox = splR.get_bbox()
+        bbox.x0 = bbox.x0[::-1]
+        bbox.x1 = bbox.x1[::-1]
+
         out = np.zeros(3)
         twopi = 2.*np.pi
-
-        def dy_dt(y, t):
+        
+        def dy_dt(y, t, ydot=out):
             R, z, l = y
             fact = twopi*R
             BR_Bphi = splR.eval(z, R)
             Bz_Bphi = splz.eval(z, R)
-            out[0] = fact*BR_Bphi
-            out[1] = fact*Bz_Bphi
-            out[2] = fact*np.sqrt(1. + BR_Bphi**2 + Bz_Bphi**2)
-            return out
+            ydot[0] = fact*BR_Bphi
+            ydot[1] = fact*Bz_Bphi
+            ydot[2] = fact*np.sqrt(1. + BR_Bphi**2 + Bz_Bphi**2)
+            return ydot
         
         self.dy_dt = dy_dt
 
     def solve(self, y0, t):
         return odeint(self.dy_dt, y0, t)
+   
+    def solve2(self, y0, t):
+        neq = y0.size
+        res = np.zeros((t.size, neq))
+        res[0] = y0
+        args = np.zeros(neq), np.zeros(neq), np.zeros(neq)
+        return odesolve(self.dy_dt, res, t, args)
+
+    def solve_bbox(self, y0, t):
+        isin = self.bbox.isin
+        y = np.zeros((t.size, y0.size))
+        y[0] = y0
+        s = 10
+        for i in xrange(1, t.size, s):
+            y[i-1:i+s] = odeint(self.dy_dt, y[i-1], t[i-1:i+s])
+            if not isin(y[i+s-1,:2]):
+                y = y[:i+s]
+                break
+        return y
 
 
 class Eqi:

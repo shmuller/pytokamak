@@ -7,6 +7,17 @@ from scipy.interpolate import InterpolatedUnivariateSpline, RectBivariateSpline
 
 import dierckx
 
+class BoundingBox:
+    def __init__(self, x0, x1=None):
+        if x1 is None:
+            self.x0, self.x1 = x0
+        else:
+            self.x0, self.x1 = x0, x1
+
+    def isin(self, x):
+        return np.all((self.x0 <= x) & (x <= self.x1))
+
+
 class Spline(InterpolatedUnivariateSpline):
     def __init__(self, *args, **kw):
         data = kw.pop('data', None)
@@ -15,6 +26,10 @@ class Spline(InterpolatedUnivariateSpline):
         else:
             self._data = tuple(data)
             self._reset_class()
+
+    def get_bbox(self):
+        x = self.get_knots()
+        return BoundingBox(x[0], x[-1])
 
     def _eval(self, x, nu=0, y=None):
         '''
@@ -83,6 +98,10 @@ class Spline2D(RectBivariateSpline):
         else:
             self.tck = data['tck']
             self.degrees = data['degrees']
+
+    def get_bbox(self):
+        tx, ty = self.tck[:2]
+        return BoundingBox(np.array(((tx[0], ty[0]), (tx[-1], ty[-1]))))
 
     def eval(self, x, y):
         tx, ty, c = self.tck[:3]
