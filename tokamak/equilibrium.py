@@ -85,17 +85,16 @@ class FieldLineIntegrator:
             ydot[2] = fact*np.sqrt(1. + BR_Bphi**2 + Bz_Bphi**2)
             return ydot
         
+        isin = bbox.isin
+
+        def term(y, t, ydot=out):
+            return not isin(y[:2])
+
         self.dy_dt = dy_dt
+        self.term = term
 
     def solve(self, y0, t):
         return odeint(self.dy_dt, y0, t)
-   
-    def solve2(self, y0, t):
-        neq = y0.size
-        res = np.zeros((t.size, neq))
-        res[0] = y0
-        args = np.zeros(neq), np.zeros(neq), np.zeros(neq)
-        return odesolve(self.dy_dt, res, t, args)
 
     def solve_bbox(self, y0, t):
         isin = self.bbox.isin
@@ -108,7 +107,18 @@ class FieldLineIntegrator:
                 y = y[:i+s]
                 break
         return y
+   
+    def solve2(self, y0, t, *args):
+        neq = y0.size
+        res = np.zeros((t.size, neq))
+        res[0] = y0
+        odeargs = np.zeros(neq), np.zeros(1), np.zeros(neq)
+        points_done = odesolve(self.dy_dt, res, t, odeargs, *args)
+        return res[:points_done]
 
+    def solve_bbox2(self, y0, t):
+        return self.solve2(y0, t, self.term)
+        
 
 class Eqi:
     def __init__(self, digitizer):
