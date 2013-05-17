@@ -71,11 +71,13 @@ class FieldLineIntegrator:
         self.bbox = bbox = splR.get_bbox()
         bbox.x0 = bbox.x0[::-1]
         bbox.x1 = bbox.x1[::-1]
+        R0, z0 = bbox.x0
+        R1, z1 = bbox.x1
 
         out = np.zeros(3)
         twopi = 2.*np.pi
         
-        def dy_dt(y, t, ydot=out):
+        def dy_dt(y, t, ydot=out, gout=None):
             R, z, l = y
             fact = twopi*R
             BR_Bphi = splR.eval(z, R)
@@ -84,14 +86,21 @@ class FieldLineIntegrator:
             ydot[1] = fact*Bz_Bphi
             ydot[2] = fact*np.sqrt(1. + BR_Bphi**2 + Bz_Bphi**2)
             return ydot
-        
-        isin = bbox.isin
 
-        def term(y, t, ydot=out):
-            return not isin(y[:2])
+        def roots(y, t, ydot, gout):
+            gout[0] = R0 - y[0]
+            gout[1] = R1 - y[0]
+            gout[2] = z0 - y[1]
+            gout[3] = z1 - y[1]
+
+        #isin = bbox.isin
+        #
+        #def term(y, t, ydot=out):
+        #    return not isin(y[:2])
 
         self.dy_dt = dy_dt
-        self.term = term
+        self.roots = roots
+        #self.term = term
 
     def solve(self, y0, t):
         return odeint(self.dy_dt, y0, t)
@@ -112,12 +121,12 @@ class FieldLineIntegrator:
         neq = y0.size
         res = np.zeros((t.size, neq))
         res[0] = y0
-        odeargs = np.zeros(neq), np.zeros(1), np.zeros(neq)
+        odeargs = np.zeros(neq), np.zeros(1), np.zeros(neq), np.zeros(4)
         points_done = odesolve(self.dy_dt, res, t, odeargs, *args)
         return res[:points_done]
 
     def solve_bbox2(self, y0, t):
-        return self.solve2(y0, t, self.term)
+        return self.solve2(y0, t, self.roots)
         
 
 class Eqi:
