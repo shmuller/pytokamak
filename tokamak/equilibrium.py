@@ -2,7 +2,9 @@ import numpy as np
 
 from scipy.ndimage import map_coordinates
 from scipy.integrate import odeint
-from odepack import odesolve
+
+from odepack.odepack import odesolve
+#from odepack.odepack_ctypes import odesolve
 
 from LP.sig import memoized_property
 from LP.splines import Spline, Spline2D
@@ -63,9 +65,6 @@ class FluxSurf:
         return ax
 
 
-class StopIntegration(Exception):
-    pass
-
 class FieldLineIntegrator:
     def __init__(self, splR, splz):
         self.bbox = bbox = splR.get_bbox()
@@ -77,11 +76,13 @@ class FieldLineIntegrator:
         self.ibb = np.array((0, 0, 1, 1), 'i')
         self.bb = np.array((R0, R1, z0, z1))
 
+        asarray = np.asarray
         out = np.zeros(3)
         twopi = 2.*np.pi
         
         def f(y, t, ydot=out):
-            R, z, l = y
+            R = asarray(y[0])
+            z = asarray(y[1])
             fact = twopi*R
             BR_Bphi = splR.eval(z, R)
             Bz_Bphi = splz.eval(z, R)
@@ -117,15 +118,14 @@ class FieldLineIntegrator:
         neq = y0.size
         y = np.zeros((t.size, neq))
         y[0] = y0
-        work = np.zeros(neq), np.zeros(1), np.zeros(neq), np.zeros(4)
-        points_done = odesolve(self.f, y, t, work, *args)
+        points_done = odesolve(self.f, y, t, *args)
         return y[:points_done]
 
     def solve_bbox2(self, y0, t):
-        return self.solve2(y0, t, self.g)
+        return self.solve2(y0, t, 4, self.g)
 
     def solve_bbox3(self, y0, t):
-        return self.solve2(y0, t, None, self.ibb, self.bb)
+        return self.solve2(y0, t, 4, None, self.ibb, self.bb)
         
 
 class Eqi:
