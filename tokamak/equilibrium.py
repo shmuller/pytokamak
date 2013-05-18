@@ -74,10 +74,13 @@ class FieldLineIntegrator:
         R0, z0 = bbox.x0
         R1, z1 = bbox.x1
 
+        self.ibb = np.array((0, 0, 1, 1), 'i')
+        self.bb = np.array((R0, R1, z0, z1))
+
         out = np.zeros(3)
         twopi = 2.*np.pi
         
-        def dy_dt(y, t, ydot=out, gout=None):
+        def f(y, t, ydot=out):
             R, z, l = y
             fact = twopi*R
             BR_Bphi = splR.eval(z, R)
@@ -87,23 +90,16 @@ class FieldLineIntegrator:
             ydot[2] = fact*np.sqrt(1. + BR_Bphi**2 + Bz_Bphi**2)
             return ydot
 
-        def roots(y, t, ydot, gout):
-            gout[0] = R0 - y[0]
-            gout[1] = R1 - y[0]
-            gout[2] = z0 - y[1]
-            gout[3] = z1 - y[1]
+        def g(y, t, gout):
+            gout[0] = y[0] - R0
+            gout[1] = y[0] - R1
+            gout[2] = y[1] - z0
+            gout[3] = y[1] - z1
 
-        #isin = bbox.isin
-        #
-        #def term(y, t, ydot=out):
-        #    return not isin(y[:2])
-
-        self.dy_dt = dy_dt
-        self.roots = roots
-        #self.term = term
-
+        self.f, self.g = f, g
+    
     def solve(self, y0, t):
-        return odeint(self.dy_dt, y0, t)
+        return odeint(self.f, y0, t)
 
     def solve_bbox(self, y0, t):
         isin = self.bbox.isin
@@ -111,7 +107,7 @@ class FieldLineIntegrator:
         y[0] = y0
         s = 10
         for i in xrange(1, t.size, s):
-            y[i-1:i+s] = odeint(self.dy_dt, y[i-1], t[i-1:i+s])
+            y[i-1:i+s] = odeint(self.f, y[i-1], t[i-1:i+s])
             if not isin(y[i+s-1,:2]):
                 y = y[:i+s]
                 break
@@ -119,14 +115,17 @@ class FieldLineIntegrator:
    
     def solve2(self, y0, t, *args):
         neq = y0.size
-        res = np.zeros((t.size, neq))
-        res[0] = y0
-        odeargs = np.zeros(neq), np.zeros(1), np.zeros(neq), np.zeros(4)
-        points_done = odesolve(self.dy_dt, res, t, odeargs, *args)
-        return res[:points_done]
+        y = np.zeros((t.size, neq))
+        y[0] = y0
+        work = np.zeros(neq), np.zeros(1), np.zeros(neq), np.zeros(4)
+        points_done = odesolve(self.f, y, t, work, *args)
+        return y[:points_done]
 
     def solve_bbox2(self, y0, t):
-        return self.solve2(y0, t, self.roots)
+        return self.solve2(y0, t, self.g)
+
+    def solve_bbox3(self, y0, t):
+        return self.solve2(y0, t, None, self.ibb, self.bb)
         
 
 class Eqi:
