@@ -66,15 +66,17 @@ class FluxSurf:
 
 
 class FieldLineIntegrator:
-    def __init__(self, splR, splz):
-        self.bbox = bbox = splR.get_bbox()
-        bbox.x0 = bbox.x0[::-1]
-        bbox.x1 = bbox.x1[::-1]
-        R0, z0 = bbox.x0
-        R1, z1 = bbox.x1
+    def __init__(self, splR, splz, bbox=None):
+        if bbox is None:
+            bbox = splR.get_bbox()
+            z0, R0 = bbox.x0
+            z1, R1 = bbox.x1
+        else:
+            R0, z0 = bbox.x0
+            R1, z1 = bbox.x1
 
         self.ibb = np.array((0, 0, 1, 1), 'i')
-        self.bb = np.array((R0, R1, z0, z1))
+        self.bb = np.array((R0, R1, z0, z1), 'd')
 
         asarray = np.asarray
         out = np.zeros(3)
@@ -98,39 +100,27 @@ class FieldLineIntegrator:
             gout[3] = y[1] - z1
 
         self.f, self.g = f, g
-    
-    def solve(self, y0, t):
-        return odeint(self.f, y0, t)
-
-    def solve_bbox(self, y0, t):
-        isin = self.bbox.isin
-        y = np.zeros((t.size, y0.size))
-        y[0] = y0
-        s = 10
-        for i in xrange(1, t.size, s):
-            y[i-1:i+s] = odeint(self.f, y[i-1], t[i-1:i+s])
-            if not isin(y[i+s-1,:2]):
-                y = y[:i+s]
-                break
-        return y
-   
-    def solve2(self, y0, t, *args):
+       
+    def solve(self, y0, t, *args):
         neq = y0.size
         y = np.zeros((t.size, neq))
         y[0] = y0
         points_done = odesolve(self.f, y, t, *args)
         return y[:points_done]
 
-    def solve_bbox2(self, y0, t):
-        return self.solve2(y0, t, 4, self.g)
+    def solve_bb(self, y0, t):
+        return self.solve(y0, t, 4, None, self.ibb, self.bb)
 
-    def solve_bbox3(self, y0, t):
-        return self.solve2(y0, t, 4, None, self.ibb, self.bb)
-        
+    def solve_g(self, y0, t):
+        return self.solve(y0, t, 4, self.g)
+
+    def solve_scipy(self, y0, t):
+        return odeint(self.f, y0, t)
+            
 
 class Eqi:
-    def __init__(self, digitizer):
-        self.digitizer = digitizer
+    def __init__(self, digitizer, vessel=None):
+        self.digitizer, self.vessel = digitizer, vessel
 
     def __getitem__(self, indx):
         return self.digitizer[indx]
@@ -278,8 +268,14 @@ class Eqi:
         splz = Spline2D(z, R, Bpol[1] / Bphi)
         return splR, splz
 
-    def get_field_line_integrator(self, ti):
-        return FieldLineIntegrator(*self.get_B_ratios_spline(ti))
+    def get_field_line_integrator(self, ti, bbox=None):
+        splR, splz = self.get_B_ratios_spline(ti)
+        if bbox is None:
+            try:
+                bbox = self.vessel.get_bbox()
+            except AttributeError:
+                pass
+        return FieldLineIntegrator(splR, splz, bbox)
 
 
 class EqiViewer(ToggleViewer):

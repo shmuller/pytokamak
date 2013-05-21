@@ -87,11 +87,16 @@ class AUGOverview:
         S = {k: DigitizerAUG(self.shn, diag=k, **v) for k, v in aug_diags.iteritems()}
         S['MAC'] = DigitizerAUGMAC(self.shn)
         S['EQI'] = eqi_digitizers[self.eqi_dig](self.shn)
+        S['YGC'] = dig_YGC
         return S
 
     @memoized_property
+    def ves(self):
+        return self.S['YGC']
+
+    @memoized_property
     def eqi(self):
-        return Eqi(self.S['EQI'])
+        return Eqi(self.S['EQI'], self.ves)
 
     def plot_eqi(self, ax=None, Lvls=np.linspace(0., 1., 10)):
         ax = get_axes(ax)

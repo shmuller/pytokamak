@@ -1,22 +1,11 @@
 import numpy as np
-from sig import memoized_property, Signal
+from sig import memoized_property, Signal, BoundingBox
 
 from sm_pyplot.tight_figure import get_axes, show
 
 from scipy.interpolate import InterpolatedUnivariateSpline, RectBivariateSpline
 
 import dierckx
-
-class BoundingBox:
-    def __init__(self, x0, x1=None):
-        if x1 is None:
-            self.x0, self.x1 = x0
-        else:
-            self.x0, self.x1 = x0, x1
-
-    def isin(self, x):
-        return np.all((self.x0 <= x) & (x <= self.x1))
-
 
 class Spline(InterpolatedUnivariateSpline):
     def __init__(self, *args, **kw):

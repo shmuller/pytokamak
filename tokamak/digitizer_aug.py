@@ -1,7 +1,7 @@
 import numpy as np
 import os
 
-from LP.sig import memoized_property, Amp
+from LP.sig import memoized_property, Amp, BoundingBox
 
 from digitizer import TdiError, IOMds, IOFile, Digitizer
 
@@ -162,12 +162,51 @@ class DigitizerAUGYGC(DigitizerAUG):
         return x['chGCnm'][x['ixplin'] > 0]
 
     @memoized_property
-    def xy(self):
+    def _xy(self):
+        xy = np.c_[self.x['RrGC'], self.x['zzGC']]
+
+        # fix inner limiter
+        perm = np.concatenate((np.arange(21, 42), np.arange(0, 22)))
+        xy[74:117] = xy[74 + perm]
+        return xy
+
+    @memoized_property
+    def _lbdry(self):
+        lbdry = self.x['inxlps'].copy()
+        
+        # fix inner limiter and upper tiles
+        lbdry[9] = 21
+        lbdry[30:34] = 2
+        lbdry[34] = 7
+        lbdry[37:40] = 2
+        return lbdry
+        
+    def _get_xy(self, lenname, mask=True):
         x = self.x
-        i = x['inxbeg'] - 1
-        ij = np.c_[i[:-1], i[1:]][x['ixplin'] > 0]
-        xy = np.c_[x['RrGC'], x['zzGC']]
-        return [xy[i:j] for i, j in ij]
+        i = x['inxbeg'][:-1] - 1
+        j = i + x[lenname]
+        ij = np.c_[i, j]
+        if mask:
+            ij = ij[x['ixplin'] > 0]
+        return [self._xy[i:j] for i, j in ij]
+
+    @memoized_property
+    def xy(self):
+        return self._get_xy(lenname='inxlen')
+    
+    @memoized_property
+    def xy_bdry(self):
+        i = self.x['inxbeg'][:-1] - 1
+        ij = np.c_[i, i + self._lbdry]
+        idx = np.r_[15:28, 10, 41:44, 36:40, 30:35, 9]
+        return [self._xy[i:j] for i, j in ij[idx]]
+
+    @memoized_property
+    def bdry(self):
+        return np.concatenate(self.xy_bdry)
+
+    def get_bbox(self):
+        return BoundingBox(self.bdry.min(axis=0), self.bdry.max(axis=0))
 
     def plot(self, ax=None, unfilled=(4, 5), col='k'):
         ax = get_axes(ax, xlab="R (m)", ylab="z (m)")

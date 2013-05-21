@@ -180,6 +180,20 @@ class Container(Iterable):
         return {k: getattr(v, attr) for k, v in self.x.iteritems()}
 
 
+class BoundingBox:
+    def __init__(self, x0, x1=None):
+        if x1 is None:
+            self.x0, self.x1 = x0
+        else:
+            self.x0, self.x1 = x0, x1
+
+    def copy(self):
+        return self.__class__(self.x0.copy(), self.x1.copy())
+
+    def isin(self, x):
+        return np.all((self.x0 <= x) & (x <= self.x1))
+
+
 def dict_pop(d, **kw):
     return {k: d.pop(k, kw[k]) for k in kw.keys()}
 
