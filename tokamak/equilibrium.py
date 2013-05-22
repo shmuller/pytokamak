@@ -1,7 +1,6 @@
 import numpy as np
 
 from scipy.ndimage import map_coordinates
-from scipy.integrate import odeint
 
 from odepack.odepack import odesolve
 #from odepack.odepack_ctypes import odesolve
@@ -12,7 +11,7 @@ from LP.splines import Spline, Spline2D
 from sm_pyplot.tight_figure import get_tfig, get_axes, show
 from sm_pyplot.observer_viewer import ToggleViewer
 from sm_pyplot.vtk_contour import VtkContour
-
+from sm_pyplot.polygon import EnhancedPolygon
 
 class Interpolator:
     def __init__(self, t, x, y, f):
@@ -66,7 +65,7 @@ class FluxSurf:
 
 
 class FieldLineIntegrator:
-    def __init__(self, splR, splz, bbox=None):
+    def __init__(self, splR, splz, bbox=None, bdry=None):
         if bbox is None:
             bbox = splR.get_bbox()
             z0, R0 = bbox.x0
@@ -100,6 +99,15 @@ class FieldLineIntegrator:
             gout[3] = y[1] - z1
 
         self.f, self.g = f, g
+
+        if bdry is not None:
+            poly_bdry = EnhancedPolygon(bdry)
+
+            def g_bdry(y, t, gout):
+                # return -0.5 or 0.5 so odesolve iterates to find the boundary
+                gout[0] = poly_bdry.isInside(y[0], y[1]) - 0.5
+
+            self.g_bdry = g_bdry
        
     def solve(self, y0, t, *args):
         neq = y0.size
@@ -114,9 +122,9 @@ class FieldLineIntegrator:
     def solve_g(self, y0, t):
         return self.solve(y0, t, 4, self.g)
 
-    def solve_scipy(self, y0, t):
-        return odeint(self.f, y0, t)
-            
+    def solve_bdry(self, y0, t):
+        return self.solve(y0, t, 1, self.g_bdry)
+
 
 class Eqi:
     def __init__(self, digitizer, vessel=None):
@@ -268,14 +276,19 @@ class Eqi:
         splz = Spline2D(z, R, Bpol[1] / Bphi)
         return splR, splz
 
-    def get_field_line_integrator(self, ti, bbox=None):
+    def get_field_line_integrator(self, ti, bbox=None, bdry=None):
         splR, splz = self.get_B_ratios_spline(ti)
         if bbox is None:
             try:
                 bbox = self.vessel.get_bbox()
             except AttributeError:
                 pass
-        return FieldLineIntegrator(splR, splz, bbox)
+        if bdry is None:
+            try:
+                bdry = self.vessel.bdry
+            except AttributeError:
+                pass
+        return FieldLineIntegrator(splR, splz, bbox, bdry)
 
 
 class EqiViewer(ToggleViewer):
