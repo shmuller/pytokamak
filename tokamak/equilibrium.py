@@ -101,7 +101,7 @@ class FieldLineIntegrator:
         self.f, self.g = f, g
 
         if bdry is not None:
-            poly_bdry = EnhancedPolygon(bdry)
+            self.bdry = poly_bdry = EnhancedPolygon(bdry)
 
             def g_bdry(y, t, gout):
                 # return -0.5 or 0.5 so odesolve iterates to find the boundary
@@ -124,6 +124,11 @@ class FieldLineIntegrator:
 
     def solve_bdry(self, y0, t):
         return self.solve(y0, t, 1, self.g_bdry)
+
+    def solve_bb_cut_bdry(self, y0, t):
+        y = self.solve_bb(y0, t)
+        line = EnhancedPolygon(y)
+        yi = self.bdry.intersect_with_open_polygon(line)[0]
 
 
 class Eqi:
@@ -246,6 +251,13 @@ class Eqi:
         Bz =  dRpsi.eval(z, R) * fact
         return BR, Bz
 
+    def get_Bpol_spline(self, ti, R=None, z=None):
+        R, z = self._check_grid(R, z)
+        Bpol = self.get_Bpol_grid(R, z)
+        splR = Spline2D(z, R, Bpol[0])
+        splz = Spline2D(z, R, Bpol[1])
+        return splR, splz
+
     def _f(self, ti):
         psii, f = self['psii'](ti).x[0] , self['f'](ti).x[0]
         cnd = (f != 0)
@@ -267,6 +279,12 @@ class Eqi:
         spl = self._f(ti)
         fill = spl.assignal().x[0]
         return spl.eval(psi, fill=fill) / R[None]
+
+    def get_Bphi_spline(self, ti, R=None, z=None):
+        R, z = self._check_grid(R, z)
+        Bphi = self.get_Bphi_grid(ti, R, z)
+        splp = Spline2D(z, R, Bphi)
+        return splp
 
     def get_B_ratios_spline(self, ti, R=None, z=None):
         R, z = self._check_grid(R, z)
@@ -311,17 +329,18 @@ if __name__ == "__main__":
     from digitizer_aug import DigitizerAUGEQI
     from digitizer_d3d import DigitizerD3DEFIT
 
+    ax = None
     Lvls = np.linspace(0., 1., 10)
 
     dig_AUG = DigitizerAUGEQI(shn=30017)
     eqi_AUG = Eqi(dig_AUG)
-    ax = eqi_AUG.get_flux_surf(3.45, Lvls).plot()
-    ax = eqi_AUG.get_separatrix(3.45).plot(ax, color='b', linewidth=2)
+    ax = eqi_AUG.get_flux_surf(3.45, Lvls).plot(ax, edgecolors='b')
+    ax = eqi_AUG.get_separatrix(3.45).plot(ax, edgecolors='b', linewidth=2)
 
     dig_D3D = DigitizerD3DEFIT(shn=141451)
     eqi_D3D = Eqi(dig_D3D)
-    ax = eqi_D3D.get_flux_surf(1.65, Lvls).plot(ax=ax)
-    ax = eqi_D3D.get_separatrix(1.65).plot(ax, color='r', linewidth=2)
+    ax = eqi_D3D.get_flux_surf(1.65, Lvls).plot(ax, edgecolors='r')
+    ax = eqi_D3D.get_separatrix(1.65).plot(ax, edgecolors='r', linewidth=2)
     ax.axis('equal')
 
     show()

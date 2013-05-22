@@ -1,7 +1,7 @@
 import numpy as np
 import numpy.ma as ma
 
-from sm_pyplot.tight_figure import get_tfig, get_axes
+from sm_pyplot.tight_figure import get_tfig, get_axes, show
 
 from LP.sig import memoized_property
 from LP.probe_xpr import ProbeXPR, ShotNotFoundError
@@ -318,4 +318,44 @@ class AUGOverview:
 
     def plot_all(self, **kw):
         return self.plot(self.all_plots, **kw)
+
+
+if __name__ == "__main__":
+    from sm_pyplot.polygon import EnhancedPolygon
+
+    AUG = AUGOverview(shn=30017)
+    fli = AUG.eqi.get_field_line_integrator(2.5)
+    
+    t, y0 = np.linspace(0., 20., 1000), np.array([1.5, -1.0, 0.])
+
+    y = fli.solve_bb(y0, t)
+
+    bdry = EnhancedPolygon(AUG.ves.bdry)
+    line = EnhancedPolygon(y[:,:2])
+    isec = line & bdry
+
+    y_bdry = bdry.asarray()
+    y_line = line.asarray()
+    y_isec = isec.asarray()
+
+    Y_bdry = y_bdry.ravel().view(np.complex)
+    Y_line = y_line.ravel().view(np.complex)
+    Y_isec = y_isec.ravel().view(np.complex)
+
+    ind = np.in1d(Y_isec, Y_bdry)
+    Y_clip = Y_isec[~ind]
+    
+    ind_old = np.in1d(Y_clip, Y_line)
+    Y_new = Y_clip[~ind_old]
+    Y_old = Y_clip[ ind_old]
+
+    y_new = Y_new.view(np.float).reshape(-1, 2)
+    y_old = Y_old.view(np.float).reshape(-1, 2)
+
+    AUG.ves.plot()
+    #plot(y[:,0], y[:,1], 'r-+')
+    plot(y_old[:,0], y_old[:,1], 'r+-')
+    plot(y_new[:,0], y_new[:,1], 'c*-', linewidth=2)
+
+    show()
 

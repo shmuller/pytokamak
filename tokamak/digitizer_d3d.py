@@ -33,8 +33,8 @@ class DigitizerD3DEFIT(DigitizerD3D):
     def __init__(self, shn):
         DigitizerD3D.__init__(self, shn, diag='EFIT01', tnode='GTIME', tunits='s',
                 nodes = ('PSIRZ', 'GTIME', 'R', 'Z', 
-                         'RMAXIS', 'ZMAXIS', 'SSIMAG', 'SSIBRY', 'BDRY'),
-                amp = dict(GTIME=Amp(1e-3)))
+                         'RMAXIS', 'ZMAXIS', 'SSIMAG', 'SSIBRY', 'BDRY'))
+        self.amp.update(GTIME=Amp(1e-3))
 
     def get_R_z_psi(self):
         return self.x['R'], self.x['Z'], self['PSIRZ']
