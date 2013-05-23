@@ -326,41 +326,21 @@ if __name__ == "__main__":
     AUG = AUGOverview(shn=30017)
     fli = AUG.eqi.get_field_line_integrator(2.5)
     
-    t, y0 = np.linspace(0., 20., 1000), np.array([1.473, -0.966, 0.])
+    t, y0 = np.linspace(0., 20., 1000), np.array([1.47, -0.966, 0.])
 
-    R0, l = fli.test()
+    #R0, l = fli.test(solver='solve_bdry')
+    R0, l = fli.test(solver='solve_bb_cut_bdry')
 
-    y = fli.solve_bb(y0, t.copy())
+    y = fli.solve_bb(y0, -t.copy())
 
     bdry = EnhancedPolygon(AUG.ves.bdry)
     line = EnhancedPolygon(y[:,:2])
-    isec = line & bdry
-
-    y_bdry = bdry.asarray()
-    y_line = line.asarray()
-    y_isec = isec.asarray()
-
-    Y_bdry = y_bdry.ravel().view(np.complex)
-    Y_line = y_line.ravel().view(np.complex)
-    Y_isec = y_isec.ravel().view(np.complex)
-
-    beg = np.flatnonzero(Y_isec == Y_line[0])
-
-    ind = np.in1d(Y_isec, Y_bdry)
-    Y_clip = Y_isec[~ind]
-    y_clip = Y_clip.view(np.float).reshape(-1, 2)
-
-    ind_old = np.in1d(Y_clip, Y_line)
-    Y_new = Y_clip[~ind_old]
-    Y_old = Y_clip[ ind_old]
-
-    y_new  = Y_new.view(np.float).reshape(-1, 2)
-    y_old  = Y_old.view(np.float).reshape(-1, 2)
-
-    AUG.ves.plot()
-    plot(y[:,0], y[:,1], 'r-+')
-    plot(y_clip[:,0], y_clip[:,1], 'g+-')
-    #plot(y_old[:,0], y_old[:,1], 'r+-')
-    #plot(y_new[:,0], y_new[:,1], 'c*-', linewidth=2)
     
+    points_inside, yi = bdry.clip_once(line)
+    line_clipped = EnhancedPolygon(np.concatenate((y[:points_inside,:2], yi)))
+
+    ax = AUG.ves.plot()
+    ax.plot(y[:,0], y[:,1], 'g-+')
+    line_clipped.plot(ax, 'r-+')
+       
     show()

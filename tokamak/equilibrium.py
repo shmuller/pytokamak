@@ -130,10 +130,12 @@ class FieldLineIntegrator:
 
     def solve_bb_cut_bdry(self, y0, t):
         y = self.solve_bb(y0, t)
-        line = EnhancedPolygon(y)
-        yi = self.bdry.intersect_with_open_polygon(line)[0]
+        line = EnhancedPolygon(y[:,:2])
+        points_inside, yi = self.bdry.clip_once(line)
+        return y[:points_inside]
 
-    def test(self, npts=1000):
+    def test(self, npts=1000, solver='solve_bdry'):
+        solver = getattr(self, solver)
         t  = np.linspace(0., 20., npts)
         R0 = np.linspace(1.29, 1.64, 100)
         y0 = np.array([0., -0.966, 0.])
@@ -141,8 +143,8 @@ class FieldLineIntegrator:
 
         for i in xrange(R0.size):
             y0[0] = R0[i]
-            l[i, 0] = self.solve_bdry(y0, t.copy())[-1, 2]
-            l[i, 1] = self.solve_bdry(y0,-t.copy())[-1, 2]
+            l[i, 0] = solver(y0, t.copy())[-1, 2]
+            l[i, 1] = solver(y0,-t.copy())[-1, 2]
         return R0, l
 
 
