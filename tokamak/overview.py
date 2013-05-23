@@ -326,9 +326,11 @@ if __name__ == "__main__":
     AUG = AUGOverview(shn=30017)
     fli = AUG.eqi.get_field_line_integrator(2.5)
     
-    t, y0 = np.linspace(0., 20., 1000), np.array([1.5, -1.0, 0.])
+    t, y0 = np.linspace(0., 20., 1000), np.array([1.473, -0.966, 0.])
 
-    y = fli.solve_bb(y0, t)
+    R0, l = fli.test()
+
+    y = fli.solve_bb(y0, t.copy())
 
     bdry = EnhancedPolygon(AUG.ves.bdry)
     line = EnhancedPolygon(y[:,:2])
@@ -342,20 +344,23 @@ if __name__ == "__main__":
     Y_line = y_line.ravel().view(np.complex)
     Y_isec = y_isec.ravel().view(np.complex)
 
+    beg = np.flatnonzero(Y_isec == Y_line[0])
+
     ind = np.in1d(Y_isec, Y_bdry)
     Y_clip = Y_isec[~ind]
-    
+    y_clip = Y_clip.view(np.float).reshape(-1, 2)
+
     ind_old = np.in1d(Y_clip, Y_line)
     Y_new = Y_clip[~ind_old]
     Y_old = Y_clip[ ind_old]
 
-    y_new = Y_new.view(np.float).reshape(-1, 2)
-    y_old = Y_old.view(np.float).reshape(-1, 2)
+    y_new  = Y_new.view(np.float).reshape(-1, 2)
+    y_old  = Y_old.view(np.float).reshape(-1, 2)
 
     AUG.ves.plot()
-    #plot(y[:,0], y[:,1], 'r-+')
-    plot(y_old[:,0], y_old[:,1], 'r+-')
-    plot(y_new[:,0], y_new[:,1], 'c*-', linewidth=2)
-
+    plot(y[:,0], y[:,1], 'r-+')
+    plot(y_clip[:,0], y_clip[:,1], 'g+-')
+    #plot(y_old[:,0], y_old[:,1], 'r+-')
+    #plot(y_new[:,0], y_new[:,1], 'c*-', linewidth=2)
+    
     show()
-

@@ -1,4 +1,7 @@
+import math
 import numpy as np
+
+sqrt = math.sqrt
 
 from scipy.ndimage import map_coordinates
 
@@ -77,19 +80,18 @@ class FieldLineIntegrator:
         self.ibb = np.array((0, 0, 1, 1), 'i')
         self.bb = np.array((R0, R1, z0, z1), 'd')
 
-        asarray = np.asarray
-        out = np.zeros(3)
-        twopi = 2.*np.pi
-        
-        def f(y, t, ydot=out):
-            R = asarray(y[0])
-            z = asarray(y[1])
+        twopi = 2.*np.pi    
+        evalR, evalz = splR.eval1, splz.eval1
+
+        def f(y, t, ydot):
+            R = y[0]
+            z = y[1]
             fact = twopi*R
-            BR_Bphi = splR.eval(z, R)
-            Bz_Bphi = splz.eval(z, R)
+            BR_Bphi = evalR(z, R)[0]
+            Bz_Bphi = evalz(z, R)[0]
             ydot[0] = fact*BR_Bphi
             ydot[1] = fact*Bz_Bphi
-            ydot[2] = fact*np.sqrt(1. + BR_Bphi**2 + Bz_Bphi**2)
+            ydot[2] = fact*sqrt(1. + BR_Bphi*BR_Bphi + Bz_Bphi*Bz_Bphi)
             return ydot
 
         def g(y, t, gout):
@@ -101,11 +103,12 @@ class FieldLineIntegrator:
         self.f, self.g = f, g
 
         if bdry is not None:
-            self.bdry = poly_bdry = EnhancedPolygon(bdry)
+            self.bdry = EnhancedPolygon(bdry)
+            isInside = self.bdry.isInside
 
             def g_bdry(y, t, gout):
-                # return -0.5 or 0.5 so odesolve iterates to find the boundary
-                gout[0] = poly_bdry.isInside(y[0], y[1]) - 0.5
+                # return -1. or 1. so odesolve iterates to find the boundary
+                gout[0] = 1. if isInside(y[0], y[1]) else -1.
 
             self.g_bdry = g_bdry
        
@@ -129,6 +132,18 @@ class FieldLineIntegrator:
         y = self.solve_bb(y0, t)
         line = EnhancedPolygon(y)
         yi = self.bdry.intersect_with_open_polygon(line)[0]
+
+    def test(self, npts=1000):
+        t  = np.linspace(0., 20., npts)
+        R0 = np.linspace(1.29, 1.64, 100)
+        y0 = np.array([0., -0.966, 0.])
+        l = np.zeros((R0.size, 2))
+
+        for i in xrange(R0.size):
+            y0[0] = R0[i]
+            l[i, 0] = self.solve_bdry(y0, t.copy())[-1, 2]
+            l[i, 1] = self.solve_bdry(y0,-t.copy())[-1, 2]
+        return R0, l
 
 
 class Eqi:

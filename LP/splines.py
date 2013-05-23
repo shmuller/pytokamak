@@ -88,6 +88,12 @@ class Spline2D(RectBivariateSpline):
             self.tck = data['tck']
             self.degrees = data['degrees']
 
+        # predefine workspaces for fast 1-point evaluation
+        kx, ky = self.degrees
+        self.wrk1 = np.zeros(kx + ky + 2)
+        self.iwrk1 = np.zeros(2, 'i')
+        self.z1 = np.zeros(1)
+
     def get_bbox(self):
         tx, ty = self.tck[:2]
         return BoundingBox(np.array(((tx[0], ty[0]), (tx[-1], ty[-1]))))
@@ -106,6 +112,14 @@ class Spline2D(RectBivariateSpline):
         ier = 0
         dierckx.bispev(tx, ty, c, kx, ky, x, y, z, wrk, iwrk, ier)
         return z.reshape(mx, my)
+
+    def eval1(self, x, y):
+        # shortcut for fast evaluation at 1 point
+        tx, ty, c = self.tck[:3]
+        kx, ky = self.degrees
+        z = self.z1
+        dierckx.bispev(tx, ty, c, kx, ky, x, y, z, self.wrk1, self.iwrk1, 0)
+        return z
 
     def deriv(self, nux=0, nuy=0):
         tx, ty, c = self.tck[:3]
