@@ -321,26 +321,16 @@ class AUGOverview:
 
 
 if __name__ == "__main__":
-    from sm_pyplot.polygon import EnhancedPolygon
-
     AUG = AUGOverview(shn=30017)
     fli = AUG.eqi.get_field_line_integrator(2.5)
     
     t, y0 = np.linspace(0., 20., 1000), np.array([1.47, -0.966, 0.])
-
-    #R0, l = fli.test(solver='solve_bdry')
-    R0, l = fli.test(solver='solve_bb_cut_bdry')
-
-    y = fli.solve_bb(y0, -t.copy())
-
-    bdry = EnhancedPolygon(AUG.ves.bdry)
-    line = EnhancedPolygon(y[:,:2])
     
-    points_inside, yi = bdry.clip_once(line)
-    line_clipped = EnhancedPolygon(np.concatenate((y[:points_inside,:2], yi)))
-
+    R0, l = fli.test(solver='solve_bdry2')
+    
+    y = fli.solve_bdry2(y0, -t.copy())    
+   
     ax = AUG.ves.plot()
-    ax.plot(y[:,0], y[:,1], 'g-+')
-    line_clipped.plot(ax, 'r-+')
-       
+    ax.plot(y[:,0], y[:,1], 'r-+')
+
     show()

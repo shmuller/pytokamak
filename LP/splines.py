@@ -94,6 +94,9 @@ class Spline2D(RectBivariateSpline):
         self.iwrk1 = np.zeros(2, 'i')
         self.z1 = np.zeros(1)
 
+    def astuple(self):
+        return self.tck[:3] + self.degrees
+
     def get_bbox(self):
         tx, ty = self.tck[:2]
         return BoundingBox(np.array(((tx[0], ty[0]), (tx[-1], ty[-1]))))

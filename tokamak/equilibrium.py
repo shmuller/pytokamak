@@ -14,7 +14,9 @@ from LP.splines import Spline, Spline2D
 from sm_pyplot.tight_figure import get_tfig, get_axes, show
 from sm_pyplot.observer_viewer import ToggleViewer
 from sm_pyplot.vtk_contour import VtkContour
-from sm_pyplot.polygon import EnhancedPolygon
+from Polygon import Polygon
+
+from fieldline._fieldline import solve_bdry
 
 class Interpolator:
     def __init__(self, t, x, y, f):
@@ -80,7 +82,9 @@ class FieldLineIntegrator:
         self.ibb = np.array((0, 0, 1, 1), 'i')
         self.bb = np.array((R0, R1, z0, z1), 'd')
 
-        twopi = 2.*np.pi    
+        self.splR, self.splz = splR, splz
+
+        twopi = 2.*np.pi
         evalR, evalz = splR.eval1, splz.eval1
 
         def f(y, t, ydot):
@@ -103,8 +107,8 @@ class FieldLineIntegrator:
         self.f, self.g = f, g
 
         if bdry is not None:
-            self.bdry = EnhancedPolygon(bdry)
-            isInside = self.bdry.isInside
+            self.bdry = bdry.T.ravel().astype('d')
+            isInside = Polygon(bdry).isInside
 
             def g_bdry(y, t, gout):
                 # return -1. or 1. so odesolve iterates to find the boundary
@@ -128,11 +132,12 @@ class FieldLineIntegrator:
     def solve_bdry(self, y0, t):
         return self.solve(y0, t, 1, self.g_bdry)
 
-    def solve_bb_cut_bdry(self, y0, t):
-        y = self.solve_bb(y0, t)
-        line = EnhancedPolygon(y[:,:2])
-        points_inside, yi = self.bdry.clip_once(line)
-        return y[:points_inside]
+    def solve_bdry2(self, y0, t):
+        y = np.zeros((t.size, y0.size))
+        y[0] = y0
+        points_done = solve_bdry(self.splR.astuple(), self.splz.astuple(), 
+                                 y, t, self.bdry)
+        return y[:points_done]
 
     def test(self, npts=1000, solver='solve_bdry'):
         solver = getattr(self, solver)
