@@ -638,7 +638,6 @@ class IV:
             for v in self.viewers:
                 menu_entries_ax += v.menu_entries_ax
 
-
             fig = get_tfig(xlab=self.S.xlab, ylab=self.S.ylab,
                            menu_entries_ax=menu_entries_ax)
             ax = fig.axes[0]

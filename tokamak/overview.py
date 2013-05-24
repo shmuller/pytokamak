@@ -28,9 +28,8 @@ aug_diags = dict(
 
 class EqiViewerAUG(EqiViewer):
     def viewer(self, event):
-        fig = get_tfig(pos=(50, 150), figsize=(4.5, 6), xlab="R (m)", ylab="z (m)")
-        self.ax = fig.axes[0]
-        dig_YGC.plot(self.ax)
+        EqiViewer.viewer(self, event, 
+                         pos=(50, 150), figsize=(4.5, 6), xlab="R (m)", ylab="z (m)")
 
 
 class EqiViewerAUGXPR(EqiViewerAUG):
@@ -328,9 +327,9 @@ if __name__ == "__main__":
     
     R0, l = fli.test()
     
-    y = fli.solve_bdry(y0, -t.copy())    
+    fl = fli.solve_bdry(y0, -t.copy())    
    
     ax = AUG.ves.plot()
-    ax.plot(y[:,0], y[:,1], 'r-+')
+    fl.plot(ax=ax)
 
     show()

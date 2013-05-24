@@ -12,7 +12,7 @@ from LP.sig import memoized_property
 from LP.splines import Spline, Spline2D
 
 from sm_pyplot.tight_figure import get_tfig, get_axes, show
-from sm_pyplot.observer_viewer import ToggleViewer
+from sm_pyplot.observer_viewer import ToggleViewer, ToggleViewerIntegrated
 from sm_pyplot.vtk_contour import VtkContour
 from Polygon import Polygon
 
@@ -69,6 +69,41 @@ class FluxSurf:
         return ax
 
 
+class FieldLine:
+    def __init__(self, y, t):
+        self.y, self.t = y, t
+
+    @memoized_property
+    def start(self):
+        return self.y[0,:2]
+
+    @memoized_property
+    def end(self):
+        return self.y[-1,:2]
+
+    @memoized_property
+    def n_turns(self):
+        return self.t[-1]
+
+    @memoized_property
+    def length(self):
+        return self.y[-1, 2]
+
+    def plot(self, ax=None, **kw):
+        kw.setdefault('color', 'b')
+        kw.setdefault('marker', '+')
+        ax = get_axes(ax)
+        return ax.plot(self.y[:, 0], self.y[:, 1], **kw)
+
+    def __repr__(self):
+        return "%s at (%.2f,% .2f) m" % (self.__class__.__name__, 
+                                          self.start[0], self.start[1])
+
+    def __str__(self):
+        return self.__repr__() + ": " + \
+               "n_turns={s.n_turns:5.2f}, l={s.length:6.2f} m)".format(s=self)
+
+
 class FieldLineIntegrator:
     def __init__(self, splR, splz, bdry=None, bbox=None):
         if bdry is None:
@@ -89,7 +124,7 @@ class FieldLineIntegrator:
         y[0] = y0
         points_done = solve_bdry(self.splR.astuple(), self.splz.astuple(), 
                                  y, t, self.bdry)
-        return y[:points_done]
+        return FieldLine(y[:points_done], t[:points_done])
 
     def test(self, npts=1000):
         t  = np.linspace(0., 20., npts)
@@ -100,8 +135,8 @@ class FieldLineIntegrator:
 
         for i in xrange(R0.size):
             y0[0] = R0[i]
-            l[i, 0] = solver(y0, t.copy())[-1, 2]
-            l[i, 1] = solver(y0,-t.copy())[-1, 2]
+            l[i, 0] = solver(y0, t.copy()).length
+            l[i, 1] = solver(y0,-t.copy()).length
         return R0, l
 
 
@@ -283,12 +318,40 @@ class Eqi:
         return FieldLineIntegrator(splR, splz, bdry, bbox)
 
 
+class FieldLineViewer(ToggleViewerIntegrated):
+    def __init__(self):
+        self.fli = None
+        ToggleViewerIntegrated.__init__(self, menu_entry='Field lines')
+
+    def set_fli(self, fli):
+        self.fli = fli
+        self.invalidate()
+
+    def plotfun(self, event):
+        y0 = np.array((event.xdata, event.ydata, 0.))
+        t = np.linspace(0., 10., 1000)
+        fl = self.fli.solve_bdry(y0, t)
+        print fl
+        self.clear()
+        return fl.plot(ax=self.ax)
+
+
 class EqiViewer(ToggleViewer):
     def __init__(self, eqi):
         self.eqi = eqi
         self.Lvls = np.linspace(0., 1., 10)
 
-        ToggleViewer.__init__(self, 'Eqi viewer')
+        ToggleViewer.__init__(self, menu_entry='Eqi viewer')
+
+    def viewer(self, event, **kw):
+        self.flv = FieldLineViewer()
+        
+        fig = get_tfig(menu_entries_ax=self.flv.menu_entries_ax, **kw)
+        self.ax = fig.axes[0]
+        try:
+            self.eqi.vessel.plot(self.ax)
+        except AttributeError:
+            pass
 
     def plotfun(self, event):
         t_event = event.xdata
@@ -296,6 +359,7 @@ class EqiViewer(ToggleViewer):
         self.clear()
         FS = self.eqi.get_flux_surf(t_event, Lvls=self.Lvls)
         FS.plot(ax)
+        self.flv.set_fli(self.eqi.get_field_line_integrator(t_event))
         return ax.collections[-1:]
                 
 
