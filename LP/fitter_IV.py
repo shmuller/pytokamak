@@ -385,7 +385,6 @@ class IVViewer(ToggleViewer):
         if not isinstance(res, list):
             res = [res]
 
-        self.clear()
         lines = []
         colorcycle = cycle(self.colors)
         for V, I, Ifit, t in res:
@@ -415,7 +414,6 @@ class IVViewerIt(ToggleViewer):
         if not isinstance(res, list):
             res = [res]
         
-        self.clear()
         lines = []
         colorcycle = cycle(self.colors)
         for V, I, Ifit, t in res:
@@ -445,7 +443,6 @@ class IVViewerItIntegrated(ToggleViewerIntegrated):
         t_event = event.xdata
         V, I, Ifit, t = self.IV.get_Sfit_at_event(t_event, ID=self.ID)
 
-        self.clear()
         lines = self.ax.plot(t, I, 'k-')
         lines_fit = self.ax.plot(t, Ifit, 'r-', linewidth=1.5)
         return lines + lines_fit

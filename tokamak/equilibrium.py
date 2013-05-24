@@ -332,7 +332,6 @@ class FieldLineViewer(ToggleViewerIntegrated):
         t = np.linspace(0., 10., 1000)
         fl = self.fli.solve_bdry(y0, t)
         print fl
-        self.clear()
         return fl.plot(ax=self.ax)
 
 
@@ -356,7 +355,6 @@ class EqiViewer(ToggleViewer):
     def plotfun(self, event):
         t_event = event.xdata
         ax = self.ax
-        self.clear()
         FS = self.eqi.get_flux_surf(t_event, Lvls=self.Lvls)
         FS.plot(ax)
         self.flv.set_fli(self.eqi.get_field_line_integrator(t_event))

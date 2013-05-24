@@ -54,7 +54,6 @@ class ProfViewerAUG(ToggleViewer):
 
     def plotfun(self, event):
         t_event = event.xdata
-        self.clear()
         x, y = self.x, self.y(t_event).x[0]
         return self.ax.plot(x, y, 'b')
 
