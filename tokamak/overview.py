@@ -326,9 +326,9 @@ if __name__ == "__main__":
     
     t, y0 = np.linspace(0., 20., 1000), np.array([1.47, -0.966, 0.])
     
-    R0, l = fli.test(solver='solve_bdry2')
+    R0, l = fli.test()
     
-    y = fli.solve_bdry2(y0, -t.copy())    
+    y = fli.solve_bdry(y0, -t.copy())    
    
     ax = AUG.ves.plot()
     ax.plot(y[:,0], y[:,1], 'r-+')

@@ -70,81 +70,33 @@ class FluxSurf:
 
 
 class FieldLineIntegrator:
-    def __init__(self, splR, splz, bbox=None, bdry=None):
-        if bbox is None:
-            bbox = splR.get_bbox()
-            z0, R0 = bbox.x0
-            z1, R1 = bbox.x1
-        else:
-            R0, z0 = bbox.x0
-            R1, z1 = bbox.x1
-
-        self.ibb = np.array((0, 0, 1, 1), 'i')
-        self.bb = np.array((R0, R1, z0, z1), 'd')
+    def __init__(self, splR, splz, bdry=None, bbox=None):
+        if bdry is None:
+            if bbox is None:
+                bbox = splR.get_bbox()
+                z0, R0 = bbox.x0
+                z1, R1 = bbox.x1
+            else:
+                R0, z0 = bbox.x0
+                R1, z1 = bbox.x1
+            bdry = np.array([(R0, z0), (R1, z0), (R1, z1), (R0, z1)])
 
         self.splR, self.splz = splR, splz
-
-        twopi = 2.*np.pi
-        evalR, evalz = splR.eval1, splz.eval1
-
-        def f(y, t, ydot):
-            R = y[0]
-            z = y[1]
-            fact = twopi*R
-            BR_Bphi = evalR(z, R)[0]
-            Bz_Bphi = evalz(z, R)[0]
-            ydot[0] = fact*BR_Bphi
-            ydot[1] = fact*Bz_Bphi
-            ydot[2] = fact*sqrt(1. + BR_Bphi*BR_Bphi + Bz_Bphi*Bz_Bphi)
-            return ydot
-
-        def g(y, t, gout):
-            gout[0] = y[0] - R0
-            gout[1] = y[0] - R1
-            gout[2] = y[1] - z0
-            gout[3] = y[1] - z1
-
-        self.f, self.g = f, g
-
-        if bdry is not None:
-            self.bdry = bdry.T.ravel().astype('d')
-            isInside = Polygon(bdry).isInside
-
-            def g_bdry(y, t, gout):
-                # return -1. or 1. so odesolve iterates to find the boundary
-                gout[0] = 1. if isInside(y[0], y[1]) else -1.
-
-            self.g_bdry = g_bdry
+        self.bdry = np.ascontiguousarray(bdry.T.ravel(), 'd')
        
-    def solve(self, y0, t, *args):
-        neq = y0.size
-        y = np.zeros((t.size, neq))
-        y[0] = y0
-        points_done = odesolve(self.f, y, t, *args)
-        return y[:points_done]
-
-    def solve_bb(self, y0, t):
-        return self.solve(y0, t, 4, None, self.ibb, self.bb)
-
-    def solve_g(self, y0, t):
-        return self.solve(y0, t, 4, self.g)
-
     def solve_bdry(self, y0, t):
-        return self.solve(y0, t, 1, self.g_bdry)
-
-    def solve_bdry2(self, y0, t):
         y = np.zeros((t.size, y0.size))
         y[0] = y0
         points_done = solve_bdry(self.splR.astuple(), self.splz.astuple(), 
                                  y, t, self.bdry)
         return y[:points_done]
 
-    def test(self, npts=1000, solver='solve_bdry'):
-        solver = getattr(self, solver)
+    def test(self, npts=1000):
         t  = np.linspace(0., 20., npts)
         R0 = np.linspace(1.29, 1.64, 100)
         y0 = np.array([0., -0.966, 0.])
         l = np.zeros((R0.size, 2))
+        solver = self.solve_bdry
 
         for i in xrange(R0.size):
             y0[0] = R0[i]
@@ -316,19 +268,19 @@ class Eqi:
         splz = Spline2D(z, R, Bpol[1] / Bphi)
         return splR, splz
 
-    def get_field_line_integrator(self, ti, bbox=None, bdry=None):
+    def get_field_line_integrator(self, ti, bdry=None, bbox=None):
         splR, splz = self.get_B_ratios_spline(ti)
-        if bbox is None:
-            try:
-                bbox = self.vessel.get_bbox()
-            except AttributeError:
-                pass
         if bdry is None:
             try:
                 bdry = self.vessel.bdry
             except AttributeError:
                 pass
-        return FieldLineIntegrator(splR, splz, bbox, bdry)
+        if bbox is None:
+            try:
+                bbox = self.vessel.get_bbox()
+            except AttributeError:
+                pass
+        return FieldLineIntegrator(splR, splz, bdry, bbox)
 
 
 class EqiViewer(ToggleViewer):
