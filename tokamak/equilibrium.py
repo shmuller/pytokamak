@@ -73,21 +73,9 @@ class FieldLine:
     def __init__(self, y, t):
         self.y, self.t = y, t
 
-    @memoized_property
-    def start(self):
-        return self.y[0,:2]
-
-    @memoized_property
-    def end(self):
-        return self.y[-1,:2]
-
-    @memoized_property
-    def n_turns(self):
-        return self.t[-1]
-
-    @memoized_property
-    def length(self):
-        return self.y[-1, 2]
+        self.start, self.end = y[[0, -1], :2]
+        self.n_turns = t[-1]
+        self.length = y[-1, 2]
 
     def plot(self, ax=None, **kw):
         kw.setdefault('color', 'b')
@@ -102,6 +90,18 @@ class FieldLine:
     def __str__(self):
         return self.__repr__() + ": " + \
                "n_turns={s.n_turns:5.2f}, l={s.length:6.2f} m)".format(s=self)
+
+
+class OpenFieldLine(FieldLine):
+    def __init__(self, co, ctr):
+        self.co, self.ctr = co, ctr
+        self.start = co.start
+        self.n_turns = co.n_turns - ctr.n_turns
+        self.length = co.length - ctr.length
+
+    def plot(self, ax=None, **kw):
+        ax = get_axes(ax)
+        return self.co.plot(ax, **kw) + self.ctr.plot(ax, **kw)
 
 
 class FieldLineIntegrator:
@@ -119,12 +119,22 @@ class FieldLineIntegrator:
         self.splR, self.splz = splR, splz
         self.bdry = np.ascontiguousarray(bdry.T.ravel(), 'd')
        
-    def solve_bdry(self, y0, t):
+    def _solve_bdry(self, y0, t):
         y = np.zeros((t.size, y0.size))
         y[0] = y0
         points_done = solve_bdry(self.splR.astuple(), self.splz.astuple(), 
                                  y, t, self.bdry)
         return FieldLine(y[:points_done], t[:points_done])
+
+    def solve_bdry(self, y0, n_turns=20., n=1000):
+        t = np.linspace(0., n_turns, n)
+        fl = self._solve_bdry(y0, t)
+        if fl.t.size < n:
+            # field line hit the wall, so go the other way too
+            t = np.linspace(0., -n_turns, n)
+            fl_ctr = self._solve_bdry(y0, t)
+            fl = OpenFieldLine(fl, fl_ctr)
+        return fl
 
     def test(self, npts=1000):
         t  = np.linspace(0., 20., npts)
@@ -329,8 +339,7 @@ class FieldLineViewer(ToggleViewerIntegrated):
 
     def plotfun(self, event):
         y0 = np.array((event.xdata, event.ydata, 0.))
-        t = np.linspace(0., 10., 1000)
-        fl = self.fli.solve_bdry(y0, t)
+        fl = self.fli.solve_bdry(y0)
         print fl
         return fl.plot(ax=self.ax)
 
