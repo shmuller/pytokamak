@@ -38,12 +38,24 @@ class EqiViewerAUGXPR(EqiViewerAUG):
         self.XPR = XPR
 
     def plotfun(self, event):
-        collections = EqiViewerAUG.plotfun(self, event)
+        artists = EqiViewerAUG.plotfun(self, event)
 
         t_event = event.xdata
         ax = self.ax
-        self.XPR.plot_head(ax, t_event)
-        return collections + ax.patches[-1:]
+        R, z = self.XPR.get_pos(t_event)
+        pp_head = self.XPR.head.as_path_patch(R, z)
+        ax.add_patch(pp_head)
+        artists.append(pp_head)
+
+        if R < self.XPR.R0:
+            fli = self.eqi.get_field_line_integrator(t_event)
+            y0 = np.array([R, z, 0.])
+            fl = fli.solve_bdry(y0)
+            print fl
+            pp_fl = fl.as_path_patch()
+            ax.add_patch(pp_fl)
+            artists.append(pp_fl)
+        return artists
 
 
 class ProfViewerAUG(ToggleViewer):

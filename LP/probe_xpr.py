@@ -1,5 +1,4 @@
 import numpy as np
-import numpy.ma as ma
 
 import scipy.interpolate as interp
 
@@ -117,11 +116,6 @@ class ProbeXPR(Probe):
         digitizer = DigitizerClasses[dig](shn)
         Probe.__init__(self, head, digitizer, R0=1.645, z0=-0.966)
 
-    """
-    def get_keys(self, name):
-        tip = self.head.get_tip_by_name(name)
-        return dict(V=tip.V_keys, I=tip.I_keys)
-    """
     def get_keys(self, name):
         return self.shot.tipmap[name]
 
@@ -130,6 +124,11 @@ class ProbeXPR(Probe):
 
     def get_amp(self, key):
         return self.shot.get(self.digitizer.name, 'amp', key)
+
+    def get_pos(self, ti):
+        Ri = self.R0 - self.S['R'](ti, masked=True).x[0]
+        zi = self.z0
+        return Ri, zi
 
     def calib(self):
         Probe.calib(self)

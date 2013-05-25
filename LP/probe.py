@@ -1,5 +1,4 @@
 import numpy as np
-import numpy.ma as ma
 
 import logging
 reload(logging)
@@ -282,6 +281,9 @@ class Probe:
     def get_amp(self, key):
         raise NotImplementedError
 
+    def get_pos(self, ti):
+        raise NotImplementedError
+
     def get_sig(self, key):
         return self.x[self.get_mapping(key)].astype('d')
 
@@ -429,10 +431,7 @@ class Probe:
         return self.calc_res()
 
     def plot_head(self, ax, ti):
-        R = self.R0 - self.S['R'](ti, masked=True).x[0]
-        if R is ma.masked:
-            R = np.nan
-
-        self.head.plot(ax, R, self.z0)
+        R, z = self.get_pos(ti)
+        self.head.plot(ax, R, z)
 
 

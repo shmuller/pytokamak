@@ -14,7 +14,10 @@ from LP.splines import Spline, Spline2D
 from sm_pyplot.tight_figure import get_tfig, get_axes, show
 from sm_pyplot.observer_viewer import ToggleViewer, ToggleViewerIntegrated
 from sm_pyplot.vtk_contour import VtkContour
-from Polygon import Polygon
+
+from matplotlib.path import Path
+from matplotlib.patches import PathPatch
+from matplotlib.collections import PathCollection
 
 from fieldline._fieldline import solve_bdry
 
@@ -78,10 +81,23 @@ class FieldLine:
         self.length = y[-1, 2]
 
     def plot(self, ax=None, **kw):
-        kw.setdefault('color', 'b')
-        kw.setdefault('marker', '+')
         ax = get_axes(ax)
-        return ax.plot(self.y[:, 0], self.y[:, 1], **kw)
+        ax.plot(self.y[:, 0], self.y[:, 1], **kw)
+        return ax
+
+    def as_path_collection(self, **kw):
+        kw.setdefault('facecolors', 'none')
+        kw.setdefault('edgecolors', 'b')
+        kw.setdefault('linewidth', 2)
+        paths = [Path(self.y[:,:2])]
+        return PathCollection(paths, **kw)
+
+    def as_path_patch(self, **kw):
+        kw.setdefault('facecolor', 'none')
+        kw.setdefault('edgecolor', 'b')
+        kw.setdefault('linewidth', 2)
+        path = Path(self.y[:,:2])
+        return PathPatch(path, **kw)
 
     def __repr__(self):
         return "%s at (%.2f,% .2f) m" % (self.__class__.__name__, 
@@ -89,12 +105,15 @@ class FieldLine:
 
     def __str__(self):
         return self.__repr__() + ": " + \
-               "n_turns={s.n_turns:5.2f}, l={s.length:6.2f} m)".format(s=self)
+               "n_turns={s.n_turns:5.2f}, l={s.length:6.2f} m".format(s=self)
 
 
 class OpenFieldLine(FieldLine):
     def __init__(self, co, ctr):
         self.co, self.ctr = co, ctr
+        self.y = np.concatenate((ctr.y[:0:-1], co.y))
+        self.t = np.concatenate((ctr.t[:0:-1], co.t))
+
         self.start = co.start
         self.n_turns = co.n_turns - ctr.n_turns
         self.length = co.length - ctr.length
@@ -102,6 +121,11 @@ class OpenFieldLine(FieldLine):
     def plot(self, ax=None, **kw):
         ax = get_axes(ax)
         return self.co.plot(ax, **kw) + self.ctr.plot(ax, **kw)
+
+    def __str__(self):
+        return self.__repr__() + ": " + \
+               "n_turns=(%5.2f,%5.2f), l=(%6.2f,%6.2f) m" % \
+               (self.co.n_turns, self.ctr.n_turns, self.co.length, self.ctr.length)
 
 
 class FieldLineIntegrator:
@@ -341,7 +365,9 @@ class FieldLineViewer(ToggleViewerIntegrated):
         y0 = np.array((event.xdata, event.ydata, 0.))
         fl = self.fli.solve_bdry(y0)
         print fl
-        return fl.plot(ax=self.ax)
+        patch = fl.as_path_patch()
+        self.ax.add_patch(patch)
+        return [patch]
 
 
 class EqiViewer(ToggleViewer):

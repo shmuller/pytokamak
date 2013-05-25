@@ -1,4 +1,5 @@
 import numpy as np
+import numpy.ma as ma
 
 import textwrap
 
@@ -56,15 +57,20 @@ class Head:
     def __str__(self):
         return self.__repr__() + ":\n%s" % pformat(self.tips)
 
-    def plot(self, ax, R, z, **kw):
+    def as_path_patch(self, R, z, **kw):
         kw.setdefault('facecolor', 'k')
         kw.setdefault('edgecolor', 'none')
 
         xy = self.xy.copy()
+        if R is ma.masked:
+            R = np.nan
+
         xy[:2,0] += R
         xy[:,1] += z
-        pp = PathPatch(Path(xy), **kw)
-        ax.add_patch(pp)
+        return PathPatch(Path(xy), **kw)
+
+    def plot(self, ax, R, z, **kw):
+        ax.add_patch(self.as_path_patch(R, z, **kw))
         return ax
 
 
