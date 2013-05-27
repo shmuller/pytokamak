@@ -5,9 +5,6 @@ sqrt = math.sqrt
 
 from scipy.ndimage import map_coordinates
 
-from odepack.odepack import odesolve
-#from odepack.odepack_ctypes import odesolve
-
 from LP.sig import memoized_property
 from LP.splines import Spline, Spline2D
 
