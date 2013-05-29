@@ -1,8 +1,6 @@
 import math
 import numpy as np
 
-sqrt = math.sqrt
-
 from scipy.ndimage import map_coordinates
 
 from LP.sig import memoized_property
@@ -10,7 +8,7 @@ from LP.splines import Spline, Spline2D
 
 from sm_pyplot.tight_figure import get_tfig, get_axes, show
 from sm_pyplot.observer_viewer import ToggleViewer, ToggleViewerIntegrated
-from sm_pyplot.vtk_contour import VtkContour
+from sm_pyplot.vtk_plot import VtkContour
 
 from matplotlib.path import Path
 from matplotlib.patches import PathPatch
@@ -57,14 +55,14 @@ class InterpolatorSlice(Interpolator):
         return Spline2D(self.t, s, fs)
 
 
-class FluxSurf:
-    def __init__(self, vtk_ctr):
-        self.vtk_ctr = vtk_ctr
+class FluxSurf(VtkContour):
+    def __init__(self, x, y, f, Lvls):
+        VtkContour.__init__(self, x, y, f, Lvls)
 
     def plot(self, ax=None, **kw):
         kw.setdefault('edgecolors', 'r')
         ax = get_axes(ax)
-        pc = self.vtk_ctr.as_path_collection(**kw)
+        pc = self.as_path_collection(**kw)
         ax.add_collection(pc)
         return ax
 
@@ -228,14 +226,14 @@ class Eqi:
         dpsi = self.psi1 - self.psi0
         return (self.psii - self.psi0[:, None]) / dpsi[:, None]
 
+    def _get_flux_surf(self, f, Lvls=None):
+        return FluxSurf(self.R, self.z, f, Lvls)
+
     def get_flux_surf(self, ti, Lvls=None):
-        x = self.R
-        y = self.z
-        z = np.zeros(1, np.float64)
-        f = self.psi_n(ti).x[0]
-        vtk_ctr = VtkContour(x, y, z, f, Lvls)
-        vtk_ctr.contour()
-        return FluxSurf(vtk_ctr)
+        return self._get_flux_surf(self.psi_n(ti).x[0], Lvls)
+
+    def get_flux_surf_unnorm(self, ti, Lvls=None):
+        return self._get_flux_surf(self.psi(ti).x[0], Lvls)
 
     def get_separatrix(self, ti):
         return self.get_flux_surf(ti, Lvls=np.array([1.]))
@@ -371,6 +369,7 @@ class EqiViewer(ToggleViewer):
     def __init__(self, eqi):
         self.eqi = eqi
         self.Lvls = np.linspace(0., 1., 10)
+        #self.Lvls = np.linspace(eqi.psi.x.min(), eqi.psi.x.max(), 50)
 
         ToggleViewer.__init__(self, menu_entry='Eqi viewer')
 
@@ -388,6 +387,7 @@ class EqiViewer(ToggleViewer):
         t_event = event.xdata
         ax = self.ax
         FS = self.eqi.get_flux_surf(t_event, Lvls=self.Lvls)
+        #FS = self.eqi.get_flux_surf_unnorm(t_event, Lvls=self.Lvls)
         FS.plot(ax)
         self.flv.set_fli(self.eqi.get_field_line_integrator(t_event))
         return ax.collections[-1:]

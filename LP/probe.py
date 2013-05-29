@@ -359,7 +359,7 @@ class Probe:
         keys = [k for k, I in self.I.iteritems() if I.V.is_swept]
         return DictView(self.I, keys)
 
-    def plot_raw(self, fig=None,
+    def plot(self, fig=None,
             keys = (('Position',), ('Current',), ('Voltage',))):
         keys = np.array(keys, ndmin=2)
 
