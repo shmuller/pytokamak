@@ -56,8 +56,8 @@ class InterpolatorSlice(Interpolator):
 
 
 class FluxSurf(VtkContour):
-    def __init__(self, x, y, f, Lvls):
-        VtkContour.__init__(self, x, y, f, Lvls)
+    def __init__(self, x, y, f, lvls):
+        VtkContour.__init__(self, x, y, f, lvls)
 
     def plot(self, ax=None, **kw):
         kw.setdefault('edgecolors', 'r')
@@ -226,17 +226,19 @@ class Eqi:
         dpsi = self.psi1 - self.psi0
         return (self.psii - self.psi0[:, None]) / dpsi[:, None]
 
-    def _get_flux_surf(self, f, Lvls=None):
-        return FluxSurf(self.R, self.z, f, Lvls)
+    def _get_flux_surf(self, f, lvls=None):
+        return FluxSurf(self.R, self.z, f, lvls)
 
-    def get_flux_surf(self, ti, Lvls=None):
-        return self._get_flux_surf(self.psi_n(ti).x[0], Lvls)
+    def get_flux_surf(self, ti, lvls=None):
+        if lvls is None:
+            lvls = np.linspace(0., 1., 20)
+        return self._get_flux_surf(self.psi_n(ti).x[0], lvls)
 
-    def get_flux_surf_unnorm(self, ti, Lvls=None):
-        return self._get_flux_surf(self.psi(ti).x[0], Lvls)
+    def get_flux_surf_unnorm(self, ti, lvls=None):
+        return self._get_flux_surf(self.psi(ti).x[0], lvls)
 
     def get_separatrix(self, ti):
-        return self.get_flux_surf(ti, Lvls=np.array([1.]))
+        return self.get_flux_surf(ti, lvls=np.array([1.]))
 
     @memoized_property
     def interpolator_3d_slab(self):
