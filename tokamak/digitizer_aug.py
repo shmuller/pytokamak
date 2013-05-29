@@ -1,7 +1,7 @@
 import numpy as np
 import os
 
-from LP.sig import memoized_property, Amp, BoundingBox
+from LP.sig import memoized_property, Amp
 
 from digitizer import TdiError, IOMds, IOFile, Digitizer
 
@@ -200,13 +200,6 @@ class DigitizerAUGYGC(DigitizerAUG):
         ij = np.c_[i, i + self._lbdry]
         idx = np.r_[15:28, 10, 41:44, 36:40, 30:35, 9]
         return [self._xy[i:j] for i, j in ij[idx]]
-
-    @memoized_property
-    def bdry(self):
-        return np.concatenate(self.xy_bdry)
-
-    def get_bbox(self):
-        return BoundingBox(self.bdry.min(axis=0), self.bdry.max(axis=0))
 
     def plot(self, ax=None, unfilled=(4, 5), col='k'):
         ax = get_axes(ax, xlab="R (m)", ylab="z (m)")

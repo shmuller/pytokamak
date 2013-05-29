@@ -2,8 +2,9 @@ import numpy as np
 import numpy.ma as ma
 
 from sm_pyplot.tight_figure import get_tfig, get_axes, show
+from sm_pyplot.vtk_plot import VtkRotatingPolygon
 
-from LP.sig import memoized_property
+from LP.sig import memoized_property, BoundingBox
 from LP.probe_xpr import ProbeXPR, ShotNotFoundError
 
 from digitizer_aug import DigitizerAUG, DigitizerAUGMAC, eqi_digitizers, dig_YGC
@@ -24,6 +25,25 @@ aug_diags = dict(
     MHE = dict(nodes=('C09-23',), s=slice(None, None, 4)),
     CEZ = dict(nodes=('vrot', 'Ti', 'inte', 'err_vrot', 'err_Ti', 'err_inte',
                       'R', 'z', 'phi')))
+
+class Vessel:
+    def __init__(self, digitizer):
+        self.digitizer = digitizer
+        R, z = self.digitizer.xy[5].T
+        self.rpoly = VtkRotatingPolygon(R, z)
+
+    @memoized_property
+    def bdry(self):
+        return np.concatenate(self.digitizer.xy_bdry)
+
+    def get_bbox(self):
+        return BoundingBox(self.bdry.min(axis=0), self.bdry.max(axis=0))
+
+    def plot(self, *args, **kw):
+        return self.digitizer.plot(*args, **kw)
+
+    def render(self):
+        self.rpoly.render(alpha=0.2)
 
 
 class EqiViewerAUG(EqiViewer):
@@ -102,15 +122,15 @@ class AUGOverview:
 
     @memoized_property
     def ves(self):
-        return self.S['YGC']
+        return Vessel(self.S['YGC'])
 
     @memoized_property
     def eqi(self):
         return Eqi(self.S['EQI'], self.ves)
 
-    def plot_eqi(self, ax=None, Lvls=np.linspace(0., 1., 10)):
+    def plot_eqi(self, ax=None, lvls=np.linspace(0., 1., 10)):
         ax = get_axes(ax)
-        ax = self.eqi.get_flux_surf(3.45, Lvls).plot(ax)
+        ax = self.eqi.get_flux_surf(3.45, lvls).plot(ax)
         ax = self.eqi.get_separatrix(3.45).plot(ax, color='b', linewidth=2)
         ax.axis('equal')
         return ax

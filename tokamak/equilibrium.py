@@ -370,8 +370,8 @@ class FieldLineViewer(ToggleViewerIntegrated):
 class EqiViewer(ToggleViewer):
     def __init__(self, eqi):
         self.eqi = eqi
-        self.Lvls = np.linspace(0., 1., 10)
-        #self.Lvls = np.linspace(eqi.psi.x.min(), eqi.psi.x.max(), 50)
+        self.lvls = np.linspace(0., 1., 10)
+        #self.lvls = np.linspace(eqi.psi.x.min(), eqi.psi.x.max(), 50)
 
         ToggleViewer.__init__(self, menu_entry='Eqi viewer')
 
@@ -388,8 +388,8 @@ class EqiViewer(ToggleViewer):
     def plotfun(self, event):
         t_event = event.xdata
         ax = self.ax
-        FS = self.eqi.get_flux_surf(t_event, Lvls=self.Lvls)
-        #FS = self.eqi.get_flux_surf_unnorm(t_event, Lvls=self.Lvls)
+        FS = self.eqi.get_flux_surf(t_event, lvls=self.lvls)
+        #FS = self.eqi.get_flux_surf_unnorm(t_event, lvls=self.lvls)
         FS.plot(ax)
         self.flv.set_fli(self.eqi.get_field_line_integrator(t_event))
         return ax.collections[-1:]
@@ -400,16 +400,16 @@ if __name__ == "__main__":
     from digitizer_d3d import DigitizerD3DEFIT
 
     ax = None
-    Lvls = np.linspace(0., 1., 10)
+    lvls = np.linspace(0., 1., 10)
 
     dig_AUG = DigitizerAUGEQI(shn=30017)
     eqi_AUG = Eqi(dig_AUG)
-    ax = eqi_AUG.get_flux_surf(3.45, Lvls).plot(ax, edgecolors='b')
+    ax = eqi_AUG.get_flux_surf(3.45, lvls).plot(ax, edgecolors='b')
     ax = eqi_AUG.get_separatrix(3.45).plot(ax, edgecolors='b', linewidth=2)
 
     dig_D3D = DigitizerD3DEFIT(shn=141451)
     eqi_D3D = Eqi(dig_D3D)
-    ax = eqi_D3D.get_flux_surf(1.65, Lvls).plot(ax, edgecolors='r')
+    ax = eqi_D3D.get_flux_surf(1.65, lvls).plot(ax, edgecolors='r')
     ax = eqi_D3D.get_separatrix(1.65).plot(ax, edgecolors='r', linewidth=2)
     ax.axis('equal')
 
