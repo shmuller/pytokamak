@@ -29,8 +29,7 @@ aug_diags = dict(
 class Vessel:
     def __init__(self, digitizer):
         self.digitizer = digitizer
-        R, z = self.digitizer.xy[5].T
-        self.rpoly = VtkRotatingPolygon(R, z)
+        self.rpoly = [VtkRotatingPolygon(*xy.T) for xy in digitizer.xy]
 
     @memoized_property
     def bdry(self):
@@ -43,7 +42,14 @@ class Vessel:
         return self.digitizer.plot(*args, **kw)
 
     def render(self):
-        self.rpoly.render(alpha=0.2)
+        alpha = np.ones(len(self.rpoly))
+        alpha[[0, 1]] = 0.2
+        alpha[[2, 4, 5]] = 0
+
+        win = None
+        for rpoly, a in zip(self.rpoly[:-1], alpha[:-1]):
+            win = rpoly.prerender(win=win, alpha=a)
+        return self.rpoly[-1].render(win=win, alpha=alpha[-1])
 
 
 class EqiViewerAUG(EqiViewer):
