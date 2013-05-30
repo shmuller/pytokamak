@@ -57,7 +57,7 @@ class InterpolatorSlice(Interpolator):
 
 class FluxSurf(VtkContour):
     def __init__(self, x, y, f, lvls):
-        VtkContour.__init__(self, x, y, f, lvls)
+        VtkContour.__init__(self, x, y, f, lvls, plane='xz')
 
     def plot(self, ax=None, **kw):
         kw.setdefault('edgecolors', 'r')

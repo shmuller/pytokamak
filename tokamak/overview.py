@@ -2,7 +2,7 @@ import numpy as np
 import numpy.ma as ma
 
 from sm_pyplot.tight_figure import get_tfig, get_axes, show
-from sm_pyplot.vtk_plot import VtkRotatingPolygon
+from sm_pyplot.vtk_plot import VtkWindow, VtkRotatingPolygon
 
 from LP.sig import memoized_property, BoundingBox
 from LP.probe_xpr import ProbeXPR, ShotNotFoundError
@@ -29,11 +29,14 @@ aug_diags = dict(
 class Vessel:
     def __init__(self, digitizer):
         self.digitizer = digitizer
-        self.rpoly = [VtkRotatingPolygon(*xy.T) for xy in digitizer.xy]
 
     @memoized_property
     def bdry(self):
         return np.concatenate(self.digitizer.xy_bdry)
+
+    @memoized_property
+    def rpoly(self):
+        return [VtkRotatingPolygon(*xy.T) for xy in self.digitizer.xy]
 
     def get_bbox(self):
         return BoundingBox(self.bdry.min(axis=0), self.bdry.max(axis=0))
@@ -41,15 +44,16 @@ class Vessel:
     def plot(self, *args, **kw):
         return self.digitizer.plot(*args, **kw)
 
-    def render(self):
+    def render(self, campos=(0., -10., 5.), **kw):
         alpha = np.ones(len(self.rpoly))
         alpha[[0, 1]] = 0.2
         alpha[[2, 4, 5]] = 0
 
-        win = None
-        for rpoly, a in zip(self.rpoly[:-1], alpha[:-1]):
-            win = rpoly.prerender(win=win, alpha=a)
-        return self.rpoly[-1].render(win=win, alpha=alpha[-1])
+        win = VtkWindow(campos=campos, **kw)
+        for rpoly, a in zip(self.rpoly, alpha):
+            if a > 0:
+                win = rpoly.prerender(win=win, alpha=a)
+        return win.render()
 
 
 class EqiViewerAUG(EqiViewer):
