@@ -9,7 +9,7 @@ from LP.probe_xpr import ProbeXPR, ShotNotFoundError
 from digitizer_aug import DigitizerAUG, DigitizerAUGMAC, eqi_digitizers, dig_YGC
 from equilibrium import Eqi, EqiViewer
 
-from vtk_aug import VtkWindow, VtkRotatingPolygon
+from vtk_aug import VtkProxy, VtkWindow, VtkRotatingPolygon
 
 from sm_pyplot.observer_viewer import ToggleViewer
 
@@ -28,7 +28,7 @@ aug_diags = dict(
                       'R', 'z', 'phi')))
 
 
-class Vessel:
+class Vessel(VtkProxy):
     def __init__(self, digitizer):
         self.digitizer = digitizer
 
@@ -37,7 +37,7 @@ class Vessel:
         return np.concatenate(self.digitizer.xy_bdry)
 
     @memoized_property
-    def rpoly(self):
+    def vtk(self):
         return [VtkRotatingPolygon(*xy.T) for xy in self.digitizer.xy]
 
     def get_bbox(self):
@@ -46,16 +46,16 @@ class Vessel:
     def plot(self, *args, **kw):
         return self.digitizer.plot(*args, **kw)
 
-    def render(self, **kw):
-        alpha = np.ones(len(self.rpoly))
-        alpha[[0, 1]] = 0.2
+    def prerender(self, **kw):
+        alpha = 0.3*np.ones(len(self.vtk))
+        alpha[[0, 1]] = 0.1
         alpha[[2, 4, 5]] = 0
 
         win = VtkWindow(**kw)
-        for rpoly, a in zip(self.rpoly, alpha):
+        for rpoly, a in zip(self.vtk, alpha):
             if a > 0:
                 win = rpoly.prerender(win=win, alpha=a)
-        return win.render()
+        return win
 
 
 class EqiViewerAUG(EqiViewer):
@@ -364,15 +364,23 @@ class AUGOverview:
 
 if __name__ == "__main__":
     AUG = AUGOverview(shn=30017)
+    FS = AUG.eqi.get_flux_surf(2.5)
     fli = AUG.eqi.get_field_line_integrator(2.5)
-    
-    t, y0 = np.linspace(0., 20., 1000), np.array([1.47, -0.966, 0.])
-    
+        
     R0, l = fli.test()
     
-    fl = fli.solve_bdry(y0, -t.copy())    
-   
+    fl = fli(1.475, -0.966)
+    fl2 = fli(1.5, 0.)
+
     ax = AUG.ves.plot()
-    fl.plot(ax=ax)
+    FS.plot(ax=ax)
+    fl.plot(ax=ax, linewidth=2)
+    fl2.plot(ax=ax, linewidth=2)
+
+    win = AUG.ves.prerender()
+    FS.prerender(win=win)
+    fl.prerender(win=win)
+    fl2.prerender(win=win, color=(1., 0., 0.))
+    win.render()
 
     show()

@@ -8,7 +8,7 @@ from LP.splines import Spline, Spline2D
 
 from sm_pyplot.tight_figure import get_tfig, get_axes, show
 from sm_pyplot.observer_viewer import ToggleViewer, ToggleViewerIntegrated
-from vtk_aug import VtkContour
+from vtk_aug import VtkProxy, VtkContour, VtkPolyline
 
 from matplotlib.path import Path
 from matplotlib.patches import PathPatch
@@ -67,13 +67,20 @@ class FluxSurf(VtkContour):
         return ax
 
 
-class FieldLine:
+class FieldLine(VtkProxy):
     def __init__(self, y, t):
         self.y, self.t = y, t
 
         self.start, self.end = y[[0, -1], :2]
         self.n_turns = t[-1]
         self.length = y[-1, 2]
+
+    @memoized_property
+    def vtk(self):
+        R, z = self.y[:,:2].T
+        phi = 2.*np.pi*self.t
+        return VtkPolyline(R*np.cos(phi), R*np.sin(phi), z, 
+                           color=(0., 0., 1.), linewidth=1.5)
 
     def plot(self, ax=None, **kw):
         ax = get_axes(ax)
@@ -113,10 +120,6 @@ class OpenFieldLine(FieldLine):
         self.n_turns = co.n_turns - ctr.n_turns
         self.length = co.length - ctr.length
 
-    def plot(self, ax=None, **kw):
-        ax = get_axes(ax)
-        return self.co.plot(ax, **kw) + self.ctr.plot(ax, **kw)
-
     def __str__(self):
         return self.__repr__() + ": " + \
                "n_turns=(%5.2f,%5.2f), l=(%6.2f,%6.2f) m" % \
@@ -137,7 +140,11 @@ class FieldLineIntegrator:
 
         self.splR, self.splz = splR, splz
         self.bdry = np.ascontiguousarray(bdry.T.ravel(), 'd')
-       
+    
+    def __call__(self, R0, z0, **kw):
+        y0 = np.array((R0, z0, 0.), np.float64)
+        return self.solve_bdry(y0, **kw)
+
     def _solve_bdry(self, y0, t):
         y = np.zeros((t.size, y0.size))
         y[0] = y0
@@ -155,8 +162,7 @@ class FieldLineIntegrator:
             fl = OpenFieldLine(fl, fl_ctr)
         return fl
 
-    def test(self, npts=1000):
-        t  = np.linspace(0., 20., npts)
+    def test(self, n_turns=20., n=1000):
         R0 = np.linspace(1.29, 1.64, 100)
         y0 = np.array([0., -0.966, 0.])
         l = np.zeros((R0.size, 2))
@@ -164,8 +170,9 @@ class FieldLineIntegrator:
 
         for i in xrange(R0.size):
             y0[0] = R0[i]
-            l[i, 0] = solver(y0, t.copy()).length
-            l[i, 1] = solver(y0,-t.copy()).length
+            fl = solver(y0, n_turns, n)
+            l[i, 0] = fl.co.length
+            l[i, 1] = fl.ctr.length
         return R0, l
 
 
