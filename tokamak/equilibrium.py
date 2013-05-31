@@ -8,7 +8,7 @@ from LP.splines import Spline, Spline2D
 
 from sm_pyplot.tight_figure import get_tfig, get_axes, show
 from sm_pyplot.observer_viewer import ToggleViewer, ToggleViewerIntegrated
-from sm_pyplot.vtk_plot import VtkContour
+from vtk_aug import VtkContour
 
 from matplotlib.path import Path
 from matplotlib.patches import PathPatch

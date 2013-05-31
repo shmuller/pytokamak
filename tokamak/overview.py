@@ -2,13 +2,14 @@ import numpy as np
 import numpy.ma as ma
 
 from sm_pyplot.tight_figure import get_tfig, get_axes, show
-from sm_pyplot.vtk_plot import VtkWindow, VtkRotatingPolygon
 
 from LP.sig import memoized_property, BoundingBox
 from LP.probe_xpr import ProbeXPR, ShotNotFoundError
 
 from digitizer_aug import DigitizerAUG, DigitizerAUGMAC, eqi_digitizers, dig_YGC
 from equilibrium import Eqi, EqiViewer
+
+from vtk_aug import VtkWindow, VtkRotatingPolygon
 
 from sm_pyplot.observer_viewer import ToggleViewer
 
@@ -25,6 +26,7 @@ aug_diags = dict(
     MHE = dict(nodes=('C09-23',), s=slice(None, None, 4)),
     CEZ = dict(nodes=('vrot', 'Ti', 'inte', 'err_vrot', 'err_Ti', 'err_inte',
                       'R', 'z', 'phi')))
+
 
 class Vessel:
     def __init__(self, digitizer):
@@ -44,12 +46,12 @@ class Vessel:
     def plot(self, *args, **kw):
         return self.digitizer.plot(*args, **kw)
 
-    def render(self, campos=(0., -10., 5.), **kw):
+    def render(self, **kw):
         alpha = np.ones(len(self.rpoly))
         alpha[[0, 1]] = 0.2
         alpha[[2, 4, 5]] = 0
 
-        win = VtkWindow(campos=campos, **kw)
+        win = VtkWindow(**kw)
         for rpoly, a in zip(self.rpoly, alpha):
             if a > 0:
                 win = rpoly.prerender(win=win, alpha=a)
