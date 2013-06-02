@@ -1,12 +1,10 @@
 from sm_pyplot import vtk_plot
 
-_vtkCamera = vtk_plot.VtkCamera
+_VtkCamera = vtk_plot.VtkCamera
 _VtkWindow = vtk_plot.VtkWindow
 _VtkRotatingPolygon = vtk_plot.VtkRotatingPolygon
 _VtkContour = vtk_plot.VtkContour
 _VtkPolyline = vtk_plot.VtkPolyline
-
-cam = _vtkCamera(campos=(0., -10., 5.), parscale=2.)
 
 class VtkProxy:
     def prerender(self, *args, **kw):
@@ -16,9 +14,14 @@ class VtkProxy:
         return self.prerender(*args, **kw).render()
 
 
+class VtkCamera(_VtkCamera):
+    def __init__(self, **kw):
+        _VtkCamera.__init__(self, campos=(0., -10., 5.), parscale=3., **kw)
+
+
 class VtkWindow(_VtkWindow):
     def __init__(self, **kw):
-        _VtkWindow.__init__(self, bgcolor=(1., 1., 1.), cam=cam, **kw)
+        _VtkWindow.__init__(self, bgcolor=(1., 1., 1.), VtkCameraClass=VtkCamera, **kw)
 
 
 class VtkRotatingPolygon(_VtkRotatingPolygon):

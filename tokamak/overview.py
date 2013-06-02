@@ -11,7 +11,7 @@ from equilibrium import Eqi, EqiViewer
 
 from vtk_aug import VtkProxy, VtkWindow, VtkRotatingPolygon
 
-from sm_pyplot.observer_viewer import ToggleViewer
+from sm_pyplot.observer_viewer import ToggleViewer, ToggleViewerVtk
 
 aug_diags = dict(
     DCN = dict(nodes=('H-1', 'H-2', 'H-3', 'H-4', 'H-5')),
@@ -38,7 +38,8 @@ class Vessel(VtkProxy):
 
     @memoized_property
     def vtk(self):
-        return [VtkRotatingPolygon(*xy.T) for xy in self.digitizer.xy]
+        kw = dict(phi1=3./2.*np.pi)
+        return [VtkRotatingPolygon(*xy.T, **kw) for xy in self.digitizer.xy]
 
     def get_bbox(self):
         return BoundingBox(self.bdry.min(axis=0), self.bdry.max(axis=0))
@@ -47,8 +48,8 @@ class Vessel(VtkProxy):
         return self.digitizer.plot(*args, **kw)
 
     def prerender(self, **kw):
-        alpha = 0.3*np.ones(len(self.vtk))
-        alpha[[0, 1]] = 0.1
+        alpha = np.ones(len(self.vtk))
+        alpha[[0, 1]] = 0.2
         alpha[[2, 4, 5]] = 0
 
         win = VtkWindow(**kw)
@@ -94,7 +95,7 @@ class ProfViewerAUG(ToggleViewer):
     def __init__(self, x, y):
         self.x, self.y = x, y
 
-        ToggleViewer.__init__(self, 'Prof viewer')
+        ToggleViewer.__init__(self, menu_entry='Prof viewer')
 
     def plotfun(self, event):
         t_event = event.xdata
@@ -107,6 +108,23 @@ class ProfViewerAUG(ToggleViewer):
         self.ax = fig.axes[0]
         self.ax.set_xlim((1.5, 2.5))
         self.ax.set_ylim((-50, 100))
+
+
+class EqiViewerAUGVtk(ToggleViewerVtk):
+    def __init__(self, eqi):
+        self.eqi = eqi
+        ToggleViewerVtk.__init__(self, menu_entry='VTK viewer')
+
+    def viewer(self, event):
+        self.win = self.eqi.vessel.render()
+        self.ax = self.win.ren
+
+    def plotfun(self, event):
+        t_event = event.xdata
+        win = self.win
+        FS = self.eqi.get_flux_surf(t_event)
+        FS.render(win=win)
+        return [win.ren.GetActors().GetLastActor()]
 
 
 class AUGOverview:
@@ -341,6 +359,11 @@ class AUGOverview:
             self.viewers = (EqiViewerAUG(self.eqi),)
 
         try:
+            self.viewers += (EqiViewerAUGVtk(self.eqi),)
+        except AttributeError:
+            pass
+
+        try:
             S = self.S['CEZ']
             self.viewers += (ProfViewerAUG(S['R'].x[:24], S['vrot'][:,:24]*1e-3),)
         except:
@@ -372,10 +395,10 @@ if __name__ == "__main__":
     fl = fli(1.475, -0.966)
     fl2 = fli(1.5, 0.)
 
-    ax = AUG.ves.plot()
-    FS.plot(ax=ax)
-    fl.plot(ax=ax, linewidth=2)
-    fl2.plot(ax=ax, linewidth=2)
+    #ax = AUG.ves.plot()
+    #FS.plot(ax=ax)
+    #fl.plot(ax=ax, linewidth=2)
+    #fl2.plot(ax=ax, linewidth=2)
 
     win = AUG.ves.prerender()
     FS.prerender(win=win)
@@ -383,4 +406,5 @@ if __name__ == "__main__":
     fl2.prerender(win=win, color=(1., 0., 0.))
     win.render()
 
+    win.show()
     show()

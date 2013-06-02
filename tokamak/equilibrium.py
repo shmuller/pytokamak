@@ -400,7 +400,7 @@ class EqiViewer(ToggleViewer):
         FS.plot(ax)
         self.flv.set_fli(self.eqi.get_field_line_integrator(t_event))
         return ax.collections[-1:]
-                
+
 
 if __name__ == "__main__":
     from digitizer_aug import DigitizerAUGEQI
