@@ -7,7 +7,8 @@ from LP.sig import memoized_property
 from LP.splines import Spline, Spline2D
 
 from sm_pyplot.tight_figure import get_tfig, get_axes, show
-from sm_pyplot.observer_viewer import ToggleViewer, ToggleViewerIntegrated
+from sm_pyplot.observer_viewer import ToggleViewer, ToggleViewerIntegrated, \
+                                      ToggleViewerVtk
 from vtk_aug import VtkProxy, VtkContour, VtkPolyline
 
 from matplotlib.path import Path
@@ -357,21 +358,49 @@ class Eqi:
 
 
 class FieldLineViewer(ToggleViewerIntegrated):
-    def __init__(self):
+    def __init__(self, eqi):
+        self.eqi = eqi
         self.fli = None
         ToggleViewerIntegrated.__init__(self, menu_entry='Field lines')
 
     def set_fli(self, fli):
+        # Update field line integrator when t_event has changed. Since this
+        # means that the flux surfaces shown in the background have changed 
+        # as well, invalidate cache of MouseMotionObserverViewer.
         self.fli = fli
         self.invalidate()
 
     def plotfun(self, event):
-        y0 = np.array((event.xdata, event.ydata, 0.))
-        fl = self.fli.solve_bdry(y0)
+        fl = self.fli(event.xdata, event.ydata)
         print fl
         patch = fl.as_path_patch()
         self.ax.add_patch(patch)
         return [patch]
+
+
+class FieldLineViewerVtk(ToggleViewerVtk):
+    def __init__(self, eqi):
+        self.eqi = eqi
+        self.fli = None
+        ToggleViewerVtk.__init__(self, menu_entry='VTK field lines')
+
+    def set_fli(self, fli):
+        # Update field line integrator when t_event has changed. Since this
+        # means that the flux surfaces shown in the background have changed 
+        # as well, invalidate cache of MouseMotionObserverViewer.
+        self.fli = fli
+        self.invalidate()
+
+    def viewer(self, event):
+        self.win = self.eqi.vessel.render()
+        self.ax = self.win.ren
+
+    def plotfun(self, event):
+        fl = self.fli(event.xdata, event.ydata)
+        print fl
+        win = self.win
+        fl.render(win=win)
+        return [win.ren.GetActors().GetLastActor()]
 
 
 class EqiViewer(ToggleViewer):
@@ -383,9 +412,11 @@ class EqiViewer(ToggleViewer):
         ToggleViewer.__init__(self, menu_entry='Eqi viewer')
 
     def viewer(self, event, **kw):
-        self.flv = FieldLineViewer()
+        self.flv = FieldLineViewer(self.eqi)
+        self.flv_vtk = FieldLineViewerVtk(self.eqi)
         
-        fig = get_tfig(menu_entries_ax=self.flv.menu_entries_ax, **kw)
+        fig = get_tfig(menu_entries_ax=self.flv.menu_entries_ax + \
+                                       self.flv_vtk.menu_entries_ax, **kw)
         self.ax = fig.axes[0]
         try:
             self.eqi.vessel.plot(self.ax)
@@ -398,7 +429,11 @@ class EqiViewer(ToggleViewer):
         FS = self.eqi.get_flux_surf(t_event, lvls=self.lvls)
         #FS = self.eqi.get_flux_surf_unnorm(t_event, lvls=self.lvls)
         FS.plot(ax)
-        self.flv.set_fli(self.eqi.get_field_line_integrator(t_event))
+
+        # assign field line integrator for t_event to FieldLineViewer
+        fli = self.eqi.get_field_line_integrator(t_event)
+        self.flv.set_fli(fli)
+        self.flv_vtk.set_fli(fli)
         return ax.collections[-1:]
 
 
