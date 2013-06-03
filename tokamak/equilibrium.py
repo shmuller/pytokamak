@@ -391,7 +391,7 @@ class FieldLineViewerVtk(ToggleViewerVtk):
         self.fli = fli
         self.invalidate()
 
-    def viewer(self, event):
+    def viewer(self, event=None):
         self.ax = self.eqi.vessel.render()
 
     def plotfun(self, event):

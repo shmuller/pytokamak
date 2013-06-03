@@ -115,7 +115,7 @@ class EqiViewerAUGVtk(ToggleViewerVtk):
         self.eqi = eqi
         ToggleViewerVtk.__init__(self, menu_entry='VTK viewer')
 
-    def viewer(self, event):
+    def viewer(self, event=None):
         self.ax = self.eqi.vessel.render()
 
     def plotfun(self, event):
