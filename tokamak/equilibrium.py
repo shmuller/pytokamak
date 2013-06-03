@@ -392,13 +392,12 @@ class FieldLineViewerVtk(ToggleViewerVtk):
         self.invalidate()
 
     def viewer(self, event):
-        self.win = self.eqi.vessel.render()
-        self.ax = self.win.ren
+        self.ax = self.eqi.vessel.render()
 
     def plotfun(self, event):
         fl = self.fli(event.xdata, event.ydata)
         print fl
-        win = self.win
+        win = self.ax
         fl.render(win=win)
         return [win.ren.GetActors().GetLastActor()]
 

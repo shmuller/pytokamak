@@ -116,12 +116,11 @@ class EqiViewerAUGVtk(ToggleViewerVtk):
         ToggleViewerVtk.__init__(self, menu_entry='VTK viewer')
 
     def viewer(self, event):
-        self.win = self.eqi.vessel.render()
-        self.ax = self.win.ren
+        self.ax = self.eqi.vessel.render()
 
     def plotfun(self, event):
         t_event = event.xdata
-        win = self.win
+        win = self.ax
         FS = self.eqi.get_flux_surf(t_event)
         FS.render(win=win)
         return [win.ren.GetActors().GetLastActor()]
