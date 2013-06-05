@@ -845,14 +845,16 @@ class Signal:
             ind0, ind1 = ind[j], ind[np.r_[j[1:]-1, -1]] + 1
         return ind0, ind1
 
-    def crossings(self, lvl, threshold):
+    def crossings(self, lvl, threshold=0):
         x0, x1 = self.x[:-1], self.x[1:]
-        cnd = self.cross(lvl, x0, x1) | self.cross(lvl, x1, x0)
-        ind0, ind1 = self.group(np.flatnonzero(cnd), threshold)
-
-        x0, x1 = self.x[ind0], self.x[ind1]
-        cnd = self.cross(lvl, x0, x1) | self.cross(lvl, x1, x0)
-        ind0, ind1 = ind0[cnd], ind1[cnd]
+        ind = np.flatnonzero(self.cross(lvl, x0, x1) | self.cross(lvl, x1, x0))
+        if threshold == 0:
+            ind0, ind1 = ind, ind + 1
+        else:
+            ind0, ind1 = self.group(ind, threshold)
+            x0, x1 = self.x[ind0], self.x[ind1]
+            cnd = self.cross(lvl, x0, x1) | self.cross(lvl, x1, x0)
+            ind0, ind1 = ind0[cnd], ind1[cnd]
 
         is_rising = self.x[ind0] < self.x[ind1]
         return ind0, ind1, is_rising

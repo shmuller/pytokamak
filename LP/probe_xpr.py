@@ -6,6 +6,7 @@ import config_xpr as config
 ShotNotFoundError = config.ShotNotFoundError
 
 from tokamak.digitizer_aug import DigitizerAUG
+from tokamak.equilibrium import FluxSignal
 
 from sig import memoized_property, Amp, PositionSignal
 from probe import Probe, PhysicalResults
@@ -103,10 +104,9 @@ DigitizerClasses = dict(
 
 
 class ProbeXPR(Probe):
-    def __init__(self, shn, shot=None, head=None, dig=None):
+    def __init__(self, shn, shot=None, head=None, dig=None, eqi=None):
         if shot is None:
-            reload(config)
-            shot = config.campaign.find_shot(shn)
+            shot = self.find_shot(shn)
         if head is None:
             head = shot.head
         if dig is None:
@@ -114,7 +114,12 @@ class ProbeXPR(Probe):
 
         self.shot = shot
         digitizer = DigitizerClasses[dig](shn)
-        Probe.__init__(self, head, digitizer, R0=1.645, z0=-0.966)
+        Probe.__init__(self, head, digitizer, R0=1.645, z0=-0.966, eqi=eqi)
+
+    @classmethod
+    def find_shot(cls, shn):
+        reload(config)
+        return config.campaign.find_shot(shn)
 
     @memoized_property
     def pos(self):
@@ -123,6 +128,20 @@ class ProbeXPR(Probe):
         Rz[:,0] = self.R0 - self.S['R'].x
         Rz[:,1] = self.z0
         return PositionSignal(Rz, t, name='Rz')
+
+    @memoized_property
+    def _psi_spl(self):
+        R, z = self.pos.x.T
+        Ri = np.linspace(R.min(), R.max(), 20)
+        zi = np.array([self.z0]).repeat(Ri.size)
+        return self.eqi.get_path_spline(Ri, Ri, zi)
+
+    @memoized_property
+    def psi(self):
+        t = self.pos.t
+        R, z = self.pos.x.T
+        psi = self._psi_spl.ev(t, R)
+        return FluxSignal(psi, t)
 
     def get_keys(self, name):
         return self.shot.tipmap[name]
@@ -184,8 +203,7 @@ class ProbeXPR(Probe):
         dtype = zip(keys, [np.double]*len(keys))
         meas = meas.view(dtype).reshape(-1).view(np.recarray)
 
-        shn = self.digitizer.shn
-        return PhysicalResults(shn, self['Rs'], i, meas)
+        return PhysicalResults(self, i, meas)
 
     def position_calib(self):
         R = self['R']

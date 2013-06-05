@@ -21,8 +21,11 @@ from sig import memoized_property, DictView, GeneratorDict, math_sel, usetex, \
 
 
 class PhysicalResults:
-    def __init__(self, shn, R, i, meas, usetex=usetex):
-        self.shn, self.R, self.i, self.meas, self.usetex = shn, R, i, meas, usetex
+    def __init__(self, probe, i, meas, usetex=usetex):
+        self.probe, self.i, self.meas, self.usetex = probe, i, meas, usetex
+        
+        self.shn = probe.digitizer.shn
+        self.R = probe['Rs']
 
         self.keys = ('n_cs', 'Mach', 'nv', 'mnv', 'j', 'Vf', 'Te', 'Vp', 
                 'cs', 'n', 'v', 'pe', 'pe_tot', 'R', 't', 'Dt')
@@ -81,7 +84,6 @@ class PhysicalResults:
     def res(self):
         qe = 1.6022e-19
         mi = 2*1.67e-27
-        R0 = 1.645
 
         Gp = self.meas.jp/qe
         Gm = self.meas.jm/qe
@@ -92,8 +94,9 @@ class PhysicalResults:
         dtype = zip(self.keys, [np.double]*len(self.keys))
         res = np.empty(Gp.size, dtype).view(np.recarray)
 
-        res.t = self.R.t[self.i]
-        res.R = R0 - self.R.x[self.i]
+        R = self.probe.pos[self.i, 0]
+        res.t = R.t
+        res.R = R.x
 
         res.Mach = Mach = 0.5*np.log(Gm/Gp)
         res.n_cs = n_cs = np.e*np.sqrt(Gp*Gm)
@@ -252,8 +255,9 @@ class PhysicalResults:
 
 
 class Probe:
-    def __init__(self, head, digitizer, R0, z0):
+    def __init__(self, head, digitizer, R0, z0, eqi=None):
         self.head, self.digitizer, self.R0, self.z0 = head, digitizer, R0, z0
+        self.eqi = eqi
 
         self.unique_sigs = GeneratorDict(self.get_sig)
 
@@ -276,6 +280,11 @@ class Probe:
     @memoized_property
     def pos(self):
         raise NotImplementedError
+
+    @memoized_property
+    def psi(self):
+        x, t = self.pos.x, self.pos.t
+        return self.eqi(t, *x.T)
 
     def get_keys(self, name):
         raise NotImplementedError

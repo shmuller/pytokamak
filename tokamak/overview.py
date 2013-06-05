@@ -131,7 +131,7 @@ class AUGOverview:
         self.shn, self.eqi_dig = shn, eqi_dig
 
         try:
-            self.XPR = ProbeXPR(shn=shn)
+            ProbeXPR.find_shot(shn=shn)
             self.def_plots = ('power', 'density', 'XPR_I', 'XPR_R', 'Ipolsol')
         except ShotNotFoundError:
             self.def_plots = ('power', 'density', 'Ipolsol')
@@ -157,12 +157,9 @@ class AUGOverview:
     def eqi(self):
         return Eqi(self.S['EQI'], self.ves)
 
-    def plot_eqi(self, ax=None, lvls=np.linspace(0., 1., 10)):
-        ax = get_axes(ax)
-        ax = self.eqi.get_flux_surf(3.45, lvls).plot(ax)
-        ax = self.eqi.get_separatrix(3.45).plot(ax, color='b', linewidth=2)
-        ax.axis('equal')
-        return ax
+    @memoized_property
+    def XPR(self):
+        return ProbeXPR(shn=self.shn, eqi=self.eqi)
 
     def plot_power(self, ax=None):
         S = self.S

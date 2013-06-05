@@ -3,7 +3,7 @@ import numpy as np
 
 from scipy.ndimage import map_coordinates
 
-from LP.sig import memoized_property
+from LP.sig import memoized_property, Signal
 from LP.splines import Spline, Spline2D
 
 from sm_pyplot.tight_figure import get_tfig, get_axes, show
@@ -177,6 +177,18 @@ class FieldLineIntegrator:
         return R0, l
 
 
+class FluxSignal(Signal):
+    def __init__(self, x, t, **kw):
+        kw.setdefault('name', 'psi norm')
+        kw.setdefault('type', 'Flux')
+        kw.setdefault('units', '')
+        Signal.__init__(self, x, t, **kw)
+
+    @memoized_property
+    def separatrix_crossings(self):
+        return self.crossings(1.)[0][1:]
+
+
 class Eqi:
     def __init__(self, digitizer, vessel=None):
         self.digitizer, self.vessel = digitizer, vessel
@@ -252,8 +264,9 @@ class Eqi:
     def interpolator_3d_slab(self):
         return Interpolator3DSlab(self.t, self.z, self.R, self.psi_n.x)
 
-    def eval(self, t, R, z):
-        return self.interpolator_3d_slab(t, z, R)
+    def __call__(self, t, R, z):
+        psi = self.interpolator_3d_slab(t, z, R)
+        return FluxSignal(psi, t)
 
     @memoized_property
     def interpolator_slice(self):
