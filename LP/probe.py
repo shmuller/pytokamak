@@ -273,6 +273,10 @@ class Probe:
         self.calib()
         return self.S
 
+    @memoized_property
+    def pos(self):
+        raise NotImplementedError
+
     def get_keys(self, name):
         raise NotImplementedError
 
@@ -280,9 +284,6 @@ class Probe:
         raise NotImplementedError
 
     def get_amp(self, key):
-        raise NotImplementedError
-
-    def get_pos(self, ti):
         raise NotImplementedError
 
     def get_sig(self, key):
@@ -349,10 +350,6 @@ class Probe:
     @memoized_property
     def V(self):
         return self.get_type('Voltage')
-
-    @memoized_property
-    def R(self):
-        return self.get_type('Position')
 
     @memoized_property
     def I_swept(self):
@@ -431,8 +428,9 @@ class Probe:
     def res(self):
         return self.calc_res()
 
-    def plot_head(self, ax, ti):
-        R, z = self.get_pos(ti)
+    def plot_head(self, ti, ax=None):
+        ax = get_axes(ax)
+        R, z = self.pos(ti, masked=True).x[0]
         self.head.plot(ax, R, z)
-
+        return ax
 

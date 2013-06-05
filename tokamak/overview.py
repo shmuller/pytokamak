@@ -75,7 +75,7 @@ class EqiViewerAUGXPR(EqiViewerAUG):
 
         t_event = event.xdata
         ax = self.ax
-        R, z = self.XPR.get_pos(t_event)
+        R, z = self.XPR.pos(t_event, masked=True).x[0]
         pp_head = self.XPR.head.as_path_patch(R, z)
         ax.add_patch(pp_head)
         artists.append(pp_head)

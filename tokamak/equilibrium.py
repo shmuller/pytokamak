@@ -24,8 +24,8 @@ class Interpolator:
 
 
 class Interpolator3DSlab(Interpolator):    
-    def eval(self, t, x, y):
-        coo = self.as_coo(t, self.t), self.as_coo(y, self.y), self.as_coo(x, self.x)
+    def __call__(self, t, x, y):
+        coo = self.as_coo(t, self.t), self.as_coo(x, self.x), self.as_coo(y, self.y)
         return map_coordinates(self.f, coo)
 
     @staticmethod
@@ -250,10 +250,10 @@ class Eqi:
 
     @memoized_property
     def interpolator_3d_slab(self):
-        return Interpolator3DSlab(self.t, self.R, self.z, self.psi_n.x)
+        return Interpolator3DSlab(self.t, self.z, self.R, self.psi_n.x)
 
     def eval(self, t, R, z):
-        return self.interpolator_3d_slab.eval(t, R, z)
+        return self.interpolator_3d_slab(t, z, R)
 
     @memoized_property
     def interpolator_slice(self):
@@ -262,16 +262,19 @@ class Eqi:
     def get_path_spline(self, s, R, z):
         return self.interpolator_slice.get_path_spline(s, R, z)
 
-    def _psi(self, ti):
-        R, z, psi = self.R, self.z, self.psi(ti).x[0]
-        return Spline2D(z, R, psi)
+    def _psi(self, ti, norm=False):
+        if norm:
+            psi = self.psi_n
+        else:
+            psi = self.psi
+        return Spline2D(self.z, self.R, psi(ti).x[0])
 
-    def _grad_psi(self, ti):
-        psi = self._psi(ti)
+    def _grad_psi(self, ti, **kw):
+        psi = self._psi(ti, **kw)
         return psi.derivy(), psi.derivx()
 
-    def get_psi(self, ti, R, z):
-        return self._psi(ti).ev(z, R)
+    def get_psi(self, ti, R, z, **kw):
+        return self._psi(ti, **kw).ev(z, R)
     
     def _check_grid(self, R, z):
         if R is None:
@@ -280,9 +283,9 @@ class Eqi:
             z = self.z
         return R, z
 
-    def get_psi_grid(self, ti, R=None, z=None):
+    def get_psi_grid(self, ti, R=None, z=None, **kw):
         R, z = self._check_grid(R, z)
-        return self._psi(ti).eval(z, R)
+        return self._psi(ti, **kw).eval(z, R)
 
     def get_Bpol(self, ti, R, z):
         dRpsi, dzpsi = self._grad_psi(ti)

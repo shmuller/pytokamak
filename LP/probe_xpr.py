@@ -7,7 +7,7 @@ ShotNotFoundError = config.ShotNotFoundError
 
 from tokamak.digitizer_aug import DigitizerAUG
 
-from sig import Amp, Signal
+from sig import memoized_property, Amp, PositionSignal
 from probe import Probe, PhysicalResults
 
 ampUnity = Amp(fact=1., offs=0.)
@@ -116,6 +116,14 @@ class ProbeXPR(Probe):
         digitizer = DigitizerClasses[dig](shn)
         Probe.__init__(self, head, digitizer, R0=1.645, z0=-0.966)
 
+    @memoized_property
+    def pos(self):
+        t = self.S['R'].t
+        Rz = np.empty((t.size, 2))
+        Rz[:,0] = self.R0 - self.S['R'].x
+        Rz[:,1] = self.z0
+        return PositionSignal(Rz, t, name='Rz')
+
     def get_keys(self, name):
         return self.shot.tipmap[name]
 
@@ -124,11 +132,6 @@ class ProbeXPR(Probe):
 
     def get_amp(self, key):
         return self.shot.get(self.digitizer.name, 'amp', key)
-
-    def get_pos(self, ti):
-        Ri = self.R0 - self.S['R'](ti, masked=True).x[0]
-        zi = self.z0
-        return Ri, zi
 
     def calib(self):
         Probe.calib(self)
