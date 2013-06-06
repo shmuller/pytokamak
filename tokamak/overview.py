@@ -139,11 +139,15 @@ class AUGOverview:
     def __init__(self, shn, eqi_dig='EQI'):
         self.shn, self.eqi_dig = shn, eqi_dig
 
+        self.ves = Vessel(self.S['YGC'])
+        self.eqi = EqiAUG(self.S['EQI'], self.ves)
         try:
-            ProbeXPR.find_shot(shn=shn)
+            self.XPR = ProbeXPR(shn=shn, eqi=self.eqi)
             self.def_plots = ('power', 'density', 'XPR_I', 'XPR_R', 'Ipolsol')
         except ShotNotFoundError:
+            self.XPR = None
             self.def_plots = ('power', 'density', 'Ipolsol')
+        self.eqi.get_viewers(self.XPR)
 
         self.all_plots = self.def_plots + ('Tdiv', 'Da', 'gas')
         
@@ -157,18 +161,6 @@ class AUGOverview:
         S['EQI'] = eqi_digitizers[self.eqi_dig](self.shn)
         S['YGC'] = dig_YGC
         return S
-
-    @memoized_property
-    def ves(self):
-        return Vessel(self.S['YGC'])
-
-    @memoized_property
-    def eqi(self):
-        return EqiAUG(self.S['EQI'], self.ves)
-
-    @memoized_property
-    def XPR(self):
-        return ProbeXPR(shn=self.shn, eqi=self.eqi)
 
     def plot_power(self, ax=None):
         S = self.S
@@ -358,16 +350,7 @@ class AUGOverview:
         if plots is None:
             plots = self.def_plots
 
-        try:
-            self.viewers = [EqiViewerAUGXPR(self.eqi, self.XPR)]
-        except AttributeError:
-            self.viewers = [EqiViewerAUG(self.eqi)]
-
-        try:
-            self.viewers += [EqiViewerAUGVtk(self.eqi)]
-        except AttributeError:
-            pass
-
+        self.viewers = self.eqi.viewers
         try:
             S = self.S['CEZ']
             self.viewers += [ProfViewerAUG(S['R'].x[:24], S['vrot'][:,:24]*1e-3)]
