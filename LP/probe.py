@@ -15,6 +15,7 @@ FitterIV = fitter_IV.FitterIV
 IVContainer = fitter_IV.IVContainer
 
 from sm_pyplot.tight_figure import get_fig, get_tfig, get_axes
+from sm_pyplot.annotations import vlines, vrect
 
 from sig import memoized_property, DictView, GeneratorDict, math_sel, usetex, \
         PositionSignal, VoltageSignal, CurrentSignal
@@ -115,14 +116,10 @@ class PhysicalResults:
         res.pe_tot  = pe*(1. + Mach*Mach)
         return res 
 
-    def _mask(self, w):
-        ind0, ind1 = np.searchsorted(self.i, w)
-        return np.concatenate(map(np.arange, ind0, ind1))
-
     def eval(self, plunge=None, inout=None):
-        w = self.R.plunges(plunge, inout)
+        mask = self.R.plunge_mask(self.i, plunge, inout)
         
-        y = self.res[self._mask(w)]
+        y = self.res[mask]
 
         y.Dt = y.t
         tM = self.R.tM(plunge)
@@ -225,6 +222,9 @@ class PhysicalResults:
         ax = fig.axes
         for i in xrange(keys.size):
             self.plot_key(keys.flat[i], x, y, ax=ax[i], label=label)
+
+        self.probe.plot_separatrix_crossings(fig, xkey=xkey, fact=self.fact[xkey],
+                plunge=plunge, inout=inout)
 
         fig.axes[0].legend(loc='upper left')
         fig.canvas.draw()
@@ -442,4 +442,22 @@ class Probe:
         R, z = self.pos(ti, masked=True).x[0]
         self.head.plot(ax, R, z)
         return ax
+
+    def plot_separatrix_crossings(self, fig=None, xkey='t', fact=1., 
+            plunge=None, inout=None, linewidth=1, **kw):
+        isep = self.psi.separatrix_crossings
+        
+        mask = self.S['Rs'].plunge_mask(isep, plunge, inout)
+
+        psep = self.pos[isep[mask]]
+        if xkey == 't':
+            xsep = fact*psep.t
+        else:
+            xsep = fact*psep.x[:,0]
+
+        fig = get_fig(fig, **kw)
+        for ax in fig.axes:
+            vlines(ax, xsep, linewidth=linewidth)
+        return fig
+
 

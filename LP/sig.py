@@ -1067,6 +1067,12 @@ class PositionSignal(Signal):
             w = w[:,plunge]
         return w
 
+    def plunge_mask(self, i, plunge=None, inout=None):
+        w = self.plunges(plunge, inout)
+        ind0, ind1 = np.searchsorted(i, w)
+        return np.concatenate(map(np.arange, ind0, ind1))
+
+    """
     def regions(self, fun=None, **kw):
         a, b = self.region_boundaries(**kw)
         return map(fun, a, b)
@@ -1076,6 +1082,7 @@ class PositionSignal(Signal):
 
     def get_mask(self, **kw):
         return np.concatenate(self.regions(fun=np.arange, **kw))
+    """
 
     def plot_plunges(self, ax=None, **kw):
         ax = Signal.plot(self, ax, **kw)
