@@ -217,7 +217,12 @@ class PhysicalResults:
                     ('Vp', 'pe_tot'))
         keys = np.array(keys, ndmin=2)
 
-        fig = get_tfig(fig, keys.shape, xlab=xlab, figsize=figsize)
+        if xkey == 't':
+            viewers = self.probe.viewers
+        else:
+            viewers = ()
+
+        fig = get_tfig(fig, keys.shape, xlab=xlab, figsize=figsize, viewers=viewers)
 
         ax = fig.axes
         for i in xrange(keys.size):
@@ -255,9 +260,9 @@ class PhysicalResults:
 
 
 class Probe:
-    def __init__(self, head, digitizer, R0, z0, eqi=None):
+    def __init__(self, head, digitizer, R0, z0, eqi=None, viewers=()):
         self.head, self.digitizer, self.R0, self.z0 = head, digitizer, R0, z0
-        self.eqi = eqi
+        self.eqi, self.viewers = eqi, viewers
 
         self.unique_sigs = GeneratorDict(self.get_sig)
 
@@ -366,10 +371,11 @@ class Probe:
         return DictView(self.I, keys)
 
     def plot(self, fig=None,
-            keys = (('Position',), ('Current',), ('Voltage',))):
+            keys = (('Position',), ('Current',), ('Voltage',)), **kw):
         keys = np.array(keys, ndmin=2)
 
-        fig = get_fig(fig, keys.shape, xlab=self.xlab, ylab=keys)
+        fig = get_fig(fig, keys.shape, xlab=self.xlab, ylab=keys, 
+                viewers=self.viewers, **kw)
         axes = np.array(fig.axes).reshape(keys.shape)
 
         for ax in axes[keys == 'Voltage']:
@@ -380,6 +386,7 @@ class Probe:
             for S in self.get_type(key[0]).itervalues():
                 S.plot(ax)
 
+        self.plot_separatrix_crossings(fig, color='k')
         fig.canvas.draw()
         return fig
     
@@ -444,7 +451,7 @@ class Probe:
         return ax
 
     def plot_separatrix_crossings(self, fig=None, xkey='t', fact=1., 
-            plunge=None, inout=None, linewidth=1, **kw):
+            plunge=None, inout=None, color='last', linewidth=1, **kw):
         isep = self.psi.separatrix_crossings
         
         mask = self.S['Rs'].plunge_mask(isep, plunge, inout)
@@ -457,7 +464,7 @@ class Probe:
 
         fig = get_fig(fig, **kw)
         for ax in fig.axes:
-            vlines(ax, xsep, linewidth=linewidth)
+            vlines(ax, xsep, color=color, linewidth=linewidth)
         return fig
 
 

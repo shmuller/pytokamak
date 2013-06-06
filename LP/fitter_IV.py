@@ -627,16 +627,11 @@ class IV:
 
     def plot_raw(self, ID='IV', ax=None):
         if ax is None:
-            self.viewers = (IVViewer(self, ID=ID),
+            self.viewers = [IVViewer(self, ID=ID),
                             IVViewerIt(self, ID=ID),
-                            IVViewerItIntegrated(self, ID=ID))
+                            IVViewerItIntegrated(self, ID=ID)]
             
-            menu_entries_ax = []
-            for v in self.viewers:
-                menu_entries_ax += v.menu_entries_ax
-
-            fig = get_tfig(xlab=self.S.xlab, ylab=self.S.ylab,
-                           menu_entries_ax=menu_entries_ax)
+            fig = get_tfig(xlab=self.S.xlab, ylab=self.S.ylab, viewers=self.viewers)
             ax = fig.axes[0]
 
         self.S.plot(ax=ax)
@@ -645,16 +640,11 @@ class IV:
 
     def plot(self, ID='IV', fig=None, **kw):
         if fig is None:
-            self.viewers = (IVViewer(self, ID=ID),
-                            IVViewerIt(self, ID=ID))
+            self.viewers = [IVViewer(self, ID=ID),
+                            IVViewerIt(self, ID=ID)]
 
-            menu_entries_ax = []
-            for v in self.viewers:
-                menu_entries_ax += v.menu_entries_ax
-
-            fig = get_tfig(shape=(3, 1), figsize=(10, 10), 
-                           xlab='t (s)', ylab= ('Isat (A)', 'Vf (V)', 'Te (eV)'),
-                           menu_entries_ax=menu_entries_ax)
+            fig = get_tfig(shape=(3, 1), figsize=(10, 10), viewers=self.viewers,
+                           xlab='t (s)', ylab= ('Isat (A)', 'Vf (V)', 'Te (eV)'))
 
         for ax, p in zip(fig.axes, self.PP[ID]):
              p.plot(ax=ax, **kw)
@@ -705,17 +695,12 @@ class IVContainer(Container):
     
     def plot_raw(self, ID='IV', fig=None):
         if fig is None:
-            self.viewers = (IVViewer(self, ID=ID),
-                            IVViewerIt(self, ID=ID))
-
-            menu_entries_ax = []
-            for v in self.viewers:
-                menu_entries_ax += v.menu_entries_ax
+            self.viewers = [IVViewer(self, ID=ID),
+                            IVViewerIt(self, ID=ID)]
 
             fig = get_tfig(shape=(len(self.x), 1), figsize=(10, 10), 
                            xlab=self.x.values()[0].S.xlab, 
-                           ylab=[x.S.ylab for x in self],
-                           menu_entries_ax=menu_entries_ax)
+                           ylab=[x.S.ylab for x in self], viewers=self.viewers)
 
         for ax, x in zip(fig.axes, self.x.values()):
             x.plot_raw(ax=ax, ID=ID)
@@ -723,16 +708,11 @@ class IVContainer(Container):
 
     def plot(self, ID='IV', fig=None, **kw):
         if fig is None:
-            self.viewers = (IVViewer(self, ID=ID),
-                            IVViewerIt(self, ID=ID))
+            self.viewers = [IVViewer(self, ID=ID),
+                            IVViewerIt(self, ID=ID)]
 
-            menu_entries_ax = []
-            for v in self.viewers:
-                menu_entries_ax += v.menu_entries_ax
-
-            fig = get_tfig(shape=(3, 1), figsize=(10, 10), 
-                           xlab='t (s)', ylab=('Isat (A)', 'Vf (V)', 'Te (eV)'),
-                           menu_entries_ax=menu_entries_ax)
+            fig = get_tfig(shape=(3, 1), figsize=(10, 10), viewers=self.viewers,
+                           xlab='t (s)', ylab=('Isat (A)', 'Vf (V)', 'Te (eV)'))
 
         for x in self:
             for ax, p in zip(fig.axes, x.PP[ID]):

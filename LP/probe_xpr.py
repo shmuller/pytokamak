@@ -114,7 +114,9 @@ class ProbeXPR(Probe):
 
         self.shot = shot
         digitizer = DigitizerClasses[dig](shn)
-        Probe.__init__(self, head, digitizer, R0=1.645, z0=-0.966, eqi=eqi)
+        viewers = eqi.get_viewers(self)
+        Probe.__init__(self, head, digitizer, R0=1.645, z0=-0.966, 
+                eqi=eqi, viewers=viewers)
 
     @classmethod
     def find_shot(cls, shn):

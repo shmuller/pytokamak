@@ -126,6 +126,15 @@ class EqiViewerAUGVtk(ToggleViewerVtk):
         return [win.ren.GetActors().GetLastActor()]
 
 
+class EqiAUG(Eqi):
+    def get_viewers(self, XPR=None):
+        if XPR is None:
+            self.viewers = [EqiViewerAUG(self), EqiViewerAUGVtk(self)]
+        else:
+            self.viewers = [EqiViewerAUGXPR(self, XPR), EqiViewerAUGVtk(self)]
+        return self.viewers
+
+
 class AUGOverview:
     def __init__(self, shn, eqi_dig='EQI'):
         self.shn, self.eqi_dig = shn, eqi_dig
@@ -155,7 +164,7 @@ class AUGOverview:
 
     @memoized_property
     def eqi(self):
-        return Eqi(self.S['EQI'], self.ves)
+        return EqiAUG(self.S['EQI'], self.ves)
 
     @memoized_property
     def XPR(self):
@@ -350,27 +359,23 @@ class AUGOverview:
             plots = self.def_plots
 
         try:
-            self.viewers = (EqiViewerAUGXPR(self.eqi, self.XPR),)
+            self.viewers = [EqiViewerAUGXPR(self.eqi, self.XPR)]
         except AttributeError:
-            self.viewers = (EqiViewerAUG(self.eqi),)
+            self.viewers = [EqiViewerAUG(self.eqi)]
 
         try:
-            self.viewers += (EqiViewerAUGVtk(self.eqi),)
+            self.viewers += [EqiViewerAUGVtk(self.eqi)]
         except AttributeError:
             pass
 
         try:
             S = self.S['CEZ']
-            self.viewers += (ProfViewerAUG(S['R'].x[:24], S['vrot'][:,:24]*1e-3),)
+            self.viewers += [ProfViewerAUG(S['R'].x[:24], S['vrot'][:,:24]*1e-3)]
         except:
             pass
 
-        menu_entries_ax = []
-        for v in self.viewers:
-            menu_entries_ax += v.menu_entries_ax
-
         fig = get_tfig(fig, pos=(450, 150), figsize=(6,6), shape=(len(plots), 1), 
-                       xlab='t (s)', menu_entries_ax=menu_entries_ax)
+                       xlab='t (s)', viewers=self.viewers)
         fig.axes[0].set_xlim((1,7))
 
         for p, ax in zip(plots, fig.axes):

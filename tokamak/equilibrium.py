@@ -186,7 +186,7 @@ class FluxSignal(Signal):
 
     @memoized_property
     def separatrix_crossings(self):
-        return self.crossings(1.)[0][1:]
+        return self.crossings(1., threshold=100)[0][1:]
 
 
 class Eqi:
@@ -372,6 +372,14 @@ class Eqi:
                 pass
         return FieldLineIntegrator(splR, splz, bdry, bbox)
 
+    @memoized_property
+    def viewers(self):
+        return self.get_viewers()
+
+    def get_viewers(self):
+        self.viewers = [EqiViewer(self)]
+        return self.viewers
+
 
 class FieldLineViewer(ToggleViewerIntegrated):
     def __init__(self, eqi):
@@ -430,8 +438,7 @@ class EqiViewer(ToggleViewer):
         self.flv = FieldLineViewer(self.eqi)
         self.flv_vtk = FieldLineViewerVtk(self.eqi)
         
-        fig = get_tfig(menu_entries_ax=self.flv.menu_entries_ax + \
-                                       self.flv_vtk.menu_entries_ax, **kw)
+        fig = get_tfig(viewers=[self.flv, self.flv_vtk], **kw)
         self.ax = fig.axes[0]
         try:
             self.eqi.vessel.plot(self.ax)
