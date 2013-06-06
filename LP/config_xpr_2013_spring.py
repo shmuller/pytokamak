@@ -7,9 +7,9 @@ from config import Campaign
 
 campaign = Campaign()
 
-tip1 = TipXPR(number=1, pos='lower left')
-tip2 = TipXPR(number=2, pos='lower right')
-tip3 = TipXPR(number=3, pos='upper')
+tip1 = TipXPR1()
+tip2 = TipXPR2()
+tip3 = TipXPR3()
 
 head = HeadXPR(tips=(tip1, tip2, tip3))
 
@@ -21,16 +21,16 @@ tipmap = rdict(
 
 tipmap_tip1_V3 = tipmap.rep(tip1_V='ampV3')
 
-tip1_20130130 = CylindricalTip(number=1, r=0.0005, z=0.00303, pos='lower left')
-tip2_20130130 = CylindricalTip(number=2, r=0.0005, z=0.00304, pos='lower right')
-tip3_20130130 = CylindricalTip(number=3, r=0.0005, z=0.00183, pos='upper')
+tip1_20130130 = TipXPR1(r=0.0005, z=0.00303)
+tip2_20130130 = TipXPR2(r=0.0005, z=0.00304)
+tip3_20130130 = TipXPR3(r=0.0005, z=0.00183)
 
 head_20130130 = HeadXPR(tips=(tip1_20130130, tip2_20130130, tip3_20130130))
 
-tip1_20130306 = CylindricalTip(number=1, r=0.0005, z=0.0026, pos='lower left')
-tip2_20130306 = CylindricalTip(number=2, r=0.0005, z=0.0026, pos='lower right')
-tip3_20130306 = CylindricalTip(number=3, r=0.0005, z=0.0020, pos='upper')
-tip4_20130306 = CylindricalTip(number=4, r=0.0005, z=0.0052, pos='lower')
+tip1_20130306 = TipXPR1(r=0.0005, z=0.0026)
+tip2_20130306 = TipXPR2(r=0.0005, z=0.0026)
+tip3_20130306 = TipXPR3(r=0.0005, z=0.0020)
+tip4_20130306 = TipXPR4(r=0.0005, z=0.0052)
 
 head_20130306 = HeadXPR(tips=(tip1_20130306, tip2_20130306, tip3_20130306))
 head_20130306_4tips = HeadXPR(tips=head_20130306.tips + (tip4_20130306,))

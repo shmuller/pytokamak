@@ -636,6 +636,7 @@ class Signal:
         self.kw = kw
         self.number = kw.get('number', -1)
         self.name = kw.get('name', "")
+        self.label = kw.get('label', self.name)
         self.type = kw.get('type', "")
         self.units = kw.get('units', "")
         self.tunits = kw.get('tunits', "s")
@@ -885,14 +886,14 @@ class Signal:
 
     @memoized_property
     def ylab(self):
-        ylab = self.name
+        ylab = self.type
         if len(self.units) > 0:
             ylab += " (%s)" % self.units
         return ylab
 
     def plot(self, ax=None, **kw):
         ax = get_axes(ax, xlab=self.xlab, ylab=self.ylab)
-        kw.setdefault('label', self.name)
+        kw.setdefault('label', self.label)
         ax.plot(self.t, self.x, **kw)
         return ax
 
@@ -1071,18 +1072,6 @@ class PositionSignal(Signal):
         w = self.plunges(plunge, inout)
         ind0, ind1 = np.searchsorted(i, w)
         return np.concatenate(map(np.arange, ind0, ind1))
-
-    """
-    def regions(self, fun=None, **kw):
-        a, b = self.region_boundaries(**kw)
-        return map(fun, a, b)
-
-    def get_slices(self, **kw):
-        return self.regions(fun=slice, **kw)
-
-    def get_mask(self, **kw):
-        return np.concatenate(self.regions(fun=np.arange, **kw))
-    """
 
     def plot_plunges(self, ax=None, **kw):
         ax = Signal.plot(self, ax, **kw)

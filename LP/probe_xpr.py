@@ -1,12 +1,12 @@
 import numpy as np
 
-import scipy.interpolate as interp
+from sm_pyplot.tight_figure import get_fig, get_tfig
 
 import config_xpr as config
 ShotNotFoundError = config.ShotNotFoundError
 
 from tokamak.digitizer_aug import DigitizerAUG
-from tokamak.equilibrium import FluxSignal
+from tokamak.equilibrium import NormalizedFluxSignal
 
 from sig import memoized_property, Amp, PositionSignal
 from probe import Probe, PhysicalResults
@@ -143,7 +143,7 @@ class ProbeXPR(Probe):
         t = self.pos.t
         R, z = self.pos.x.T
         psi = self._psi_spl.ev(t, R)
-        return FluxSignal(psi, t)
+        return NormalizedFluxSignal(psi, t)
 
     def get_keys(self, name):
         return self.shot.tipmap[name]
@@ -163,6 +163,7 @@ class ProbeXPR(Probe):
         S = self.S
         S['Rs'] = S['R'].copy().mediansmooth(100)
         S['tip1+tip2'] = S['tip1'] + S['tip2']
+        S['tip1+tip2'].label = 'Sum of Mach tips'
 
     def calc_res(self, ID='IV'):
         tips = self.head.tips
@@ -207,16 +208,27 @@ class ProbeXPR(Probe):
 
         return PhysicalResults(self, i, meas)
 
-    def position_calib(self):
-        R = self['R']
-        sp = interp.UnivariateSpline(R.t, R.x, s=10)
-        Rs = sp(R.t)
-        return Rs
+    def _plot(self, S1, S2, S3, ax=None, no_Mach=False, no_single=False):
+        if ax is None:
+            fig = get_tfig(xlab=S1.xlab, viewers=self.viewers)
+            ax = fig.axes[0]
+        ax.set_ylabel(S1.ylab)
 
-    def voltage_calib(self):
-        self.load(trim=False, calib=False)
-        return self['V'].x.mean()
-   
+        if not no_Mach:
+            S1.plot(ax)
+            S2.plot(ax)
+        if not no_single:
+            S3.plot(ax)
+        self.plot_separatrix_crossings([ax], color='k')
+        ax.legend()
+        return ax
+
+    def plot_I(self, *args, **kw):
+        return self._plot(self['tip1'], self['tip2'], self['tip3'], *args, **kw)
+
+    def plot_V(self, *args, **kw):
+        return self._plot(self['tip1'].V, self['tip2'].V, self['tip3'].V, *args, **kw)
+
 
 def get_dwell_params():
     shots = config.campaign.shots_with_min_stars('*')

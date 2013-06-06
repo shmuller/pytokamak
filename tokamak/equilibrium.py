@@ -177,16 +177,17 @@ class FieldLineIntegrator:
         return R0, l
 
 
-class FluxSignal(Signal):
+class NormalizedFluxSignal(Signal):
     def __init__(self, x, t, **kw):
-        kw.setdefault('name', 'psi norm')
-        kw.setdefault('type', 'Flux')
+        kw.setdefault('name', 'psi_n')
+        kw.setdefault('type', 'Normalized flux')
+        kw.setdefault('label', 'Normalized flux')
         kw.setdefault('units', '')
         Signal.__init__(self, x, t, **kw)
 
     @memoized_property
     def separatrix_crossings(self):
-        return self.crossings(1., threshold=100)[0][1:]
+        return self.crossings(1., threshold=100)[0]
 
 
 class Eqi:
@@ -266,7 +267,7 @@ class Eqi:
 
     def __call__(self, t, R, z):
         psi = self.interpolator_3d_slab(t, z, R)
-        return FluxSignal(psi, t)
+        return NormalizedFluxSignal(psi, t)
 
     @memoized_property
     def interpolator_slice(self):

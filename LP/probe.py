@@ -224,12 +224,11 @@ class PhysicalResults:
 
         fig = get_tfig(fig, keys.shape, xlab=xlab, figsize=figsize, viewers=viewers)
 
-        ax = fig.axes
-        for i in xrange(keys.size):
-            self.plot_key(keys.flat[i], x, y, ax=ax[i], label=label)
+        for key, ax in zip(keys.ravel(), fig.axes):
+            self.plot_key(key, x, y, ax=ax, label=label)
 
-        self.probe.plot_separatrix_crossings(fig, xkey=xkey, fact=self.fact[xkey],
-                plunge=plunge, inout=inout)
+        self.probe.plot_separatrix_crossings(fig.axes, xkey=xkey, 
+                fact=self.fact[xkey], plunge=plunge, inout=inout)
 
         fig.axes[0].legend(loc='upper left')
         fig.canvas.draw()
@@ -323,8 +322,8 @@ class Probe:
             x_V = get_sig(keys['V'])
             x_I = get_sig(keys['I'])
 
-            V = VoltageSignal(x_V, t, number=i, name='V%d' % i)
-            I = CurrentSignal(x_I, t, V=V, number=i, name='I%d' % i)
+            V = VoltageSignal(x_V, t, number=i, name='V%d' % i, label=tip.label)
+            I = CurrentSignal(x_I, t, V=V, number=i, name='I%d' % i, label=tip.label)
             S[tip.name] = I
 
         return S
@@ -386,7 +385,7 @@ class Probe:
             for S in self.get_type(key[0]).itervalues():
                 S.plot(ax)
 
-        self.plot_separatrix_crossings(fig, color='k')
+        self.plot_separatrix_crossings(fig.axes, color='k')
         fig.canvas.draw()
         return fig
     
@@ -450,7 +449,7 @@ class Probe:
         self.head.plot(ax, R, z)
         return ax
 
-    def plot_separatrix_crossings(self, fig=None, xkey='t', fact=1., 
+    def plot_separatrix_crossings(self, axes, xkey='t', fact=1., 
             plunge=None, inout=None, color='last', linewidth=1, **kw):
         isep = self.psi.separatrix_crossings
         
@@ -462,9 +461,7 @@ class Probe:
         else:
             xsep = fact*psep.x[:,0]
 
-        fig = get_fig(fig, **kw)
-        for ax in fig.axes:
+        for ax in axes:
             vlines(ax, xsep, color=color, linewidth=linewidth)
-        return fig
 
 

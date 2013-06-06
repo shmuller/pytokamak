@@ -11,12 +11,13 @@ from matplotlib.path import Path
 from matplotlib.patches import PathPatch
 
 class Tip:
-    def __init__(self, area, proj_area, number, pos, name=None):
+    def __init__(self, area, proj_area, number, pos, label=None):
         self.area = area
         self.proj_area = proj_area
         self.number = number
         self.pos = pos
-        self.name = name or 'tip%d' % self.number
+        self.name = 'tip%d' % number
+        self.label = label or self.name
 
     def __repr__(self):
         fmtstr = "%s {number}, '{name}', {pos}"

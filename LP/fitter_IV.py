@@ -644,7 +644,7 @@ class IV:
                             IVViewerIt(self, ID=ID)]
 
             fig = get_tfig(shape=(3, 1), figsize=(10, 10), viewers=self.viewers,
-                           xlab='t (s)', ylab= ('Isat (A)', 'Vf (V)', 'Te (eV)'))
+                           xlab='t (s)', ylab=('Isat (A)', 'Vf (V)', 'Te (eV)'))
 
         for ax, p in zip(fig.axes, self.PP[ID]):
              p.plot(ax=ax, **kw)

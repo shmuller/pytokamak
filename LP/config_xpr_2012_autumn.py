@@ -15,9 +15,9 @@ fixpoints = (2.46, 0), (7.06, 0.34)
 amp_XPR['ampR'] = Amp(fixpoints=fixpoints)
 
 
-tip1 = TipXPR(number=1, pos='lower left')
-tip2 = TipXPR(number=2, pos='lower right')
-tip3 = TipXPR(number=3, pos='upper')
+tip1 = TipXPR1()
+tip2 = TipXPR2()
+tip3 = TipXPR3()
 
 head = HeadXPR(tips=(tip1, tip2, tip3))
 

@@ -56,8 +56,25 @@ CurrentProbe4 = {
 
 
 class TipXPR(CylindricalTip):
+    def __init__(self, r=0.0005, z=0.003, *args, **kw):
+        CylindricalTip.__init__(self, r=r, z=z, *args, **kw)
+
+
+class TipXPR1(TipXPR):
     def __init__(self, *args, **kw):
-        CylindricalTip.__init__(self, 0.0005, 0.003, *args, **kw)
+        TipXPR.__init__(self, number=1, pos='lower left', label='Mach tip 1', *args, **kw)
+
+class TipXPR2(TipXPR):
+    def __init__(self, *args, **kw):
+        TipXPR.__init__(self, number=2, pos='lower right', label='Mach tip 2', *args, **kw)
+
+class TipXPR3(TipXPR):
+    def __init__(self, *args, **kw):
+        TipXPR.__init__(self, number=3, pos='upper', label='Single tip', *args, **kw)
+
+class TipXPR4(TipXPR):
+    def __init__(self, *args, **kw):
+        TipXPR.__init__(self, number=4, pos='lower', label='Sum of Mach tips', *args, **kw)
 
 
 class HeadXPR(Head):

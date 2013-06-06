@@ -209,24 +209,8 @@ class AUGOverview:
     def plot_H1(self, ax=None):
         return self.plot_density(ax, chn=('H-1',))
 
-    def plot_XPR_I(self, ax=None, no_Mach=False, no_single=False):
-        ax = get_axes(ax)
-        ax.set_ylabel('Current (A)')
-        
-        try:
-            XPR = self.XPR
-        except AttributeError:
-            return ax
-        
-        I1, I2, I3 = XPR['tip1'], XPR['tip2'], XPR['tip3']
-
-        if not no_Mach:
-            I1.plot(ax, label='Mach tip 1')
-            I2.plot(ax, label='Mach tip 2')
-        if not no_single:
-            I3.plot(ax, label='Single tip')
-        ax.legend()
-        return ax
+    def plot_XPR_I(self, ax=None, **kw):
+        return self.XPR.plot_I(ax, **kw)
 
     def plot_XPR_I_Mach(self, ax=None):
         return self.plot_XPR_I(ax, no_single=True)
@@ -234,24 +218,8 @@ class AUGOverview:
     def plot_XPR_I_single(self, ax=None):
         return self.plot_XPR_I(ax, no_Mach=True)
 
-    def plot_XPR_V(self, ax=None, no_Mach=False, no_single=False):
-        ax = get_axes(ax)
-        ax.set_ylabel('Voltage (V)')
-
-        try:
-            XPR = self.XPR
-        except AttributeError:
-            return ax
-
-        V1, V2, V3 = XPR['tip1'].V, XPR['tip2'].V, XPR['tip3'].V
-
-        if not no_Mach:
-            V1.plot(ax, label='Mach tip 1')
-            V2.plot(ax, label='Mach tip 2')
-        if not no_single:
-            V3.plot(ax, label='Single tip')
-        ax.legend()
-        return ax
+    def plot_XPR_V(self, ax=None, **kw):
+        return self.XPR.plot_V(ax, **kw)
 
     def plot_XPR_V_Mach(self, ax=None):
         return self.plot_XPR_V(ax, no_single=True)
