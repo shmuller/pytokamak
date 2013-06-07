@@ -1,6 +1,7 @@
 import numpy as np
 
 from sm_pyplot.tight_figure import get_fig, get_tfig
+from sm_pyplot.annotations import vrect
 
 import config_xpr as config
 ShotNotFoundError = config.ShotNotFoundError
@@ -208,6 +209,14 @@ class ProbeXPR(Probe):
 
         return PhysicalResults(self, i, meas)
 
+    def _plot(self, *args, **kw):
+        kw.setdefault('sepmode', 'patch')
+        return Probe._plot(self, *args, **kw)
+
+    def plot(self, *args, **kw):
+        kw.setdefault('sepmode', 'patch')
+        return Probe.plot(self, *args, **kw)
+
     def plot_I_Mach(self, *args, **kw):
         return self._plot([self.S['tip1'], self.S['tip2']], *args, **kw)
 
@@ -219,6 +228,17 @@ class ProbeXPR(Probe):
 
     def plot_I_single(self, *args, **kw):
         return self._plot([self.S['tip3'].V], *args, **kw)
+
+    def plot_separatrix_crossings(self, axes, sepmode='patch', **kw):
+        if sepmode == 'patch':
+            xsep = self._get_xsep(**kw).reshape((-1, 2))
+            for ax in axes:
+                for xlim in xsep:
+                    vrect(ax, xlim, **kw)
+        elif sepmode == 'lines':
+            Probe.plot_separatrix_crossings(self, axes, **kw)
+        else:
+            raise ValueError("Unknown sepmode: '%s'" % sepmode)
 
 
 def get_dwell_params():

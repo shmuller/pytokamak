@@ -162,7 +162,7 @@ class AUGOverview:
         S['YGC'] = dig_YGC
         return S
 
-    def plot_power(self, ax=None):
+    def plot_power(self, ax=None, **kw):
         S = self.S
         ax = get_axes(ax)
         ax.set_ylabel('Power (MW)')
@@ -173,7 +173,7 @@ class AUGOverview:
         ax.legend()
         return ax
 
-    def plot_rad(self, ax=None):
+    def plot_rad(self, ax=None, **kw):
         ax = get_axes(ax)
         ax.set_ylabel('Power (MW)')
 
@@ -182,11 +182,11 @@ class AUGOverview:
         ax.legend()
         return ax
 
-    def plot_power_rad(self, ax=None):
-        ax = self.plot_power(ax)
-        return self.plot_rad(ax)
+    def plot_power_rad(self, ax=None, **kw):
+        ax = self.plot_power(ax, **kw)
+        return self.plot_rad(ax, **kw)
 
-    def plot_density(self, ax=None, chn=('H-1', 'H-4', 'H-5')):
+    def plot_density(self, ax=None, chn=('H-1', 'H-4', 'H-5'), **kw):
         S = self.S['DCN']
         ax = get_axes(ax)
         ax.set_ylabel('n (10$^{\mathdefault{19}}$ m$^{\mathdefault{-3}}$)')
@@ -196,7 +196,7 @@ class AUGOverview:
         ax.legend()
         return ax
 
-    def plot_n(self, ax=None, chn=('H-1_corr', 'H-4_corr', 'H-5_corr')):
+    def plot_n(self, ax=None, chn=('H-1_corr', 'H-4_corr', 'H-5_corr'), **kw):
         S = self.S['TOT']
         ax = get_axes(ax)
         ax.set_ylabel('n (10$^{\mathdefault{19}}$ m$^{\mathdefault{-3}}$)')
@@ -206,8 +206,8 @@ class AUGOverview:
         ax.legend()
         return ax
 
-    def plot_H1(self, ax=None):
-        return self.plot_density(ax, chn=('H-1',))
+    def plot_H1(self, ax=None, **kw):
+        return self.plot_density(ax, chn=('H-1',), **kw)
 
     def plot_XPR_I(self, ax=None, **kw):
         return self.XPR.plot_I(ax, **kw)
@@ -230,7 +230,7 @@ class AUGOverview:
     def plot_XPR_R(self, ax=None, legend_loc=None, **kw):
         return self.XPR.plot_R(ax, legend_loc=legend_loc, **kw)
 
-    def plot_Ipolsol(self, ax):
+    def plot_Ipolsol(self, ax, **kw):
         S = self.S['MAC']
         ax = get_axes(ax)
         ax.set_ylabel('Div. cur. (kA)')
@@ -241,7 +241,7 @@ class AUGOverview:
         ax.legend()
         return ax
 
-    def plot_Tdiv(self, ax=None):
+    def plot_Tdiv(self, ax=None, **kw):
         S = self.S['MAC']['Tdiv']
         ax = get_axes(ax)
         ax.set_ylabel('Temp (eV)')
@@ -250,7 +250,7 @@ class AUGOverview:
         ax.legend()
         return ax
 
-    def plot_Da(self, ax=None):
+    def plot_Da(self, ax=None, **kw):
         S = self.S['POT']
         ax = get_axes(ax)
         ax.set_ylabel('Photons (au)')
@@ -261,7 +261,7 @@ class AUGOverview:
         ax.legend()
         return ax
 
-    def plot_gas(self, ax=None):
+    def plot_gas(self, ax=None, **kw):
         S = self.S['UVS']['D_tot']*1e-21
         ax = get_axes(ax)
         ax.set_ylabel('Gas (10$^{\mathdefault{21}}$ el s$^{\mathdefault{-1}}$)')
@@ -270,7 +270,7 @@ class AUGOverview:
         ax.legend()
         return ax
 
-    def plot_ipvl(self, ax=None):
+    def plot_ipvl(self, ax=None, **kw):
         S = self.S['MAG']
         ax = get_axes(ax)
         Ip, Vl = S['Ipa']*1e-6, S['ULid12']
@@ -280,14 +280,15 @@ class AUGOverview:
         ax.legend()
         return ax
 
-    def plot_mirn(self, ax=None):
+    def plot_mirn(self, ax=None, **kw):
         S = self.S['MHE']['C09-23']
         ax = get_axes(ax)
         S.plot(ax)
         ax.legend()
         return ax
 
-    def plot_CER(self, ax=None, name='vrot', ylab='vrot (km s$^{\mathdefault{-1}}$)'):
+    def plot_CER(self, ax=None, name='vrot', 
+                 ylab='vrot (km s$^{\mathdefault{-1}}$)', **kw):
         S = self.S['CEZ']
         ax = get_axes(ax)
         ax.set_ylabel(ylab)
@@ -299,13 +300,13 @@ class AUGOverview:
         ax.legend(['R = %.2f m' % x for x in R])
         return ax
 
-    def plot_vrot(self, ax=None):
+    def plot_vrot(self, ax=None, **kw):
         return self.plot_CER(ax, 'vrot', 'vrot (km s$^{\mathdefault{-1}}$)')
 
-    def plot_Ti(self, ax=None):
+    def plot_Ti(self, ax=None, **kw):
         return self.plot_CER(ax, 'Ti', 'Ti (keV)')
 
-    def plot(self, plots=None, fig=None):
+    def plot(self, plots=None, fig=None, **kw):
         if plots is None:
             plots = self.def_plots
 
@@ -321,7 +322,7 @@ class AUGOverview:
         fig.axes[0].set_xlim((1,7))
 
         for p, ax in zip(plots, fig.axes):
-            getattr(self, 'plot_' + p)(ax)
+            getattr(self, 'plot_' + p)(ax, **kw)
         return fig
 
     def plot_all(self, **kw):

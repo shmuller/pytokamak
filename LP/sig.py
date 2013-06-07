@@ -197,6 +197,9 @@ class BoundingBox:
 def dict_pop(d, **kw):
     return {k: d.pop(k, kw[k]) for k in kw.keys()}
 
+def dict_pop_if_present(d, keys):
+    return {k: d.pop(k) for k in set(d.keys()) & set(keys)}
+
 
 class NodeInterpolator:
     def __init__(self, n):

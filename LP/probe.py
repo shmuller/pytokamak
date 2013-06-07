@@ -194,7 +194,7 @@ class PhysicalResults:
         ax.plot(x, self.fact[key]*yc, label=label)
 
     def plot(self, fig=None, keys=None, xkey='t', plunge=None, inout=None, 
-            mirror=False, figsize=(10, 10)):
+            mirror=False, figsize=(10, 10), **kw):
         y = self.eval(plunge, inout)
                 
         x = self.fact[xkey]*self.clip(y[xkey], self.lim[xkey])
@@ -228,7 +228,7 @@ class PhysicalResults:
             self.plot_key(key, x, y, ax=ax, label=label)
 
         self.probe.plot_separatrix_crossings(fig.axes, xkey=xkey, 
-                fact=self.fact[xkey], plunge=plunge, inout=inout)
+                fact=self.fact[xkey], plunge=plunge, inout=inout, **kw)
 
         fig.axes[0].legend(loc='upper left')
         fig.canvas.draw()
@@ -366,7 +366,7 @@ class Probe:
         keys = [k for k, I in self.I.iteritems() if I.V.is_swept]
         return DictView(self.I, keys)
 
-    def _plot(self, S_list, ax=None, separatrix='lines', legend_loc='upper right', **kw):
+    def _plot(self, S_list, ax=None, sepmode='lines', legend_loc='upper right', **kw):
         S = S_list[0]
         if ax is None:
             fig = get_tfig(xlab=S.xlab, viewers=self.viewers, **kw)
@@ -375,8 +375,8 @@ class Probe:
 
         for S in S_list:
             S.plot(ax)
-        if separatrix is not None:
-            self.plot_separatrix_crossings([ax], color='k')
+        if sepmode is not None:
+            self.plot_separatrix_crossings([ax], sepmode=sepmode, color='k')
         if legend_loc is not None:
             ax.legend(loc=legend_loc)
         return ax
@@ -390,13 +390,13 @@ class Probe:
     def plot_V(self, *args, **kw):
         return self._plot(self.V.values(), *args, **kw)
 
-    def plot(self, fig=None, **kw):
+    def plot(self, fig=None, sepmode='lines', **kw):
         R = self.S['Rs']
         fig = get_fig(fig, shape=(3, 1), xlab=R.xlab, viewers=self.viewers, **kw)
         
-        self.plot_R(ax=fig.axes[0], legend_loc=None)
-        self.plot_I(ax=fig.axes[1], legend_loc='upper left')
-        self.plot_V(ax=fig.axes[2], legend_loc='upper left')
+        self.plot_R(ax=fig.axes[0], sepmode=sepmode, legend_loc=None)
+        self.plot_I(ax=fig.axes[1], sepmode=sepmode, legend_loc='upper left')
+        self.plot_V(ax=fig.axes[2], sepmode=sepmode, legend_loc='upper left')
         return fig
 
     def get_dwell_params(self):
@@ -459,18 +459,18 @@ class Probe:
         self.head.plot(ax, R, z)
         return ax
 
-    def plot_separatrix_crossings(self, axes, xkey='t', fact=1., 
-            plunge=None, inout=None, color='last', linewidth=1, **kw):
+    def _get_xsep(self, xkey='t', fact=1., plunge=None, inout=None, **kw):
         isep = self.psi.separatrix_crossings
-        
         mask = self.S['Rs'].plunge_mask(isep, plunge, inout)
-
         psep = self.pos[isep[mask]]
         if xkey == 't':
             xsep = fact*psep.t
         else:
             xsep = fact*psep.x[:,0]
+        return xsep
 
+    def plot_separatrix_crossings(self, axes, color='last', linewidth=1, **kw):
+        xsep = self._get_xsep(**kw)
         for ax in axes:
             vlines(ax, xsep, color=color, linewidth=linewidth)
 
