@@ -74,7 +74,7 @@ class TipXPR3(TipXPR):
 
 class TipXPR4(TipXPR):
     def __init__(self, *args, **kw):
-        TipXPR.__init__(self, number=4, pos='lower', label='Sum of Mach tips', *args, **kw)
+        TipXPR.__init__(self, number=4, pos='lower', label='Mach tips sum (meas.)', *args, **kw)
 
 
 class HeadXPR(Head):

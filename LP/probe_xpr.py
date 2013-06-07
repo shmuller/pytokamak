@@ -163,7 +163,7 @@ class ProbeXPR(Probe):
         S = self.S
         S['Rs'] = S['R'].copy().mediansmooth(100)
         S['tip1+tip2'] = S['tip1'] + S['tip2']
-        S['tip1+tip2'].label = 'Sum of Mach tips'
+        S['tip1+tip2'].label = 'Mach tips sum'
 
     def calc_res(self, ID='IV'):
         tips = self.head.tips
@@ -208,26 +208,17 @@ class ProbeXPR(Probe):
 
         return PhysicalResults(self, i, meas)
 
-    def _plot(self, S1, S2, S3, ax=None, no_Mach=False, no_single=False):
-        if ax is None:
-            fig = get_tfig(xlab=S1.xlab, viewers=self.viewers)
-            ax = fig.axes[0]
-        ax.set_ylabel(S1.ylab)
+    def plot_I_Mach(self, *args, **kw):
+        return self._plot([self.S['tip1'], self.S['tip2']], *args, **kw)
 
-        if not no_Mach:
-            S1.plot(ax)
-            S2.plot(ax)
-        if not no_single:
-            S3.plot(ax)
-        self.plot_separatrix_crossings([ax], color='k')
-        ax.legend()
-        return ax
+    def plot_I_single(self, *args, **kw):
+        return self._plot([self.S['tip3']], *args, **kw)
 
-    def plot_I(self, *args, **kw):
-        return self._plot(self['tip1'], self['tip2'], self['tip3'], *args, **kw)
+    def plot_V_Mach(self, *args, **kw):
+        return self._plot([self.S['tip1'].V, self.S['tip2'].V], *args, **kw)
 
-    def plot_V(self, *args, **kw):
-        return self._plot(self['tip1'].V, self['tip2'].V, self['tip3'].V, *args, **kw)
+    def plot_I_single(self, *args, **kw):
+        return self._plot([self.S['tip3'].V], *args, **kw)
 
 
 def get_dwell_params():

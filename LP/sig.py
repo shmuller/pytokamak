@@ -1023,6 +1023,12 @@ class PositionSignal(Signal):
         self.lvl_fact = kw.get('lvl_fact', 0.1)
         self.dist_threshold = kw.get('dist_threshold', 1000)
 
+    def to_cm(self):
+        x = self*100
+        x.type = 'Pos'
+        x.units = 'cm'
+        return x
+
     def get_baseline(self):
         return self.x[self.baseline_slice]
 

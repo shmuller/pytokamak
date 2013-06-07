@@ -264,10 +264,7 @@ class Probe:
         self.eqi, self.viewers = eqi, viewers
 
         self.unique_sigs = GeneratorDict(self.get_sig)
-
-        self.xlab = "t (s)"
-        self.ylab = ("Isat (A)", "Vf (V)", "Te (eV)")
-
+    
     def __getitem__(self, index):
         return self.S[index]
    
@@ -362,33 +359,46 @@ class Probe:
 
     @memoized_property
     def V(self):
-        return self.get_type('Voltage')
-
+        return OrderedDict(zip(self.I.keys(), [I.V for I in self.I.itervalues()]))
+        
     @memoized_property
     def I_swept(self):
         keys = [k for k, I in self.I.iteritems() if I.V.is_swept]
         return DictView(self.I, keys)
 
-    def plot(self, fig=None,
-            keys = (('Position',), ('Current',), ('Voltage',)), **kw):
-        keys = np.array(keys, ndmin=2)
+    def _plot(self, S_list, ax=None, separatrix='lines', legend_loc='upper right', **kw):
+        S = S_list[0]
+        if ax is None:
+            fig = get_tfig(xlab=S.xlab, viewers=self.viewers, **kw)
+            ax = fig.axes[0]
+        ax.set_ylabel(S.ylab)
 
-        fig = get_fig(fig, keys.shape, xlab=self.xlab, ylab=keys, 
-                viewers=self.viewers, **kw)
-        axes = np.array(fig.axes).reshape(keys.shape)
+        for S in S_list:
+            S.plot(ax)
+        if separatrix is not None:
+            self.plot_separatrix_crossings([ax], color='k')
+        if legend_loc is not None:
+            ax.legend(loc=legend_loc)
+        return ax
 
-        for ax in axes[keys == 'Voltage']:
-            for I in self.I.itervalues():
-                I.V.plot(ax)
+    def plot_R(self, *args, **kw):
+        return self._plot([self.S['Rs'].to_cm()], *args, **kw)
 
-        for key, ax in zip(keys, fig.axes):
-            for S in self.get_type(key[0]).itervalues():
-                S.plot(ax)
+    def plot_I(self, *args, **kw):
+        return self._plot(self.I.values(), *args, **kw)
 
-        self.plot_separatrix_crossings(fig.axes, color='k')
-        fig.canvas.draw()
+    def plot_V(self, *args, **kw):
+        return self._plot(self.V.values(), *args, **kw)
+
+    def plot(self, fig=None, **kw):
+        R = self.S['Rs']
+        fig = get_fig(fig, shape=(3, 1), xlab=R.xlab, viewers=self.viewers, **kw)
+        
+        self.plot_R(ax=fig.axes[0], legend_loc=None)
+        self.plot_I(ax=fig.axes[1], legend_loc='upper left')
+        self.plot_V(ax=fig.axes[2], legend_loc='upper left')
         return fig
-    
+
     def get_dwell_params(self):
         R = self.S['Rs']
         iM = R.t_ind[1]

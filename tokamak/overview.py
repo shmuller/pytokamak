@@ -143,7 +143,7 @@ class AUGOverview:
         self.eqi = EqiAUG(self.S['EQI'], self.ves)
         try:
             self.XPR = ProbeXPR(shn=shn, eqi=self.eqi)
-            self.def_plots = ('power', 'density', 'XPR_I', 'XPR_R', 'Ipolsol')
+            self.def_plots = ('power', 'density', 'XPR_I_Mach', 'XPR_R', 'Ipolsol')
         except ShotNotFoundError:
             self.XPR = None
             self.def_plots = ('power', 'density', 'Ipolsol')
@@ -212,32 +212,23 @@ class AUGOverview:
     def plot_XPR_I(self, ax=None, **kw):
         return self.XPR.plot_I(ax, **kw)
 
-    def plot_XPR_I_Mach(self, ax=None):
-        return self.plot_XPR_I(ax, no_single=True)
+    def plot_XPR_I_Mach(self, ax=None, **kw):
+        return self.XPR.plot_I_Mach(ax, **kw)
 
-    def plot_XPR_I_single(self, ax=None):
-        return self.plot_XPR_I(ax, no_Mach=True)
+    def plot_XPR_I_single(self, ax=None, **kw):
+        return self.XPR.plot_I_single(ax, **kw)
 
     def plot_XPR_V(self, ax=None, **kw):
         return self.XPR.plot_V(ax, **kw)
 
-    def plot_XPR_V_Mach(self, ax=None):
-        return self.plot_XPR_V(ax, no_single=True)
+    def plot_XPR_V_Mach(self, ax=None, **kw):
+        return self.XPR.plot_V_Mach(ax, **kw)
 
-    def plot_XPR_V_single(self, ax=None):
-        return self.plot_XPR_V(ax, no_Mach=True)
+    def plot_XPR_V_single(self, ax=None, **kw):
+        return self.XPR.plot_V_single(ax, **kw)
 
-    def plot_XPR_R(self, ax=None):
-        ax = get_axes(ax)
-        ax.set_ylabel('Pos (cm)')
-
-        try:
-            XPR = self.XPR
-        except AttributeError:
-            return ax
-
-        (XPR['R']*100).plot(ax)
-        return ax
+    def plot_XPR_R(self, ax=None, legend_loc=None, **kw):
+        return self.XPR.plot_R(ax, legend_loc=legend_loc, **kw)
 
     def plot_Ipolsol(self, ax):
         S = self.S['MAC']
