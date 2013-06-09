@@ -52,7 +52,7 @@ class Vessel(VtkProxy):
         alpha[[0, 1]] = 0.2
         alpha[[2, 4, 5]] = 0
 
-        win = VtkWindow(**kw)
+        win = VtkWindow(axes='2d', **kw)
         for rpoly, a in zip(self.vtk, alpha):
             if a > 0:
                 win = rpoly.prerender(win=win, alpha=a)
@@ -343,12 +343,11 @@ if __name__ == "__main__":
     #FS.plot(ax=ax)
     #fl.plot(ax=ax, linewidth=2)
     #fl2.plot(ax=ax, linewidth=2)
+    #show()
 
     win = AUG.ves.prerender()
     FS.prerender(win=win)
     fl.prerender(win=win)
     fl2.prerender(win=win, color=(1., 0., 0.))
     win.render()
-
-    win.show()
-    show()
+    win.start()
