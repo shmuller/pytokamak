@@ -60,9 +60,10 @@ class Vessel(VtkProxy):
 
 
 class EqiViewerAUG(EqiViewer):
-    def viewer(self, event):
-        EqiViewer.viewer(self, event, 
-                         pos=(50, 150), figsize=(4.5, 6), xlab="R (m)", ylab="z (m)")
+    def viewer(self, event=None):
+        return EqiViewer.viewer(self, event, 
+                                pos=(50, 150), figsize=(4.5, 6), 
+                                xlab="R (m)", ylab="z (m)")
 
 
 class EqiViewerAUGXPR(EqiViewerAUG):
@@ -70,8 +71,8 @@ class EqiViewerAUGXPR(EqiViewerAUG):
         EqiViewerAUG.__init__(self, eqi)
         self.XPR = XPR
 
-    def plotfun(self, event):
-        artists = EqiViewerAUG.plotfun(self, event)
+    def plotfun(self, event, **kw):
+        artists = EqiViewerAUG.plotfun(self, event, **kw)
 
         t_event = event.xdata
         ax = self.ax
@@ -102,12 +103,13 @@ class ProfViewerAUG(ToggleViewer):
         x, y = self.x, self.y(t_event).x[0]
         return self.ax.plot(x, y, 'b')
 
-    def viewer(self, event):
+    def viewer(self, event=None):
         fig = get_tfig(pos=(950, 150), figsize=(5, 5), 
                 xlab="R (m)", ylab="vrot (km s$^{\mathdefault{-1}}$)")
-        self.ax = fig.axes[0]
-        self.ax.set_xlim((1.5, 2.5))
-        self.ax.set_ylim((-50, 100))
+        self.ax = ax = fig.axes[0]
+        ax.set_xlim((1.5, 2.5))
+        ax.set_ylim((-50, 100))
+        return ax
 
 
 class EqiViewerAUGVtk(ToggleViewerVtk):
@@ -116,12 +118,13 @@ class EqiViewerAUGVtk(ToggleViewerVtk):
         ToggleViewerVtk.__init__(self, menu_entry='VTK viewer')
 
     def viewer(self, event=None):
-        self.ax = self.eqi.vessel.render()
+        self.ax = ax = self.eqi.vessel.render()
+        return ax
 
     def plotfun(self, event):
         t_event = event.xdata
         win = self.ax
-        FS = self.eqi.get_flux_surf(t_event)
+        FS = self.eqi.get_flux_surf(t_event, norm=True, refine=2)
         FS.render(win=win)
         return [win.ren.GetActors().GetLastActor()]
 

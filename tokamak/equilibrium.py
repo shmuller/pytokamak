@@ -17,6 +17,11 @@ from matplotlib.collections import PathCollection
 
 from fieldline._fieldline import solve_bdry
 
+class Event:
+    def __init__(self, xdata=None, ydata=None):
+        self.xdata, self.ydata = xdata, ydata
+
+
 class Interpolator:
     def __init__(self, t, x, y, f):
         self.t, self.x, self.y, self.f = t, x, y, f
@@ -247,19 +252,22 @@ class Eqi:
         dpsi = self.psi1 - self.psi0
         return (self.psii - self.psi0[:, None]) / dpsi[:, None]
 
-    def _get_flux_surf(self, f, lvls=None):
-        return FluxSurf(self.R, self.z, f, lvls)
-
-    def get_flux_surf(self, ti, lvls=None):
+    def get_flux_surf(self, ti, norm=True, lvls=None, refine=1):
         if lvls is None:
             lvls = np.linspace(0., 1., 20)
-        return self._get_flux_surf(self.psi_n(ti).x[0], lvls)
+        if refine == 1:
+            if norm:
+                psi = self.psi_n
+            else:
+                psi = self.psi
+            return FluxSurf(self.R, self.z, psi(ti).x[0], lvls)
+        else:
+            R = np.linspace(self.R[0], self.R[-1], self.R.size*refine)
+            z = np.linspace(self.z[0], self.z[-1], self.z.size*refine)
+            return FluxSurf(R, z, self.get_psi_grid(ti, R, z, norm=norm), lvls)
 
-    def get_flux_surf_unnorm(self, ti, lvls=None):
-        return self._get_flux_surf(self.psi(ti).x[0], lvls)
-
-    def get_separatrix(self, ti):
-        return self.get_flux_surf(ti, lvls=np.array([1.]))
+    def get_separatrix(self, ti, **kw):
+        return self.get_flux_surf(ti, lvls=np.array([1.]), norm=True, **kw)
 
     @memoized_property
     def interpolator_3d_slab(self):
@@ -381,6 +389,12 @@ class Eqi:
         self.viewers = [EqiViewer(self)]
         return self.viewers
 
+    def plot(self, ti, **kw):
+        viewer = self.viewers[0]
+        ax = viewer.viewer()
+        viewer.plotfun(Event(xdata=ti), **kw)
+        return ax
+
 
 class FieldLineViewer(ToggleViewerIntegrated):
     def __init__(self, eqi):
@@ -417,7 +431,8 @@ class FieldLineViewerVtk(ToggleViewerVtk):
         self.invalidate()
 
     def viewer(self, event=None):
-        self.ax = self.eqi.vessel.render()
+        self.ax = ax = self.eqi.vessel.render()
+        return ax
 
     def plotfun(self, event):
         fl = self.fli(event.xdata, event.ydata)
@@ -435,22 +450,22 @@ class EqiViewer(ToggleViewer):
 
         ToggleViewer.__init__(self, menu_entry='Eqi viewer')
 
-    def viewer(self, event, **kw):
+    def viewer(self, event=None, **kw):
         self.flv = FieldLineViewer(self.eqi)
         self.flv_vtk = FieldLineViewerVtk(self.eqi)
         
         fig = get_tfig(viewers=[self.flv, self.flv_vtk], **kw)
-        self.ax = fig.axes[0]
+        self.ax = ax = fig.axes[0]
         try:
-            self.eqi.vessel.plot(self.ax)
+            self.eqi.vessel.plot(ax)
         except AttributeError:
             pass
+        return ax
 
-    def plotfun(self, event):
+    def plotfun(self, event, refine=2):
         t_event = event.xdata
         ax = self.ax
-        FS = self.eqi.get_flux_surf(t_event, lvls=self.lvls)
-        #FS = self.eqi.get_flux_surf_unnorm(t_event, lvls=self.lvls)
+        FS = self.eqi.get_flux_surf(t_event, lvls=self.lvls, norm=True, refine=refine)
         FS.plot(ax)
 
         # assign field line integrator for t_event to FieldLineViewer
