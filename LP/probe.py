@@ -1,6 +1,8 @@
 import numpy as np
 import numpy.ma as ma
 
+from warnings import warn
+
 import logging
 reload(logging)
 logging.basicConfig(level=logging.WARN)
@@ -470,8 +472,11 @@ class Probe:
         return xsep
 
     def plot_separatrix_crossings(self, axes, color='last', linewidth=1, **kw):
-        xsep = self._get_xsep(**kw)
-        for ax in axes:
-            vlines(ax, xsep, color=color, linewidth=linewidth)
+        try:
+            xsep = self._get_xsep(**kw)
+            for ax in axes:
+                vlines(ax, xsep, color=color, linewidth=linewidth)
+        except:
+            warn("Could not generate lines")
 
 

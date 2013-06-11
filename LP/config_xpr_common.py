@@ -18,6 +18,16 @@ Preamp2 = {
      2: Amp(fact=1.936).inv(), 
      5: Amp(fact=4.840).inv()}
 
+'''
+The current probes are set in mA/div. They source 10 mV/div into a 50 Ohm 
+input impedance, up to a maximum of 1 V. Since the DAQ's impedance is high-Z, 
+this is effectively 20 mV/div or a maximum of 2 V. The calibration factor is
+thus:
+
+fact (A/V) = settings (mA/div) / 20
+
+At 20 mA/div, the calibration is 1-to-1.
+'''
 CurrentProbe1 = {
      1: Amp(fact=0.5*1/10), # mA/mV = A/V (0.5 from missing 50 Ohm term.)
      5: Amp(fact=0.5*5/10),

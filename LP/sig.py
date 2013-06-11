@@ -672,8 +672,8 @@ class Signal:
     def _op_factory(op, calcfun):
         def apply(self, other, out=None):
             try:
-                if other.units != self.units:
-                    raise Exception("Unit mismatch")
+                #if other.units != self.units:
+                #    raise Exception("Unit mismatch")
                 other = other.x
             except AttributeError:
                 pass
@@ -1037,7 +1037,7 @@ class PositionSignal(Signal):
 
     def get_crossings(self):
         x = self.get_baseline()
-        x0, xM = x.mean(), self.x.max()
+        x0, xM = x.mean(), max(self.x.max(), 0.)
         lvl = x0 + self.lvl_fact*(xM - x0)
         return self.crossings(lvl, self.dist_threshold)
 
@@ -1079,8 +1079,11 @@ class PositionSignal(Signal):
 
     def plunge_mask(self, i, plunge=None, inout=None):
         w = self.plunges(plunge, inout)
-        ind0, ind1 = np.searchsorted(i, w)
-        return np.concatenate(map(np.arange, ind0, ind1))
+        if w.shape[1] == 0:
+            return np.arange(0)
+        else:
+            ind0, ind1 = np.searchsorted(i, w)
+            return np.concatenate(map(np.arange, ind0, ind1))
 
     def plot_plunges(self, ax=None, **kw):
         ax = Signal.plot(self, ax, **kw)

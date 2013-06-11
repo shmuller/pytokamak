@@ -140,7 +140,9 @@ class ProbeXPR(Probe):
     @memoized_property
     def _psi_spl(self):
         R, z = self.pos.x.T
-        Ri = np.linspace(R.min(), R.max(), 20)
+        Rm, RM = R.min(), R.max()
+        if Rm == RM: Rm -= 0.01
+        Ri = np.linspace(Rm, RM, 20)
         zi = np.array([self.z0]).repeat(Ri.size)
         return self.eqi.get_path_spline(Ri, Ri, zi)
 
@@ -170,6 +172,14 @@ class ProbeXPR(Probe):
         S['Rs'] = S['R'].copy().mediansmooth(100)
         S['tip1+tip2'] = S['tip1'] + S['tip2']
         S['tip1+tip2'].label = 'Mach tips sum'
+        
+        """
+        if not S['tip1+tip2'].V.is_swept:
+            mask = (S['tip1+tip2'].V > -150.) | (S['tip1+tip2'] > 1.9)
+            S['tip1+tip2'] = S['tip1+tip2'].masked(mask)
+            S['tip1'] = S['tip1'].masked(mask)
+            S['tip2'] = S['tip2'].masked(mask)
+        """
 
     def calc_res(self, ID='IV'):
         tips = self.head.tips
@@ -210,7 +220,7 @@ class ProbeXPR(Probe):
         i, meas = self.PP_meas.eval()
 
         dtype = zip(keys, [np.double]*len(keys))
-        meas = meas.view(dtype).reshape(-1).view(np.recarray)
+        meas = meas.view(dtype).ravel().view(np.recarray)
 
         return PhysicalResults(self, i, meas)
 
@@ -241,7 +251,7 @@ class ProbeXPR(Probe):
                 for ax in axes:
                     for xlim in xsep:
                         vrect(ax, xlim, **kw)
-            except ValueError:
+            except:
                 warn("Could not generate patches, falling back to lines")
                 Probe.plot_separatrix_crossings(self, axes, **kw)
         elif sepmode == 'lines':
