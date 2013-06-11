@@ -1144,9 +1144,20 @@ class CurrentSignal(Signal):
         return self.__class__(self.x + other.x, self.t, V=self.V,
                               name=self.name + '+' + other.name)
 
-    def Isat(self, Vmax=-150):
-        x = ma.masked_array(self.x, self.V.x > Vmax)
-        return self.__class__(x, self.t, V=self.V, name=self.name)
+    def masked_Isat(self, Vmax=-150.):
+        return self.masked(self.V > Vmax)
+
+    def masked_noarcs(self, Vmax=-150., Imax=None):
+        if self.V.is_swept:
+            if Imax is None:
+                return self
+            else:
+                return self.masked(self > Imax)
+        else:
+            if Imax is None:
+                return self.masked(self.V > Vmax)
+            else:
+                return self.masked((self.V > Vmax) | (self > Imax))
 
     def capa_pickup(self):
         self.dV_dt = self.V.copy().smooth(10).deriv()
