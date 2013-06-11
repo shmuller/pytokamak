@@ -313,7 +313,7 @@ class AUGOverview:
         if plots is None:
             plots = self.def_plots
 
-        self.viewers = self.eqi.viewers
+        self.viewers = self.eqi.viewers[:]
         try:
             S = self.S['CEZ']
             self.viewers += [ProfViewerAUG(S['R'].x[:24], S['vrot'][:,:24]*1e-3)]

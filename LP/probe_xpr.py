@@ -1,4 +1,5 @@
 import numpy as np
+from warnings import warn
 
 from sm_pyplot.tight_figure import get_fig, get_tfig
 from sm_pyplot.annotations import vrect
@@ -230,15 +231,19 @@ class ProbeXPR(Probe):
     def plot_V_Mach(self, *args, **kw):
         return self._plot([self.S['tip1'].V, self.S['tip2'].V], *args, **kw)
 
-    def plot_I_single(self, *args, **kw):
+    def plot_V_single(self, *args, **kw):
         return self._plot([self.S['tip3'].V], *args, **kw)
 
     def plot_separatrix_crossings(self, axes, sepmode='patch', **kw):
         if sepmode == 'patch':
-            xsep = self._get_xsep(**kw).reshape((-1, 2))
-            for ax in axes:
-                for xlim in xsep:
-                    vrect(ax, xlim, **kw)
+            try:
+                xsep = self._get_xsep(**kw).reshape((-1, 2))
+                for ax in axes:
+                    for xlim in xsep:
+                        vrect(ax, xlim, **kw)
+            except ValueError:
+                warn("Could not generate patches, falling back to lines")
+                Probe.plot_separatrix_crossings(self, axes, **kw)
         elif sepmode == 'lines':
             Probe.plot_separatrix_crossings(self, axes, **kw)
         else:

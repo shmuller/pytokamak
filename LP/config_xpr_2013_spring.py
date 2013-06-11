@@ -404,9 +404,10 @@ E.rep(29439, 29438, "Ref. 29311, beams on at 1.1, 2.7, 4.3 s",
         times = (1.15, 2.75, 4.35),
         posit = (0.34, 0.34, 0.34),
         descr = """\
-            Arcs before dwell, but OK data. Discharge had modes that severely
-            impacted the H-mode.""",
-        stars = '***')
+            Mini I-phase on 1st plunge! Both L-I and I-L transitions on LFS.
+            2nd and 3rd plunges in developed I-phase. Arcs before dwell, but 
+            OK data. Discharge had modes that severely impacted the H-mode.""",
+        stars = '*****')
 
 E.rep(29440, 29439, "Repeat with single tip floating",
         times = (1.15, 2.75, 4.35),
@@ -784,9 +785,11 @@ E.rep(29780, 29779, "Grounds reconnected, full stroke at 3.8 s",
         times = 3.8,
         posit = 0.34,
         descr = """\
-            No I-phase. Good data except for switched-off arcs on LFS divertor
-            leg.""",
-        stars = '****')
+            H-mode after I-phase. Good swept probe data all the way through
+            in H-mode! Good Mach data too except for switched-off arcs on
+            LFS. Some indications that probe pulls the plasma back to I-phase
+            when on the HFS.""",
+        stars = '*****')
 
 E.rep(29781, 29780, "Repeat 29779, plunge at 2.9 s",
         times = 3.9,
@@ -986,8 +989,9 @@ E.rep(29845, 29844, "Plunge at 0.65 s to 15 cm, sweeps at 14.5 Vpp",
         times = 0.65,
         posit = 0.15,
         descr = """\
-            L-H transition, no arcs!""",
-        stars = '****')
+            L-I-H transition, no arcs! Plasma was already stable. Unfortunately the 
+            probe was already moving out fast at I-H transition.""",
+        stars = '*****')
 
 # Stefan Muller
 E.rep(29846, 29845, "Repeat 29779, Mach -200 V, single swept at 14.5 Vpp", 
