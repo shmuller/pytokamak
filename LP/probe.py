@@ -19,8 +19,8 @@ IVContainer = fitter_IV.IVContainer
 from sm_pyplot.tight_figure import get_fig, get_tfig, get_axes
 from sm_pyplot.annotations import vlines, vrect
 
-from sig import memoized_property, DictView, GeneratorDict, math_sel, usetex, \
-        PositionSignal, VoltageSignal, CurrentSignal
+from sig import memoized_property, dict_pop, DictView, GeneratorDict, \
+        math_sel, usetex, PositionSignal, VoltageSignal, CurrentSignal
 
 
 class PhysicalResults:
@@ -368,15 +368,21 @@ class Probe:
         keys = [k for k, I in self.I.iteritems() if I.V.is_swept]
         return DictView(self.I, keys)
 
-    def _plot(self, S_list, ax=None, sepmode='lines', legend_loc='upper right', **kw):
+    def _plot(self, S_list, ax=None, unmasked=True, sepmode='lines', 
+              legend_loc='upper right', **kw):
         S = S_list[0]
         if ax is None:
             fig = get_tfig(xlab=S.xlab, viewers=self.viewers, **kw)
             ax = fig.axes[0]
         ax.set_ylabel(S.ylab)
 
-        for S in S_list:
-            S.plot(ax)
+        if unmasked:
+            for S in S_list:
+                S.unmasked().plot(ax)
+        else:
+            for S in S_list:
+                S.plot(ax)
+
         if sepmode is not None:
             self.plot_separatrix_crossings([ax], sepmode=sepmode, color='k')
         if legend_loc is not None:
@@ -392,13 +398,14 @@ class Probe:
     def plot_V(self, *args, **kw):
         return self._plot(self.V.values(), *args, **kw)
 
-    def plot(self, fig=None, sepmode='lines', **kw):
+    def plot(self, fig=None, **kw):
+        kw2 = dict_pop(kw, unmasked=True, sepmode='lines', )
         R = self.S['Rs']
         fig = get_fig(fig, shape=(3, 1), xlab=R.xlab, viewers=self.viewers, **kw)
         
-        self.plot_R(ax=fig.axes[0], sepmode=sepmode, legend_loc=None)
-        self.plot_I(ax=fig.axes[1], sepmode=sepmode, legend_loc='upper left')
-        self.plot_V(ax=fig.axes[2], sepmode=sepmode, legend_loc='upper left')
+        self.plot_R(ax=fig.axes[0], legend_loc=None, **kw2)
+        self.plot_I(ax=fig.axes[1], legend_loc='upper left', **kw2)
+        self.plot_V(ax=fig.axes[2], legend_loc='upper left', **kw2)
         return fig
 
     def get_dwell_params(self):

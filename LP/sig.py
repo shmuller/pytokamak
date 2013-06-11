@@ -644,6 +644,11 @@ class Signal:
         self.units = kw.get('units', "")
         self.tunits = kw.get('tunits', "s")
 
+    def update(self, **kw):
+        self.kw.update(kw)
+        for k, v in kw.iteritems():
+            setattr(self, k, v)
+
     def __repr__(self):
         fmtstr = "%s {name} with shape {shape}"
         return (fmtstr % self.__class__.__name__).format(**self.__dict__)
@@ -733,6 +738,12 @@ class Signal:
         else:
             return self.__array_wrap__(self.x.data)
 
+    def filled(self):
+        if not isinstance(self.x, ma.masked_array):
+            return self.x
+        else:
+            return self.x.filled(np.nan)
+
     def normed(self):
         return self.__array_wrap__(self.x / np.abs(self.range).max())
 
@@ -783,10 +794,11 @@ class Signal:
     def ppolyfit(self, i0, i1, deg):
         N = len(i1)
         c = np.empty((deg + 1, N))
+        x = self.filled()
         for i in xrange(N):
             s = slice(i0[i], i1[i])
             t = self.t[s]
-            c[:,i] = np.polyfit(t - t[0], self.x[s], deg)
+            c[:,i] = np.polyfit(t - t[0], x[s], deg)
         return c
 
     def as_PP(self, PP):
@@ -906,7 +918,7 @@ class Signal:
 
     def specgram(self, ax=None, NFFT=2048, step=512, 
             cmap='spectral', **kw):
-        Pxx, freqs, bins = mlab.specgram(self.x, NFFT, 1e-3*self.fs,
+        Pxx, freqs, bins = mlab.specgram(self.filled(), NFFT, 1e-3*self.fs,
                 mlab.detrend_linear, mlab.window_hanning, NFFT - step)
         
         df = freqs[1] - freqs[0]
@@ -1146,18 +1158,6 @@ class CurrentSignal(Signal):
 
     def masked_Isat(self, Vmax=-150.):
         return self.masked(self.V > Vmax)
-
-    def masked_noarcs(self, Vmax=-150., Imax=None):
-        if self.V.is_swept:
-            if Imax is None:
-                return self
-            else:
-                return self.masked(self > Imax)
-        else:
-            if Imax is None:
-                return self.masked(self.V > Vmax)
-            else:
-                return self.masked((self.V > Vmax) | (self > Imax))
 
     def capa_pickup(self):
         self.dV_dt = self.V.copy().smooth(10).deriv()

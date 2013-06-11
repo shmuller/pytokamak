@@ -171,15 +171,13 @@ class ProbeXPR(Probe):
         S = self.S
         S['Rs'] = S['R'].copy().mediansmooth(100)
         S['tip1+tip2'] = S['tip1'] + S['tip2']
-        S['tip1+tip2'].label = 'Mach tips sum'
+        S['tip1+tip2'].update(label='Mach tips sum')
         
-        """
         if not S['tip1+tip2'].V.is_swept:
             mask = (S['tip1+tip2'].V > -150.) | (S['tip1+tip2'] > 1.9)
             S['tip1+tip2'] = S['tip1+tip2'].masked(mask)
             S['tip1'] = S['tip1'].masked(mask)
             S['tip2'] = S['tip2'].masked(mask)
-        """
 
     def calc_res(self, ID='IV'):
         tips = self.head.tips
