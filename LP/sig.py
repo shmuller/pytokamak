@@ -31,6 +31,7 @@ except ImportError:
 
 try:
     import matplotlib.mlab as mlab
+    import matplotlib.colors as colors
 except ImportError:
     pass
 
@@ -651,18 +652,63 @@ class Detrender:
         return y - k * x
 
 
+class Window:
+    def __init__(self, N):
+        self.window = np.hanning(N)
+        self.norm = 1. / np.sum(self.window**2)
+
+
 class Spectral:
+    cdict = dict(blue =((0,1,1),(.5,0,0),(.75,0,0),(.9,0,0),(1,0,0)), 
+                 green=((0,0,0),(.5,1,1),(.75,1,1),(.9,0,0),(1,0,0)), 
+                 red  =((0,0,0),(.5,1,1),(.75,0,0),(.9,1,1),(1,0,0)))
+
+    #cmap = colors.LinearSegmentedColormap('spectral_colormap', cdict, 256)
+    cmap = 'spectral'
+
     def __init__(self, NFFT=2048, step=512, detrend='linear'):
         self.NFFT, self.step = NFFT, step
         self.detrend = Detrender(NFFT).detrend
-        self.window = mlab.window_hanning
+        self.win = Window(NFFT)
 
-    def specgram(self, S, ylim=None):
+    def specgram_mlab(self, S):
         NFFT, step = self.NFFT, self.step
 
-        Pxx, freqs, bins = mlab.specgram(S.filled(), NFFT, 1e-3*S.fs, 
-                self.detrend, self.window, NFFT - step)
-       
+        self.t = S.t
+        self.Pxx, self.freqs, bins = mlab.specgram(S.filled(), 
+                NFFT, 1e-3*S.fs, self.detrend, self.win.window, NFFT - step)
+
+    def specgram(self, S):
+        NFFT, step = self.NFFT, self.step
+
+        window = self.win.window
+        detrend = self.detrend
+
+        x = S.filled()
+
+        ind = np.arange(0, x.size - NFFT + 1, step)
+        n_f = NFFT // 2 + 1
+
+        self.Pxx = Pxx = np.empty((n_f, ind.size))
+        for i in xrange(ind.size):
+            xi = x[ind[i]:ind[i] + NFFT]
+            Xi = fft(window * detrend(xi))[:n_f]
+            Pxx[:,i] = Xi.real**2 + Xi.imag**2
+
+        fs = 1e-3*S.fs
+
+        Pxx *= self.win.norm / fs
+        Pxx[1:-1] *= 2.
+        
+        self.t = S.t
+        self.freqs = np.arange(n_f) * (fs / NFFT)
+
+    def plot(self, ax=None, ylim=None, cmap=None):
+        if cmap is None:
+            cmap = Spectral.cmap
+        NFFT, step = self.NFFT, self.step
+        Pxx, freqs = self.Pxx, self.freqs
+        
         if ylim is not None:
             cnd = (ylim[0] <= freqs) & (freqs <= ylim[1])
             freqs, Pxx = freqs[cnd], Pxx[cnd]
@@ -670,19 +716,20 @@ class Spectral:
         n = Pxx.shape[1] - 1
         ind0 = (NFFT + step) // 2
         ind = np.r_[0, np.arange(ind0, ind0 + n*step, step), n*step + NFFT - 1]
-        self.t = S.t[ind]
+        t = self.t[ind]
 
         df = freqs[1] - freqs[0]
-        self.f = np.r_[freqs[0], freqs[1:] - df/2, freqs[-1]]
+        f = np.r_[freqs[0], freqs[1:] - df/2, freqs[-1]]
 
-        self.Pxx = Pxx
-
-    def plot(self, ax=None, cmap='spectral'):
+        Z = 10. * np.log10(Pxx)
+        
         ax = get_axes(ax, xlab='t (s)', ylab='f (kHz)')
+        im = ax.pcolorfast(t, f, Z, cmap=cmap)
+        ax._current_image = im
 
-        Z = 10. * np.log10(self.Pxx)
-
-        ax.pcolorfast(self.t, self.f, Z, cmap=cmap)
+        #Zm, ZM = np.nanmin(Z), np.nanmax(Z)
+        #dZ = ZM - Zm
+        #im.set_clim(Zm + 0.5*dZ, ZM - 0.1*dZ)
         return ax
 
 
@@ -992,15 +1039,14 @@ class Signal:
                 extent=extent, interpolation='none', **kw)
         return ax
 
-    def specgram(self, ax=None, NFFT=2048, step=512, 
-            cmap='spectral', ylim=None, **kw):
-        
-        spec = Spectral(NFFT, step)
-
-        spec.specgram(self, ylim=ylim)
-
-        spec.plot(ax, cmap=cmap)
+    def specgram(self, ax=None, NFFT=2048, step=512, specgram='specgram', **kw):
+        self.spec = spec = Spectral(NFFT, step)
+        getattr(spec, specgram)(self)
+        spec.plot(ax, **kw)
         return ax
+
+    def specgram_mlab(self, **kw):
+        return self.specgram(specgram='specgram_mlab', **kw)
 
     def xcorr(self, other):
         dt = self.t - self.t[0]
