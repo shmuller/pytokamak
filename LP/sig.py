@@ -1,6 +1,8 @@
 import numpy as np
 import numpy.ma as ma
 
+from math import sqrt
+
 from pprint import pformat
 
 import scipy.optimize as opt
@@ -628,6 +630,62 @@ class Amp:
         return (fmtstr % self.__class__.__name__).format(**self.__dict__)
 
 
+class Detrender:
+    def __init__(self, N, detrend='linear'):
+        xm = (N - 1) / 2.
+        dx = 1. / N
+        fact = dx * sqrt(12.*dx/(1 - dx*dx))
+        self.x = np.arange(-xm, xm + 1) * fact
+
+        detrenders = dict(mean=self.detrend_mean, 
+                          linear=self.detrend_linear)
+        self.detrend = detrenders[detrend]
+
+    def detrend_mean(self, y):
+        return y - y.mean()
+
+    def detrend_linear(self, y):
+        x = self.x
+        y = y - y.mean()
+        k = np.dot(x, y)
+        return y - k * x
+
+
+class Spectral:
+    def __init__(self, NFFT=2048, step=512, detrend='linear'):
+        self.NFFT, self.step = NFFT, step
+        self.detrend = Detrender(NFFT).detrend
+        self.window = mlab.window_hanning
+
+    def specgram(self, S, ylim=None):
+        NFFT, step = self.NFFT, self.step
+
+        Pxx, freqs, bins = mlab.specgram(S.filled(), NFFT, 1e-3*S.fs, 
+                self.detrend, self.window, NFFT - step)
+       
+        if ylim is not None:
+            cnd = (ylim[0] <= freqs) & (freqs <= ylim[1])
+            freqs, Pxx = freqs[cnd], Pxx[cnd]
+        
+        n = Pxx.shape[1] - 1
+        ind0 = (NFFT + step) // 2
+        ind = np.r_[0, np.arange(ind0, ind0 + n*step, step), n*step + NFFT - 1]
+        self.t = S.t[ind]
+
+        df = freqs[1] - freqs[0]
+        self.f = np.r_[freqs[0], freqs[1:] - df/2, freqs[-1]]
+
+        self.Pxx = Pxx
+
+    def plot(self, ax=None, cmap='spectral'):
+        ax = get_axes(ax, xlab='t (s)', ylab='f (kHz)')
+
+        Z = 10. * np.log10(self.Pxx)
+
+        ax.pcolorfast(self.t, self.f, Z, cmap=cmap)
+        return ax
+
+
 class Signal:
     def __init__(self, x, t=None, **kw):
         self.x = np.atleast_1d(x)
@@ -791,6 +849,9 @@ class Signal:
         xi = self.PP(ti)
         return self.__class__(xi, ti, **self.kw)
 
+    def plinfit(self, i0, i1):
+        pass
+
     def ppolyfit(self, i0, i1, deg):
         N = len(i1)
         c = np.empty((deg + 1, N))
@@ -933,25 +994,12 @@ class Signal:
 
     def specgram(self, ax=None, NFFT=2048, step=512, 
             cmap='spectral', ylim=None, **kw):
-        Pxx, freqs, bins = mlab.specgram(self.filled(), NFFT, 1e-3*self.fs,
-                mlab.detrend_linear, mlab.window_hanning, NFFT - step)
-       
-        if ylim is not None:
-            cnd = (ylim[0] <= freqs) & (freqs <= ylim[1])
-            freqs, Pxx = freqs[cnd], Pxx[cnd]
         
-        n = Pxx.shape[1] - 1
-        ind0 = (NFFT + step) // 2
-        ind = np.r_[0, np.arange(ind0, ind0 + n*step, step), n*step + NFFT - 1]
-        t = self.t[ind]
+        spec = Spectral(NFFT, step)
 
-        df = freqs[1] - freqs[0]
-        f = np.r_[freqs[0], freqs[1:] - df/2, freqs[-1]]
+        spec.specgram(self, ylim=ylim)
 
-        Z = 10. * np.log10(Pxx)
-
-        ax = get_axes(ax, xlab='t (s)', ylab='f (kHz)')
-        ax.pcolorfast(t, f, Z, cmap=cmap)       
+        spec.plot(ax, cmap=cmap)
         return ax
 
     def xcorr(self, other):
