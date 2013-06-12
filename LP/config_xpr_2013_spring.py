@@ -990,7 +990,8 @@ E.rep(29845, 29844, "Plunge at 0.65 s to 15 cm, sweeps at 14.5 Vpp",
         posit = 0.15,
         descr = """\
             L-I-H transition, no arcs! Plasma was already stable. Unfortunately the 
-            probe was already moving out fast at I-H transition.""",
+            probe was already moving out fast at I-H transition. Single tip goes
+            into emission before transition.""",
         stars = '*****')
 
 # Stefan Muller

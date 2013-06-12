@@ -916,7 +916,7 @@ class Signal:
     def fs(self):
         return (self.t.size - 1) / (self.t[-1] - self.t[0])
 
-    def specgram(self, ax=None, NFFT=2048, step=512, 
+    def specgram_old(self, ax=None, NFFT=2048, step=512, 
             cmap='spectral', **kw):
         Pxx, freqs, bins = mlab.specgram(self.filled(), NFFT, 1e-3*self.fs,
                 mlab.detrend_linear, mlab.window_hanning, NFFT - step)
@@ -929,8 +929,29 @@ class Signal:
 
         im = ax.imshow(Z, aspect='auto', cmap=cmap, origin='lower', 
                 extent=extent, interpolation='none', **kw)
+        return ax
+
+    def specgram(self, ax=None, NFFT=2048, step=512, 
+            cmap='spectral', ylim=None, **kw):
+        Pxx, freqs, bins = mlab.specgram(self.filled(), NFFT, 1e-3*self.fs,
+                mlab.detrend_linear, mlab.window_hanning, NFFT - step)
+       
+        if ylim is not None:
+            cnd = (ylim[0] <= freqs) & (freqs <= ylim[1])
+            freqs, Pxx = freqs[cnd], Pxx[cnd]
         
-        ax.figure.tight_layout(pad=0.2)
+        n = Pxx.shape[1] - 1
+        ind0 = (NFFT + step) // 2
+        ind = np.r_[0, np.arange(ind0, ind0 + n*step, step), n*step + NFFT - 1]
+        t = self.t[ind]
+
+        df = freqs[1] - freqs[0]
+        f = np.r_[freqs[0], freqs[1:] - df/2, freqs[-1]]
+
+        Z = 10. * np.log10(Pxx)
+
+        ax = get_axes(ax, xlab='t (s)', ylab='f (kHz)')
+        ax.pcolorfast(t, f, Z, cmap=cmap)       
         return ax
 
     def xcorr(self, other):

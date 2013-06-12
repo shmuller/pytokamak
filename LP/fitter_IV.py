@@ -78,7 +78,7 @@ class FitterIVBase(Fitter):
         Irm, Irs = medianstd(self.I[N*9/10:])
 
         cnd1 = Ilm > Ils
-        cnd2 = Irm < -2*Ils
+        cnd2 = Irm < -Ils
         self.OK = cnd1 & cnd2
 
     def is_old_better(self, P_old):
