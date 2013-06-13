@@ -25,7 +25,8 @@ aug_diags = dict(
     MAG = dict(nodes=('Ipa', 'ULid12')),
     MHE = dict(nodes=('C09-23',), s=slice(None, None, 4)),
     CEZ = dict(nodes=('vrot', 'Ti', 'inte', 'err_vrot', 'err_Ti', 'err_inte',
-                      'R', 'z', 'phi')))
+                      'R', 'z', 'phi')),
+    XVS = dict(nodes=('S2L1A10',)))
 
 
 class Vessel(VtkProxy):
@@ -308,6 +309,27 @@ class AUGOverview:
 
     def plot_Ti(self, ax=None, **kw):
         return self.plot_CER(ax, 'Ti', 'Ti (keV)')
+
+    def plot_AXUV(self, ax=None, **kw):
+        S = self.S['XVS']['S2L1A10']
+        ax = get_axes(ax)
+        S.plot(ax)
+        ax.legend()
+        return ax
+
+    def specgram(self, **kw):
+        S_list = [self.XPR['tip1+tip2'],
+                  self['MAC']['Ipolsoli'],
+                  self['MHE']['C09-23'],
+                  self['XVS']['S2L1A10']]
+
+        fig = get_tfig(shape=(5, 1), figsize=(6, 8), xlab='t (s)')
+        self.plot_XPR_I_Mach(ax=fig.axes[0])
+
+        for ax, S in zip(fig.axes[1:], S_list):
+            S.specgram(ax=ax, **kw)
+            ax.set_ylabel('%s f (kHz)' % S.name)
+        return fig
 
     def plot(self, plots=None, fig=None, **kw):
         if plots is None:

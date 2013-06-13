@@ -468,7 +468,7 @@ class Probe:
         self.head.plot(ax, R, z)
         return ax
 
-    def _get_xsep(self, xkey='t', fact=1., plunge=None, inout=None, **kw):
+    def _get_xsep(self, xkey='t', fact=1., offs=0., plunge=None, inout=None, **kw):
         isep = self.psi.separatrix_crossings
         mask = self.S['Rs'].plunge_mask(isep, plunge, inout)
         psep = self.pos[isep[mask]]
@@ -476,7 +476,7 @@ class Probe:
             xsep = fact*psep.t
         else:
             xsep = fact*psep.x[:,0]
-        return xsep
+        return xsep + offs
 
     def plot_separatrix_crossings(self, axes, color='last', linewidth=1, **kw):
         try:
