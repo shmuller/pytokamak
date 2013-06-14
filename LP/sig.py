@@ -896,17 +896,35 @@ class Signal:
         xi = self.PP(ti)
         return self.__class__(xi, ti, **self.kw)
 
-    def plinfit(self, i0, i1):
-        pass
+    @classmethod
+    def constfit(cls, x, y, deg=0):
+        return y.mean()
+
+    @classmethod
+    def linfit(cls, x, y, deg=1):
+        xm = x.mean()
+        ym = y.mean()
+        dx = x - xm
+        dy = y - ym
+        k = np.dot(dx, dy) / np.dot(dx, dx)
+        return np.array((k, ym - k*xm))
 
     def ppolyfit(self, i0, i1, deg):
+        if deg == 0:
+            polyfit = self.constfit
+        elif deg == 1:
+            polyfit = self.linfit
+        else:
+            polyfit = np.polyfit
+
         N = len(i1)
         c = np.empty((deg + 1, N))
         x = self.filled()
+        t = self.t
         for i in xrange(N):
             s = slice(i0[i], i1[i])
-            t = self.t[s]
-            c[:,i] = np.polyfit(t - t[0], x[s], deg)
+            ti = t[s]
+            c[:,i] = polyfit(ti - ti[0], x[s], deg)
         return c
 
     def as_PP(self, PP):
