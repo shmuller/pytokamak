@@ -484,15 +484,15 @@ if __name__ == "__main__":
 
     dig_AUG = DigitizerAUGEQI(shn=30017)
     eqi_AUG = Eqi(dig_AUG)
-    ax = eqi_AUG.get_flux_surf(3.45, lvls).plot(ax, edgecolors='b')
+    ax = eqi_AUG.get_flux_surf(3.45, lvls=lvls).plot(ax, edgecolors='b')
     ax = eqi_AUG.get_separatrix(3.45).plot(ax, edgecolors='b', linewidth=2)
 
     dig_D3D = DigitizerD3DEFIT(shn=141451)
     eqi_D3D = Eqi(dig_D3D)
-    ax = eqi_D3D.get_flux_surf(1.65, lvls).plot(ax, edgecolors='r')
+    ax = eqi_D3D.get_flux_surf(1.65, lvls=lvls).plot(ax, edgecolors='r')
     ax = eqi_D3D.get_separatrix(1.65).plot(ax, edgecolors='r', linewidth=2)
     ax.axis('equal')
 
-    show()
+    ax.figure.show()
 
 
