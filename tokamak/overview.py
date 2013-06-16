@@ -364,15 +364,17 @@ if __name__ == "__main__":
     fl = fli(1.475, -0.966)
     fl2 = fli(1.5, 0.)
 
-    #ax = AUG.ves.plot()
-    #FS.plot(ax=ax)
-    #fl.plot(ax=ax, linewidth=2)
-    #fl2.plot(ax=ax, linewidth=2)
-    #show()
+    ax = AUG.ves.plot()
+    FS.plot(ax=ax)
+    fl.plot(ax=ax, linewidth=2)
+    fl2.plot(ax=ax, linewidth=2)
+    ax.figure.show()
 
+    """
     win = AUG.ves.prerender()
     FS.prerender(win=win)
     fl.prerender(win=win)
     fl2.prerender(win=win, color=(1., 0., 0.))
     win.render()
     win.start()
+    """

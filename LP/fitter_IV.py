@@ -13,6 +13,7 @@ import fitfun as ff
 #import fitfun_ctypes as ff
 #import fitfun_cython as ff
 #import fitfun_cffi as ff
+#import fitfun_boost_numpy as ff
 
 from LP import mag_fit
 

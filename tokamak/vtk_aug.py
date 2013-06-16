@@ -1,10 +1,20 @@
-from sm_pyplot import vtk_plot
+from matplotlib import get_backend
 
-_VtkCamera = vtk_plot.VtkCamera
-_VtkWindow = vtk_plot.VtkWindow
-_VtkRotatingPolygon = vtk_plot.VtkRotatingPolygon
-_VtkContour = vtk_plot.VtkContour
-_VtkPolyline = vtk_plot.VtkPolyline
+if get_backend().lower() == 'qt4agg':
+    from sm_pyplot import vtk_plot
+
+    _VtkCamera = vtk_plot.VtkCamera
+    _VtkWindow = vtk_plot.VtkWindow
+    _VtkRotatingPolygon = vtk_plot.VtkRotatingPolygon
+    _VtkContour = vtk_plot.VtkContour
+    _VtkPolyline = vtk_plot.VtkPolyline
+else:
+    class Dummy:
+        def __init__(self, *args, **kw):
+            pass
+
+    _VtkCamera = _VtkWindow = _VtkRotatingPolygon = _VtkContour = _VtkPolyline = Dummy
+
 
 class VtkProxy:
     def prerender(self, *args, **kw):
