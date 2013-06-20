@@ -124,14 +124,23 @@ E.rep(29305, 29304, "Repeat, didn't run",
 E.rep(29306, 29305, "1.4 T, 800 kW",
         times = 3.3,
         posit = 0.34,
-        descr = "Good data. L-H transition at 3.432 s.",
-        stars = '****')
+        descr = """\
+            L-H transition at 3.432 s. Great swept probe data of L-I
+            and I-H transition. No arcing on all tips, only slight overheating
+            of single tip on way out. H-mode continues to run after probe
+            leaves, showing that I-phase pulsing transitions rather smoothly into
+            Type-III ELMs, until finally a Type-I ELM appears which terminates the
+            H-mode. See 29307 for very similar meaurements with DC biased Mach
+            probe""",
+        stars = '*****')
 
 # Stefan Muller
 E.rep(29307, 29306, "Repeat with Mach at -200 V",
         times = 3.3,
         posit = 0.34,
-        descr = "Great! L-H transition at 3.427 s",
+        descr = """\
+            Great! L-H transition at 3.427 s. Like 29306, but with DC biased
+            Mach probe.""",
         stars = '*****')
 
 # Gregor Birkenmeier

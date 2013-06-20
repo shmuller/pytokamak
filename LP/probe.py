@@ -10,6 +10,11 @@ logger = logging
 
 from collections import OrderedDict
 
+try:
+    import h5py as H5
+except ImportError:
+    pass
+
 import fitter_IV
 reload(fitter_IV)
 
@@ -146,7 +151,7 @@ class PhysicalResults:
         if plunge is not None:
             tM = tM[plunge]
         
-        f = h5py.File(name + '.h5', "w")
+        f = H5.File(name + '.h5', "w")
         for key in y.dtype.names:
             f.create_dataset(key, data=y[key], compression="gzip")
         f.close()
@@ -154,7 +159,7 @@ class PhysicalResults:
     def load(self, plunge=None, inout=None):
         name = self.make_name(plunge, inout)
         
-        f = h5py.File(name + '.h5', "r")
+        f = H5.File(name + '.h5', "r")
         keys = [key.encode('ascii') for key in f.keys()]
         type = [f[key].dtype for key in keys]
         size = [f[key].len() for key in keys]

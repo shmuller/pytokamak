@@ -196,7 +196,7 @@ class AUGOverview:
         ax.set_ylabel('n (10$^{\mathdefault{19}}$ m$^{\mathdefault{-3}}$)')
         
         for c in chn:
-            (S[c]*1e-19).masked(S[c] < 0).plot(ax)
+            (S[c]*1e-19).nonneg().plot(ax)
         ax.legend()
         return ax
 
@@ -206,7 +206,7 @@ class AUGOverview:
         ax.set_ylabel('n (10$^{\mathdefault{19}}$ m$^{\mathdefault{-3}}$)')
         
         for c in chn:
-            (S[c]*1e-19).masked(S[c] < 0).plot(ax)
+            (S[c]*1e-19).nonneg().plot(ax)
         ax.legend()
         return ax
 

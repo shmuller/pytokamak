@@ -209,9 +209,10 @@ class ProbeXPR(Probe):
             PP_j3 = self.IV['tip3'].PP[ID][0].copy()
             PP_j3.c /= A[2]
 
-            keys.append('j3')
             c = np.dstack((c, PP_j3.c))
-        except KeyError:
+            keys.append('j3')
+            # FIXME: PP_j3.c can have one more/fewer point than c!
+        except:
             pass
 
         self.PP_meas = PP_j.__class__(c, PP_j.x, **PP_j.kw)

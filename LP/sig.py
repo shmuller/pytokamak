@@ -779,6 +779,12 @@ class Signal:
     def shift_t(self, dt):
         return self.__class__(self.x, self.t + dt, **self.kw)
 
+    def to_ms(self):
+        assert self.tunits == 's', "tunits must be seconds"
+        kw = self.kw.copy()
+        kw['tunits'] = 'ms'
+        return self.__class__(self.x, 1e3*self.t, **kw)
+
     def _op_factory(op, calcfun):
         def apply(self, other, out=None):
             try:
@@ -848,6 +854,12 @@ class Signal:
             return self.x
         else:
             return self.x.filled(np.nan)
+
+    def nonneg(self):
+        return self.masked(self < 0)
+
+    def nonpos(self):
+        return self.masked(self > 0)
 
     def normed(self):
         return self.__array_wrap__(self.x / np.abs(self.range).max())
