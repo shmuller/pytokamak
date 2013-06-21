@@ -638,9 +638,13 @@ class Detrender:
         fact = dx * sqrt(12.*dx/(1 - dx*dx))
         self.x = np.arange(-xm, xm + 1) * fact
 
-        detrenders = dict(mean=self.detrend_mean, 
+        detrenders = dict(none=self.detrend_none,
+                          mean=self.detrend_mean, 
                           linear=self.detrend_linear)
         self.detrend = detrenders[detrend]
+
+    def detrend_none(self, y):
+        return y
 
     def detrend_mean(self, y):
         return y - y.mean()
@@ -668,21 +672,21 @@ class Spectral:
 
     def __init__(self, NFFT=2048, step=512, detrend='linear'):
         self.NFFT, self.step = NFFT, step
-        self.detrend = Detrender(NFFT).detrend
+        self.detrender = Detrender(NFFT, detrend=detrend)
         self.win = Window(NFFT)
 
     def specgram_mlab(self, S):
         NFFT, step = self.NFFT, self.step
 
         self.t = S.t
-        self.Pxx, self.freqs, bins = mlab.specgram(S.filled(), 
-                NFFT, 1e-3*S.fs, self.detrend, self.win.window, NFFT - step)
+        self.Pxx, self.freqs, bins = mlab.specgram(S.filled(), NFFT, 1e-3*S.fs, 
+                self.detrender.detrend, self.win.window, NFFT - step)
 
     def specgram(self, S):
         NFFT, step = self.NFFT, self.step
 
         window = self.win.window
-        detrend = self.detrend
+        detrend = self.detrender.detrend
 
         x = S.filled()
 
@@ -877,7 +881,8 @@ class Signal:
 
     @memoized_property
     def range(self):
-        return np.nanmin(self.x), np.nanmax(self.x)
+        x = ma.masked_invalid(self.x)
+        return x.min(), x.max()
 
     @staticmethod
     def _percentiles(x, p):
@@ -1069,14 +1074,35 @@ class Signal:
                 extent=extent, interpolation='none', **kw)
         return ax
 
-    def specgram(self, ax=None, NFFT=2048, step=512, specgram='specgram', **kw):
-        self.spec = spec = Spectral(NFFT, step)
+    def specgram(self, ax=None, NFFT=2048, step=512, 
+            specgram='specgram', detrend='linear', **kw):
+        self.spec = spec = Spectral(NFFT, step, detrend)
         getattr(spec, specgram)(self)
-        spec.plot(ax, **kw)
-        return ax
+        return spec.plot(ax, **kw)
 
     def specgram_mlab(self, **kw):
         return self.specgram(specgram='specgram_mlab', **kw)
+
+    def specgram_overlay(self, ax=None, *args, **kw):
+        ax = self.specgram(ax, *args, **kw)
+        ax2 = ax.twinx()
+        ax2.set_navigate(False)
+        ax2.yaxis.set_visible(False)
+        self.plot(ax2)
+        return ax
+
+    def plot_over_specgram(self, ax2=None, *args, **kw):
+        ax2 = self.specgram(ax2, *args, **kw)
+        ax2.yaxis.tick_right()
+        ax2.yaxis.set_label_position('right')
+        ax2.yaxis.set_offset_position('right')
+                
+        ax = ax2._make_twin_axes(frameon=False, navigate=False)
+        self.plot(ax)
+        ax.xaxis.set_visible(False)
+        ax.set_ylabel(self.ylab)
+        ax.figure.tight_layout()
+        return ax
 
     def xcorr(self, other):
         dt = self.t - self.t[0]
