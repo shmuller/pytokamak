@@ -741,6 +741,25 @@ class Spectral:
         return ax
 
 
+class Filter:
+    def __init__(self, fm=None, fM=None, f_Nyq=1., order=4):
+        from scipy import signal
+
+        if fm is None:
+            b, a = signal.butter(order, fM/f_Nyq, 'lowpass')
+        elif fM is None:
+            b, a = signal.butter(order, fm/f_Nyq, 'highpass')
+        else:
+            b, a = signal.butter(order, [fm/f_Nyq, fM/f_Nyq], 'bandpass')
+
+        def filter(x):
+            return signal.filtfilt(b, a, x)
+        self.filter = filter
+
+    def __call__(self, x):
+        return self.filter(x)
+
+
 class Signal:
     def __init__(self, x, t=None, **kw):
         self.x = np.atleast_1d(x)
@@ -1064,6 +1083,14 @@ class Signal:
     def fs(self):
         return (self.t.size - 1) / (self.t[-1] - self.t[0])
 
+    @memoized_property
+    def f_Nyq(self):
+        return self.fs / 2
+
+    def filter(self, fm=None, fM=None):
+        filter = Filter(fm, fM, self.f_Nyq)
+        return self.__array_wrap__(filter(self.filled(0).x))
+
     def specgram(self, ax=None, NFFT=2048, step=512, 
             specgram='specgram', detrend='linear', **kw):
         self.spec = spec = Spectral(NFFT, step, detrend)
@@ -1109,12 +1136,12 @@ class Signal:
 
     def lag(self, other, sign=1):
         """
-        Returns C, where C.t is the amount of time by which 'other' is lagging 
-        behind 'self'
+        Returns C, where C.t is the amount of time by which 'self' is lagging 
+        behind 'other'
         """
         C = self.xcorr(other)
         return C[np.argmax(sign*C.x)]
-
+   
 
 class PeriodPhaseFinder:
     def __init__(self, x):
