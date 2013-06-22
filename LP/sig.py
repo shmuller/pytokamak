@@ -663,12 +663,14 @@ class Window:
 
 
 class Spectral:
-    cdict = dict(blue =((0,1,1),(.5,0,0),(.75,0,0),(.9,0,0),(1,0,0)), 
-                 green=((0,0,0),(.5,1,1),(.75,1,1),(.9,0,0),(1,0,0)), 
-                 red  =((0,0,0),(.5,1,1),(.75,0,0),(.9,1,1),(1,0,0)))
+    cdict = dict(blue =((0,1,1),(.5,0,0),(.75,0,0),(1,0,0)), 
+                 green=((0,0,0),(.5,1,1),(.75,1,1),(1,0,0)), 
+                 red  =((0,0,0),(.5,1,1),(.75,0,0),(1,1,1)))
 
-    #cmap = colors.LinearSegmentedColormap('spectral_colormap', cdict, 256)
-    cmap = 'spectral'
+    cmap = colors.LinearSegmentedColormap('spectral_colormap', cdict, 256)
+
+    #clist = [(0,0,1)]*4 + [(1,1,0)]*3 + [(0,1,0)]*2 + [(1,0,0)]*1
+    #cmap = colors.ListedColormap(clist)
 
     def __init__(self, NFFT=2048, step=512, detrend='linear'):
         self.NFFT, self.step = NFFT, step
@@ -678,8 +680,9 @@ class Spectral:
     def specgram_mlab(self, S):
         NFFT, step = self.NFFT, self.step
 
+        S = S.filled()
         self.t = S.t
-        self.Pxx, self.freqs, bins = mlab.specgram(S.filled(), NFFT, 1e-3*S.fs, 
+        self.Pxx, self.freqs, bins = mlab.specgram(S.x, NFFT, 1e-3*S.fs, 
                 self.detrender.detrend, self.win.window, NFFT - step)
 
     def specgram(self, S):
@@ -688,7 +691,8 @@ class Spectral:
         window = self.win.window
         detrend = self.detrender.detrend
 
-        x = S.filled()
+        S = S.filled()
+        x = S.x
 
         ind = np.arange(0, x.size - NFFT + 1, step)
         n_f = NFFT // 2 + 1
@@ -707,8 +711,8 @@ class Spectral:
         self.t = S.t
         self.freqs = np.arange(n_f) * (fs / NFFT)
 
-    def plot(self, ax=None, ylim=None, cmap=None):
-        if cmap is None:
+    def plot(self, ax=None, ylim=None, cmap='spectral'):
+        if cmap == 'custom':
             cmap = Spectral.cmap
         NFFT, step = self.NFFT, self.step
         Pxx, freqs = self.Pxx, self.freqs
@@ -853,11 +857,11 @@ class Signal:
         else:
             return self.__array_wrap__(self.x.data)
 
-    def filled(self):
+    def filled(self, fill=np.nan):
         if not isinstance(self.x, ma.masked_array):
-            return self.x
+            return self
         else:
-            return self.x.filled(np.nan)
+            return self.__array_wrap__(self.x.filled(fill))
 
     def nonneg(self):
         return self.masked(self < 0)
@@ -936,8 +940,9 @@ class Signal:
 
         N = len(i1)
         c = np.empty((deg + 1, N))
-        x = self.filled()
-        t = self.t
+        S = self.filled()
+        x = S.x
+        t = S.t
         for i in xrange(N):
             s = slice(i0[i], i1[i])
             ti = t[s]
@@ -1059,21 +1064,6 @@ class Signal:
     def fs(self):
         return (self.t.size - 1) / (self.t[-1] - self.t[0])
 
-    def specgram_old(self, ax=None, NFFT=2048, step=512, 
-            cmap='spectral', **kw):
-        Pxx, freqs, bins = mlab.specgram(self.filled(), NFFT, 1e-3*self.fs,
-                mlab.detrend_linear, mlab.window_hanning, NFFT - step)
-        
-        df = freqs[1] - freqs[0]
-        extent = self.t[0], self.t[-1], freqs[0] - df/2, freqs[-1] - df/2
-        Z = 10. * np.log10(Pxx)
-
-        ax = get_axes(ax, xlab='t (s)', ylab='f (kHz)')
-
-        im = ax.imshow(Z, aspect='auto', cmap=cmap, origin='lower', 
-                extent=extent, interpolation='none', **kw)
-        return ax
-
     def specgram(self, ax=None, NFFT=2048, step=512, 
             specgram='specgram', detrend='linear', **kw):
         self.spec = spec = Spectral(NFFT, step, detrend)
@@ -1083,25 +1073,25 @@ class Signal:
     def specgram_mlab(self, **kw):
         return self.specgram(specgram='specgram_mlab', **kw)
 
-    def specgram_overlay(self, ax=None, *args, **kw):
+    def plot_over_specgram(self, ax=None, right=None, *args, **kw):
         ax = self.specgram(ax, *args, **kw)
-        ax2 = ax.twinx()
-        ax2.set_navigate(False)
-        ax2.yaxis.set_visible(False)
+                        
+        ax2 = ax._make_twin_axes(frameon=False, navigate=False)
+        ax2.set_ylabel(self.ylab)
+        ax2.xaxis.set_visible(False)
         self.plot(ax2)
-        return ax
 
-    def plot_over_specgram(self, ax2=None, *args, **kw):
-        ax2 = self.specgram(ax2, *args, **kw)
-        ax2.yaxis.tick_right()
-        ax2.yaxis.set_label_position('right')
-        ax2.yaxis.set_offset_position('right')
-                
-        ax = ax2._make_twin_axes(frameon=False, navigate=False)
-        self.plot(ax)
-        ax.xaxis.set_visible(False)
-        ax.set_ylabel(self.ylab)
-        ax.figure.tight_layout()
+        if right is None:
+            ax2.yaxis.set_visible(False)
+        else:
+            if right == 'specgram':
+                r = ax.yaxis
+            else:
+                r = ax2.yaxis
+            r.tick_right()
+            r.set_label_position('right')
+            r.set_offset_position('right')
+            ax.figure.tight_layout()
         return ax
 
     def xcorr(self, other):
