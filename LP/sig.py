@@ -665,7 +665,7 @@ class Window:
         self.norm = 1. / np.sum(self.window**2)
 
 
-class Spectral:
+class Signal2D:
     cdict = dict(blue =((0,1,1),(.5,0,0),(.75,0,0),(1,0,0)), 
                  green=((0,0,0),(.5,1,1),(.75,1,1),(1,0,0)), 
                  red  =((0,0,0),(.5,1,1),(.75,0,0),(1,1,1)))
@@ -675,73 +675,88 @@ class Spectral:
     #clist = [(0,0,1)]*4 + [(1,1,0)]*3 + [(0,1,0)]*2 + [(1,0,0)]*1
     #cmap = colors.ListedColormap(clist)
 
-    def __init__(self, NFFT=2048, step=512, detrend='linear'):
-        self.NFFT, self.step = NFFT, step
-        self.detrender = Detrender(NFFT, detrend=detrend)
-        self.win = Window(NFFT)
+    def __init__(self, x, y, Z, xlab='', ylab=''):
+        self.x, self.y, self.Z = x, y, Z
+        self.xlab, self.ylab = xlab, ylab
 
-    def specgram_mlab(self, S):
-        NFFT, step = self.NFFT, self.step
+    def plot(self, ax=None, ylim=None, cmap='spectral', **kw):
+        if cmap == 'custom':
+            cmap = self.cmap
+        x, y, Z = self.x, self.y, self.Z
+        
+        if ylim is not None:
+            cnd = (ylim[0] <= y) & (y <= ylim[1])
+            y, Z = y[cnd], Z[cnd]
+        
+        dy = y[1] - y[0]
+        y = np.r_[y[0], y[1:] - dy/2, y[-1]]
+        
+        kw.setdefault('xlab', self.xlab)
+        kw.setdefault('ylab', self.ylab)
+        ax = get_axes(ax, **kw)
+        im = ax.pcolorfast(x, y, Z, cmap=cmap)
+        ax._current_image = im
+        return ax
 
-        S = S.filled()
-        self.t = S.t
-        self.Pxx, self.freqs, bins = mlab.specgram(S.x, NFFT, 1e-3*S.fs, 
-                self.detrender.detrend, self.win.window, NFFT - step)
 
-    def specgram(self, S):
-        NFFT, step = self.NFFT, self.step
+class Windower:
+    def __init__(self, w=2048, step=512, detrend='linear'):
+        self.w, self.step = w, step
+        self.detrender = Detrender(w, detrend=detrend)
+        self.win = Window(w)
+            
+    def __call__(self, S):
+        return self.windowed_calc(S)
+
+    def calc(self, xi):
+        raise NotImplementedError
+
+    def prepare_output(self, t, S, Z):
+        raise NotImplementedError
+
+    def windowed_calc(self, S):
+        w, step = self.w, self.step
 
         window = self.win.window
         detrend = self.detrender.detrend
+        calc = self.calc
 
         S = S.filled()
         x = S.x
 
-        ind = np.arange(0, x.size - NFFT + 1, step)
-        n_f = NFFT // 2 + 1
+        i0 = np.arange(0, x.size - w + 1, step)
+        i1 = i0 + w
 
-        self.Pxx = Pxx = np.empty((n_f, ind.size))
-        for i in xrange(ind.size):
-            xi = x[ind[i]:ind[i] + NFFT]
-            Xi = fft(window * detrend(xi))[:n_f]
-            Pxx[:,i] = Xi.real**2 + Xi.imag**2
+        Z = np.empty((self.M, i0.size))
+        for i in xrange(i0.size):
+            xi = x[i0[i]:i1[i]]
+            Z[:,i] = calc(window * detrend(xi))
+                
+        n = i0.size - 1
+        ind0 = (w + step) // 2
+        ind = np.r_[0, np.arange(ind0, ind0 + n*step, step), n*step + w - 1]
+        t = S.t[ind]
+        
+        return self.prepare_output(t, S, Z)
 
+
+class Specgram(Windower):
+    def __init__(self, *args, **kw):
+        Windower.__init__(self, *args, **kw)
+        self.M = self.w // 2 + 1
+
+    def calc(self, xi):
+        Xi = fft(xi)[:self.M]
+        return Xi.real**2 + Xi.imag**2
+
+    def prepare_output(self, t, S, Z):
         fs = 1e-3*S.fs
+        f = np.arange(self.M) * (fs / self.w)
 
-        Pxx *= self.win.norm / fs
-        Pxx[1:-1] *= 2.
-        
-        self.t = S.t
-        self.freqs = np.arange(n_f) * (fs / NFFT)
-
-    def plot(self, ax=None, ylim=None, cmap='spectral'):
-        if cmap == 'custom':
-            cmap = Spectral.cmap
-        NFFT, step = self.NFFT, self.step
-        Pxx, freqs = self.Pxx, self.freqs
-        
-        if ylim is not None:
-            cnd = (ylim[0] <= freqs) & (freqs <= ylim[1])
-            freqs, Pxx = freqs[cnd], Pxx[cnd]
-        
-        n = Pxx.shape[1] - 1
-        ind0 = (NFFT + step) // 2
-        ind = np.r_[0, np.arange(ind0, ind0 + n*step, step), n*step + NFFT - 1]
-        t = self.t[ind]
-
-        df = freqs[1] - freqs[0]
-        f = np.r_[freqs[0], freqs[1:] - df/2, freqs[-1]]
-
-        Z = 10. * np.log10(Pxx)
-        
-        ax = get_axes(ax, xlab='t (s)', ylab='f (kHz)')
-        im = ax.pcolorfast(t, f, Z, cmap=cmap)
-        ax._current_image = im
-
-        #Zm, ZM = np.nanmin(Z), np.nanmax(Z)
-        #dZ = ZM - Zm
-        #im.set_clim(Zm + 0.5*dZ, ZM - 0.1*dZ)
-        return ax
+        Z *= self.win.norm / fs
+        Z[1:-1] *= 2.
+        Z = 10. * np.log10(Z)
+        return Signal2D(t, f, Z, xlab='t (s)', ylab='f (kHz)')
 
 
 class Filter:
@@ -1100,14 +1115,9 @@ class Signal:
         filter = Filter(fm, fM, self.f_Nyq)
         return self.__array_wrap__(filter(self.filled(0).x))
 
-    def specgram(self, ax=None, NFFT=2048, step=512, 
-            specgram='specgram', detrend='linear', **kw):
-        self.spec = spec = Spectral(NFFT, step, detrend)
-        getattr(spec, specgram)(self)
+    def specgram(self, ax=None, NFFT=2048, step=512, detrend='linear', **kw):
+        spec = Specgram(NFFT, step, detrend)(self)
         return spec.plot(ax, **kw)
-
-    def specgram_mlab(self, **kw):
-        return self.specgram(specgram='specgram_mlab', **kw)
 
     def plot_over_specgram(self, ax=None, right=None, *args, **kw):
         ax = self.specgram(ax, *args, **kw)
