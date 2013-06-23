@@ -650,18 +650,24 @@ class Detrender:
         return y
 
     def detrend_mean(self, y):
-        return y - y.mean()
+        return y - y.mean(axis=0)
 
     def detrend_linear(self, y):
         x = self.x
-        y = y - y.mean()
+        y = y - y.mean(axis=0)
         k = np.dot(x, y)
-        return y - k * x
+        if k.ndim == 0:
+            return y - k * x
+        else:
+            return y - k[None] * x[:, None]
 
 
 class Window:
-    def __init__(self, N):
-        self.window = np.hanning(N)
+    def __init__(self, N, window='hanning'):
+        windows = dict(none=np.ones,
+                       hanning=np.hanning)
+
+        self.window = windows[window](N)
         self.norm = 1. / np.sum(self.window**2)
 
 
@@ -698,12 +704,19 @@ class Signal2D:
         ax._current_image = im
         return ax
 
+    def plot_with_signal(self, S, ax=None, yloc=None, *args, **kw):
+        ax = self.plot(ax, *args, **kw)
+        ax2 = ax.get_2nd_axes(ylab=S.ylab, yloc=yloc)
+        S.plot(ax2)
+        ax.figure.tight_layout()
+        return ax
+
 
 class Windower:
-    def __init__(self, w=2048, step=512, detrend='linear'):
+    def __init__(self, w=2048, step=512, detrend='linear', window='hanning'):
         self.w, self.step = w, step
         self.detrender = Detrender(w, detrend=detrend)
-        self.win = Window(w)
+        self.win = Window(w, window=window)
             
     def __call__(self, S):
         return self.windowed_calc(S)
@@ -717,14 +730,14 @@ class Windower:
     def windowed_calc(self, S):
         w, step = self.w, self.step
 
-        window = self.win.window
-        detrend = self.detrender.detrend
-        calc = self.calc
-
         S = S.filled()
         x = S.x
 
-        i0 = np.arange(0, x.size - w + 1, step)
+        window = self.win.window.reshape((-1,) + (1,)*(x.ndim - 1))
+        detrend = self.detrender.detrend
+        calc = self.calc
+
+        i0 = np.arange(0, x.shape[0] - w + 1, step)
         i1 = i0 + w
 
         Z = np.empty((self.M, i0.size))
@@ -757,6 +770,32 @@ class Specgram(Windower):
         Z[1:-1] *= 2.
         Z = 10. * np.log10(Z)
         return Signal2D(t, f, Z, xlab='t (s)', ylab='f (kHz)')
+
+
+class XCorr(Windower):
+    def __init__(self, *args, **kw):
+        kw.setdefault('window', 'none')
+        Windower.__init__(self, *args, **kw)
+        self.M = self.w * 2 - 1
+        if self.w < 500:
+            self._correlate = self._correlate_direct
+        else:
+            self._correlate = self._correlate_fft
+
+    def _correlate_direct(self, x, y):
+        return np.correlate(x / x.size, y, 'full')
+
+    def _correlate_fft(self, x, y):
+        return fftconvolve(x / x.size, y[::-1], 'full')
+
+    def calc(self, xi):
+        xi = (xi - xi.mean(axis=0)) / xi.std(axis=0)
+        return self._correlate(xi[:, 0], xi[:, 1])
+
+    def prepare_output(self, t, S, C): 
+        dt = 1e3 / S.fs
+        Dt = np.arange(-(self.w - 1), self.w) * dt
+        return Signal2D(t, Dt, C, xlab='t (s)', ylab='$\Delta$t (ms)')
 
 
 class Filter:
@@ -1119,26 +1158,12 @@ class Signal:
         spec = Specgram(NFFT, step, detrend)(self)
         return spec.plot(ax, **kw)
 
-    def plot_over_specgram(self, ax=None, right=None, *args, **kw):
+    def plot_over_specgram(self, ax=None, yloc=None, *args, **kw):
         ax = self.specgram(ax, *args, **kw)
-                        
-        ax2 = ax._make_twin_axes(frameon=False, navigate=False)
-        ax2.set_ylabel(self.ylab)
-        ax2.xaxis.set_visible(False)
+        ax2 = ax.get_2nd_axes(ylab=self.ylab, yloc=yloc)
         self.plot(ax2)
-
-        if right is None:
-            ax2.yaxis.set_visible(False)
-        else:
-            if right == 'specgram':
-                r = ax.yaxis
-            else:
-                r = ax2.yaxis
-            r.tick_right()
-            r.set_label_position('right')
-            r.set_offset_position('right')
-            ax.figure.tight_layout()
-        return ax
+        ax.figure.tight_layout()
+        return ax2
 
     def xcorr(self, other):
         dt = self.t - self.t[0]
