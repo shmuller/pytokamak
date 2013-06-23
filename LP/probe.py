@@ -445,10 +445,6 @@ class Probe:
             R.t -= R.t[R.t_ind[phase][plunge]]
         return self
 
-    def smooth_I(self, w=10):
-        for I in self.I.itervalues():
-            I.smooth(w)
-
     def corr_capa(self):
         for I in self.I.itervalues():
             I.x[:] -= I.I_capa

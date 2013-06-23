@@ -169,7 +169,7 @@ class ProbeXPR(Probe):
         self.norm_to_region(s)
         
         S = self.S
-        S['Rs'] = S['R'].copy().mediansmooth(100)
+        S['Rs'] = S['R'].smooth(100, mode='median')
         S['tip1+tip2'] = S['tip1'] + S['tip2']
         S['tip1+tip2'].update(label='Mach tips sum')
         

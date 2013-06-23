@@ -7,8 +7,11 @@ from pprint import pformat
 
 import scipy.optimize as opt
 import scipy.fftpack
+import scipy.signal
 
 fft = scipy.fftpack.fft
+fftconvolve = scipy.signal.fftconvolve
+
 #fft = np.fft.fft
 
 try:
@@ -971,17 +974,23 @@ class Signal:
     def as_PP(self, PP):
         c = self.ppolyfit(PP.i0, PP.i1, PP.c.shape[0] - 1)
         return PP.__class__(c, PP.x, **PP.kw)
-        
-    def smooth(self, w=100):
-        self.x[:] = smooth(self.x, window_len=2*w+1)
-        return self
 
-    def mediansmooth(self, w=100):
-        mediansmooth(self.x, w)
-        return self
+    def detrend(self):
+        k, d = self.linfit(self.t, self.filled().x)
+        return self.__array_wrap__(self.x - k*self.t - d)
+
+    def smooth(self, w=100, mode='gaussian'):
+        if mode == 'gaussian':
+            x = smooth(self.x, window_len=2*w+1)
+        elif mode == 'median':
+            x = self.x.copy()
+            mediansmooth(x, w)
+        else:
+            raise ValueError("Unknown smooth mode %s" % mode)
+        return self.__array_wrap__(x)
 
     def despike(self, w=2):
-        return self.mediansmooth(w)
+        return self.smooth(w, mode='median')
 
     def _move_factory(name):
         movefun = movefuns[name]
@@ -1127,7 +1136,10 @@ class Signal:
         x = y = self.standardized().x
         if other is not self:
             y = other.standardized().x
-        C = np.correlate(x / x.size, y, 'full')
+        if x.size < 500:
+            C = np.correlate(x / x.size, y, 'full')
+        else:
+            C = fftconvolve(x / x.size, y[::-1], 'full')
         return Signal(C, Dt, tunits=self.tunits, type='Correlation',
                              name='xcorr(%s, %s)' % (self.name, other.name))
 
@@ -1348,7 +1360,7 @@ class CurrentSignal(Signal):
         return self.masked(self.V > Vmax)
 
     def capa_pickup(self):
-        self.dV_dt = self.V.copy().smooth(10).deriv()
+        self.dV_dt = self.V.smooth(10).deriv()
 
         cnd = self.t - self.t[0] < 0.05
         dV_dtc = self.dV_dt.x[cnd]
