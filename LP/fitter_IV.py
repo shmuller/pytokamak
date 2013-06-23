@@ -3,9 +3,8 @@ import numpy.ma as ma
 
 from itertools import cycle
 
-from sig import memoized_property, median
-from sig import DictView, GeneratorDict, Container, \
-        CurrentSignal, PiecewisePolynomialEndpoints
+from sig import memoized_property, median, DictView, GeneratorDict, \
+        Container, PiecewisePolynomialEndpoints
 
 from fitter import Fitter, FitterError
 
@@ -602,7 +601,7 @@ class IV:
         Ifit = self.fitfun(p, V.x)
         #mask = V.x > p[1] + p[2]
         Ifit_masked = ma.masked_array(Ifit, ~PP.mask)
-        return CurrentSignal(Ifit_masked, t, V=V)
+        return self.S.__class__(Ifit_masked, t, V=V)
 
     def get_Sfit_at_event(self, t_event, ID='IV'):
         PP = self.PP[ID]

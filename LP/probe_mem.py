@@ -1,6 +1,6 @@
 import numpy as np
 
-from sig import PositionSignal
+from probe import PositionSignal
 
 from tokamak.digitizer_aug import DigitizerAUG
 
