@@ -8,7 +8,7 @@ reload(logging)
 logging.basicConfig(level=logging.WARN)
 logger = logging
 
-from collections import OrderedDict
+from collections import  Iterable, OrderedDict
 
 try:
     import h5py as H5

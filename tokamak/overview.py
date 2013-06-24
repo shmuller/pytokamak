@@ -333,7 +333,7 @@ class AUGOverview:
             ax.set_ylabel('%s f (kHz)' % S.name)
         return fig
 
-    def plot(self, plots=None, fig=None, **kw):
+    def plot(self, plots=None, fig=None, figsize=(6, 6), **kw):
         if plots is None:
             plots = self.def_plots
 
@@ -344,8 +344,8 @@ class AUGOverview:
         except:
             pass
 
-        fig = get_tfig(fig, pos=(450, 150), figsize=(6,6), shape=(len(plots), 1), 
-                       xlab='t (s)', viewers=self.viewers)
+        fig = get_tfig(fig, pos=(450, 150), figsize=figsize, shape=(len(plots), 1), 
+                       xlab='t (s)', viewers=self.viewers, **kw)
         fig.axes[0].set_xlim((1,7))
 
         for p, ax in zip(plots, fig.axes):

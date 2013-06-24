@@ -88,7 +88,7 @@ class TipXPR4(TipXPR):
 
 
 class HeadXPR(Head):
-    def __init__(self, tips, d=0.01):
+    def __init__(self, tips, d=0.02):
         Head.__init__(self, tips, d)
 
 
