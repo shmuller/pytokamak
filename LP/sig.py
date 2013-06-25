@@ -814,7 +814,11 @@ class Filter:
         self.filter = filter
 
     def __call__(self, x):
-        return self.filter(x)
+        mask = ma.getmask(x)
+        if mask is ma.nomask:
+            return self.filter(x)
+        else:
+            return ma.masked_array(self.filter(x.filled(0.)), mask)
 
 
 class Signal:
@@ -1152,7 +1156,7 @@ class Signal:
 
     def filter(self, fm=None, fM=None):
         filter = Filter(fm, fM, self.f_Nyq)
-        return self.__array_wrap__(filter(self.filled(0).x))
+        return self.__array_wrap__(filter(self.x))
 
     def specgram(self, ax=None, NFFT=2048, step=512, detrend='linear', **kw):
         spec = Specgram(NFFT, step, detrend)(self)
