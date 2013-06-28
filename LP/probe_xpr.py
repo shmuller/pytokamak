@@ -184,44 +184,38 @@ class ProbeXPR(Probe):
 
         A = (0.5*tips[0].area, 0.5*tips[1].area, tips[2].area)
 
-        try:
-            PP_j  = self.IV['tip1+tip2'].PP[ID][:3].copy()
-            PP_jp = self.IV['tip1'].PP[ID][0].copy()
-            PP_jm = self.IV['tip2'].PP[ID][0].copy()
-            PP_jt = PP_j[0].copy()
+        self.PP = PP = dict()
+        if self.IV.x.has_key('tip1+tip2'):
+            PP['j'], PP['Vf'], PP['Te'] = self.IV['tip1+tip2'].PP[ID][:3].copy()
+            PP['jp'] = self.IV['tip1'].PP[ID][0].copy()
+            PP['jm'] = self.IV['tip2'].PP[ID][0].copy()
+            PP['jt'] = PP['j'].copy()
             A_j = A[0] + A[1]
-        except KeyError:
-            PP_j  = self.IV['tip3'].PP[ID][:3].copy()
-            PP_jp = self.S['tip1'].as_PP(PP_j)
-            PP_jm = self.S['tip2'].as_PP(PP_j)
-            PP_jt = self.S['tip1+tip2'].as_PP(PP_j)
+        else:
+            PP['j'], PP['Vf'], PP['Te'] = self.IV['tip3'].PP[ID][:3].copy()
+            PP['jp'] = self.S['tip1'].as_PP(PP['j'])
+            PP['jm'] = self.S['tip2'].as_PP(PP['j'])
+            PP['jt'] = self.S['tip1+tip2'].as_PP(PP['j'])
             A_j = A[2]
 
-        PP_j[0].c /= A_j
-        PP_jp.c /= A[0]
-        PP_jm.c /= A[1]
-        PP_jt.c /= A[0] + A[1]
+        PP['j'].c /= A_j
+        PP['jp'].c /= A[0]
+        PP['jm'].c /= A[1]
+        PP['jt'].c /= A[0] + A[1]
 
-        keys = ['j', 'Vf', 'Te', 'jp', 'jm', 'jt']
-        c = np.dstack((PP_j.c, PP_jp.c, PP_jm.c, PP_jt.c))
+        i = PP['j'].eval()[0]
+        meas = {k: v.eval()[1] for k, v in PP.iteritems()}
+        
+        if self.IV.x.has_key('tip3'):
+            PP['j3'] = self.IV['tip3'].PP[ID][0].copy()
+            PP['j3'].c /= A[2]
+            i3, meas_j3 = PP['j3'].eval()
+            if np.all(i == i3):
+                meas['j3'] = meas_j3
+            else:
+                meas['j3'] = PP['j3'](PP['j'].x[i])
 
-        try:
-            PP_j3 = self.IV['tip3'].PP[ID][0].copy()
-            PP_j3.c /= A[2]
-
-            c = np.dstack((c, PP_j3.c))
-            keys.append('j3')
-            # FIXME: PP_j3.c can have one more/fewer point than c!
-        except:
-            pass
-
-        self.PP_meas = PP_j.__class__(c, PP_j.x, **PP_j.kw)
-        i, meas = self.PP_meas.eval()
-
-        dtype = zip(keys, [np.double]*len(keys))
-        meas = meas.view(dtype).ravel().view(np.recarray)
-
-        return PhysicalResults(self, i, meas)
+        return PhysicalResults(self, i, meas)    
 
     def _plot(self, *args, **kw):
         kw.setdefault('sepmode', 'patch')

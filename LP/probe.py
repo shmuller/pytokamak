@@ -247,8 +247,8 @@ class PhysicalResults:
         qe = 1.6022e-19
         mi = 2*1.67e-27
 
-        Gp = self.meas.jp/qe
-        Gm = self.meas.jm/qe
+        Gp = self.meas['jp']/qe
+        Gm = self.meas['jm']/qe
 
         Gp[Gp <= 0] = np.nan
         Gm[Gm <= 0] = np.nan
@@ -265,8 +265,8 @@ class PhysicalResults:
         res.nv  = nv = n_cs*Mach
         res.mnv = mi*nv
         res.j   = qe*nv
-        res.Vf  = Vf = self.meas.Vf
-        res.Te  = Te = self.meas.Te
+        res.Vf  = Vf = self.meas['Vf']
+        res.Te  = Te = self.meas['Te']
         res.Vp  = Vf + 2.8*Te
 
         Ti = Te
