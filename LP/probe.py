@@ -8,7 +8,9 @@ reload(logging)
 logging.basicConfig(level=logging.WARN)
 logger = logging
 
-from collections import  Iterable, OrderedDict
+from collections import Iterable, OrderedDict
+
+from tokamak.digitizer import IOH5
 
 try:
     import h5py as H5
@@ -253,39 +255,38 @@ class PhysicalResults:
         Gp[Gp <= 0] = np.nan
         Gm[Gm <= 0] = np.nan
 
-        dtype = zip(self.keys, [np.double]*len(self.keys))
-        res = np.empty(Gp.size, dtype).view(np.recarray)
+        res = dict()
 
         R = self.probe.pos[self.i, 0]
-        res.t = R.t
-        res.R = R.x
+        res['t'] = R.t
+        res['R'] = R.x
 
-        res.Mach = Mach = 0.5*np.log(Gm/Gp)
-        res.n_cs = n_cs = np.e*np.sqrt(Gp*Gm)
-        res.nv  = nv = n_cs*Mach
-        res.mnv = mi*nv
-        res.j   = qe*nv
-        res.Vf  = Vf = self.meas['Vf']
-        res.Te  = Te = self.meas['Te']
-        res.Vp  = Vf + 2.8*Te
+        res['Mach'] = Mach = 0.5*np.log(Gm/Gp)
+        res['n_cs'] = n_cs = np.e*np.sqrt(Gp*Gm)
+        res['nv']  = nv = n_cs*Mach
+        res['mnv'] = mi*nv
+        res['j']   = qe*nv
+        res['Vf']  = Vf = self.meas['Vf']
+        res['Te']  = Te = self.meas['Te']
+        res['Vp']  = Vf + 2.8*Te
 
         Ti = Te
-        res.cs = cs = np.sqrt(qe/mi*(Te+Ti))
-        res.n  = n  = n_cs/cs
-        res.v  = v  = Mach*cs
-        res.pe = pe = n*qe*Te
-        res.pe_tot  = pe*(1. + Mach*Mach)
-        return res 
+        res['cs'] = cs = np.sqrt(qe/mi*(Te+Ti))
+        res['n']  = n  = n_cs/cs
+        res['v']  = v  = Mach*cs
+        res['pe'] = pe = n*qe*Te
+        res['pe_tot']  = pe*(1. + Mach*Mach)
+        return res
 
     def eval(self, plunge=None, inout=None):
         mask = self.R.plunge_mask(self.i, plunge, inout)
         
-        y = self.res[mask]
+        y = {k: v[mask] for k, v in self.res.iteritems()}
 
-        y.Dt = y.t
+        y['Dt'] = y['t']
         tM = self.R.tM(plunge)
         if len(tM) == 1:
-            y.Dt -= tM[0]
+            y['Dt'] -= tM[0]
         return y
 
     def make_name(self, plunge=None, inout=None):        
@@ -299,30 +300,12 @@ class PhysicalResults:
 
     def save(self, plunge=None, inout=None):
         name = self.make_name(plunge, inout)
-        y = self.eval(plunge, inout)
-
-        tM = self.R.tM()
-        if plunge is not None:
-            tM = tM[plunge]
-        
-        f = H5.File(name + '.h5', "w")
-        for key in y.dtype.names:
-            f.create_dataset(key, data=y[key], compression="gzip")
-        f.close()
+        y = self.eval(plunge, inout)        
+        IOH5(name + '.h5').save(y)
 
     def load(self, plunge=None, inout=None):
         name = self.make_name(plunge, inout)
-        
-        f = H5.File(name + '.h5', "r")
-        keys = [key.encode('ascii') for key in f.keys()]
-        type = [f[key].dtype for key in keys]
-        size = [f[key].len() for key in keys]
-        
-        y = np.empty(size[0], zip(keys, type))
-        for key in keys:
-            y[key] = f[key][:]
-        f.close()
-        return y.view(np.recarray)
+        return IOH5(name + '.h5').load()
 
     def make_label(self, key):
         if self.usetex:
