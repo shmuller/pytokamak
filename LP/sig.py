@@ -681,9 +681,44 @@ class Signal2D:
     #clist = [(0,0,1)]*4 + [(1,1,0)]*3 + [(0,1,0)]*2 + [(1,0,0)]*1
     #cmap = colors.ListedColormap(clist)
 
-    def __init__(self, x, y, Z, xlab='', ylab=''):
-        self.x, self.y, self.Z = x, y, Z
-        self.xlab, self.ylab = xlab, ylab
+    def __init__(self, x, y, Z, **kw):
+        self.x, self.y, self.Z, self.kw = x, y, Z, kw
+        self.type = kw.get('type', '')
+        self.units = kw.get('units', '')
+        self.xtype = kw.get('xtype', 't')
+        self.ytype = kw.get('ytype', '')
+        self.xunits = kw.get('xunits', 's')
+        self.yunits = kw.get('yunits', '')
+
+    def __array_wrap__(self, x, y, Z):
+        return self.__class__(x, y, Z, **self.kw)
+
+    def __getitem__(self, indx):
+        if not isinstance(indx, tuple):
+            indx = (indx,)
+        if len(indx) == 1:
+            indx = indx + (slice(None),)
+        x, y, Z = self.x[indx[0]], self.y[indx[1]], self.Z[indx[::-1]]
+        if y.ndim == 0:
+            return Signal(Z, x, type=self.type, units=self.units, tunits=self.xunits)
+        elif x.ndim == 0:
+            return Signal(Z, y, type=self.type, units=self.units, tunits=self.yunits)
+        else:
+            return self.__array_wrap(x, y, Z)
+
+    @memoized_property
+    def xlab(self):
+        xlab = self.xtype
+        if len(self.xunits) > 0:
+            xlab += " (%s)" % self.xunits
+        return xlab
+
+    @memoized_property
+    def ylab(self):
+        ylab = self.ytype
+        if len(self.yunits) > 0:
+            ylab += " (%s)" % self.yunits
+        return ylab
 
     def plot(self, ax=None, ylim=None, cmap='spectral', **kw):
         if cmap == 'custom':
@@ -763,13 +798,15 @@ class Specgram(Windower):
         return Xi.real**2 + Xi.imag**2
 
     def prepare_output(self, t, S, Z):
-        fs = 1e-3*S.fs
+        fs = S.fs
         f = np.arange(self.M) * (fs / self.w)
 
-        Z *= self.win.norm / fs
+        Z *= self.win.norm
         Z[1:-1] *= 2.
         Z = 10. * np.log10(Z)
-        return Signal2D(t, f, Z, xlab='t (s)', ylab='f (kHz)')
+        funits = dict(s='Hz', ms='kHz')[S.tunits]
+        return Signal2D(t, f, Z, type='Spectral intensity', units='dB',
+                        xtype='t', xunits=S.tunits, ytype='f', yunits=funits)
 
 
 class XCorr(Windower):
@@ -790,12 +827,16 @@ class XCorr(Windower):
 
     def calc(self, xi):
         xi = (xi - xi.mean(axis=0)) / xi.std(axis=0)
-        return self._correlate(xi[:, 0], xi[:, 1])
+        if xi.ndim == 1:
+            return self._correlate(xi, xi)
+        else:
+            return self._correlate(xi[:, 0], xi[:, 1])
 
     def prepare_output(self, t, S, C): 
-        dt = 1e3 / S.fs
+        dt = 1. / S.fs
         Dt = np.arange(-(self.w - 1), self.w) * dt
-        return Signal2D(t, Dt, C, xlab='t (s)', ylab='$\Delta$t (ms)')
+        return Signal2D(t, Dt, C, type='Correlation',
+                        xtype='t', xunits=S.tunits, ytype='$\Delta$t', yunits=S.tunits)
 
 
 class Filter:
@@ -825,7 +866,7 @@ class Signal:
     def __init__(self, x, t=None, **kw):
         self.x = np.atleast_1d(x)
         if t is None:
-            t = np.arange(x.size)
+            t = np.arange(x.shape[0])
         self.t = np.atleast_1d(t)
         self.size, self.shape = self.x.size, self.x.shape
 
@@ -921,6 +962,12 @@ class Signal:
         except AttributeError:
             np.multiply(self.x, other, self.x)
         return self
+
+    def cat(self, other, axis=1):
+        x, y = self.x, other.x
+        x = x.reshape(x.shape + (1,)*(axis + 1 - x.ndim))
+        y = y.reshape(y.shape + (1,)*(axis + 1 - y.ndim))
+        return self.__array_wrap__(ma.concatenate((x, y), axis=axis))
 
     def copy(self):
         return self.__array_wrap__(self.x.copy())
@@ -1053,7 +1100,9 @@ class Signal:
     def _move_factory(name):
         movefun = movefuns[name]
         def move(self, w=100):
-            return self.__array_wrap__(np.roll(movefun(self.x, 2*w+1), -w))
+            x = self.x
+            x = np.concatenate((2*x[0]-x[w:0:-1], x, 2*x[-1]-x[-2:-w-2:-1]), axis=0)
+            return self.__array_wrap__(movefun(x, 2*w+1)[2*w:])
         return move
 
     move_median = _move_factory('median')
@@ -1160,6 +1209,8 @@ class Signal:
 
     def specgram(self, ax=None, NFFT=2048, step=512, detrend='linear', **kw):
         spec = Specgram(NFFT, step, detrend)(self)
+        spec.y *= 1e-3
+        spec.yunits = 'kHz'
         return spec.plot(ax, **kw)
 
     def plot_over_specgram(self, ax=None, yloc=None, *args, **kw):
@@ -1169,28 +1220,26 @@ class Signal:
         ax.figure.tight_layout()
         return ax2
 
-    def xcorr(self, other):
-        dt = self.t - self.t[0]
-        Dt = np.concatenate((-dt[:0:-1], dt))
-        x = y = self.standardized().x
-        if other is not self:
-            y = other.standardized().x
-        if x.size < 500:
-            C = np.correlate(x / x.size, y, 'full')
+    def xcorr(self, other, w=None, step=None, **kw):
+        if other is self:
+            S = self
         else:
-            C = fftconvolve(x / x.size, y[::-1], 'full')
-        return Signal(C, Dt, tunits=self.tunits, type='Correlation',
-                             name='xcorr(%s, %s)' % (self.name, other.name))
+            S = self.cat(other)
+        if w is None:
+            w = self.shape[0]
+        if step is None:
+            step = w
+        return XCorr(w=w, step=step, **kw)(S)
 
-    def autocorr(self):
-        return self.xcorr(self)
+    def autocorr(self, **kw):
+        return self.xcorr(self, **kw)
 
-    def lag(self, other, sign=1):
+    def lag(self, other, sign=1, **kw):
         """
         Returns C, where C.t is the amount of time by which 'self' is lagging 
         behind 'other'
         """
-        C = self.xcorr(other)
+        C = self.xcorr(other, **kw)[0]
         return C[np.argmax(sign*C.x)]
    
 
