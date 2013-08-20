@@ -26,8 +26,8 @@ IVContainer = fitter_IV.IVContainer
 from sm_pyplot.tight_figure import get_fig, get_tfig, get_axes
 from sm_pyplot.annotations import vlines, vrect
 
-from utils.sig import memoized_property, dict_pop, DictView, GeneratorDict, \
-        math_sel, usetex, Signal, PeriodPhaseFinder
+from utils.utils import memoized_property, dict_pop, DictView, GeneratorDict
+from utils.sig import math_sel, usetex, Signal, PeriodPhaseFinder
 
 class PositionSignal(Signal):
     def __init__(self, x, t, **kw):

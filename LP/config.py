@@ -5,7 +5,7 @@ import textwrap
 
 from pprint import pformat
 
-from utils.sig import ensure_tuple, recursive_dictcopy, Container
+from utils.utils import ensure_tuple, recursive_dictcopy, Container
 
 from matplotlib.path import Path
 from matplotlib.patches import PathPatch

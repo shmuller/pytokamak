@@ -3,8 +3,8 @@ import numpy.ma as ma
 
 from itertools import cycle
 
-from utils.sig import memoized_property, median, DictView, GeneratorDict, \
-        Container, PiecewisePolynomialEndpoints
+from utils.utils import memoized_property, DictView, GeneratorDict, Container
+from utils.sig import median, PiecewisePolynomialEndpoints
 
 from fitter import Fitter, FitterError
 

@@ -1,5 +1,6 @@
 import numpy as np
-from sig import memoized_property, Signal, BoundingBox
+from utils import memoized_property, BoundingBox
+from sig import Signal
 
 from sm_pyplot.tight_figure import get_axes, show
 

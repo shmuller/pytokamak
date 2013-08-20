@@ -1,7 +1,8 @@
 import numpy as np
 import os
 
-from utils.sig import memoized_property, Amp
+from utils.utils import memoized_property
+from utils.sig import Amp
 
 from digitizer import TdiError, IOMds, IOFile, Digitizer
 

@@ -3,7 +3,8 @@ import numpy as np
 
 from scipy.ndimage import map_coordinates
 
-from utils.sig import memoized_property, Signal
+from utils.utils import memoized_property
+from utils.sig import Signal
 from utils.splines import Spline, Spline2D
 
 from sm_pyplot.tight_figure import get_tfig, get_axes, show
