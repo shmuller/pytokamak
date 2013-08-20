@@ -15,7 +15,7 @@ def browse_object(obj, fun, name="", visited=None, **kw):
     elif hasattr(obj, '__dict__'):
         for k, v in obj.__dict__.iteritems():
             browse_object(v, fun, name="%s.%s" % (name, k), visited=visited, **kw)
-    elif isinstance(obj, (list, tuple)) or \
+    elif isinstance(obj, (list, tuple, set)) or \
             isinstance(obj, np.ndarray) and obj.dtype == object:
         for k, v in enumerate(obj):
             browse_object(v, fun, name="%s[%s]" % (name, k), visited=visited, **kw)

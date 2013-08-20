@@ -24,9 +24,18 @@ class Event:
 
 
 class Interpolator:
-    def __init__(self, t, x, y, f):
-        self.t, self.x, self.y, self.f = t, x, y, f
-        self.l, self.m, self.n = self.shape = f.shape
+    def __init__(self, t, x, y, f=None, get_f_slice=None, shape=None):
+        self.t, self.x, self.y = t, x, y
+        if f is None:
+            self.get_f_slice = get_f_slice
+            self.shape = shape
+        else:
+            self.f = f
+            self.shape = f.shape
+        self.l, self.m, self.n = self.shape
+
+    def get_f_slice(self, i):
+        return self.f[i]
 
 
 class Interpolator3DSlab(Interpolator):
@@ -47,7 +56,7 @@ class InterpolatorSlice(Interpolator):
     def get_spline(self, i):
         sp = self._splines[i]
         if sp is None:
-            sp = self._splines[i] = Spline2D(self.y, self.x, self.f[i])
+            sp = self._splines[i] = Spline2D(self.y, self.x, self.get_f_slice(i))
         return sp
 
     def eval_path_on_slices(self, x, y):
@@ -207,25 +216,28 @@ class Eqi:
     def R_z_psi(self):
         return self.digitizer.get_R_z_psi()
 
-    @property
+    @memoized_property
     def R(self):
         return self.R_z_psi[0].astype(np.float64)
 
-    @property
+    @memoized_property
     def z(self):
         return self.R_z_psi[1].astype(np.float64)
 
-    @property
+    @memoized_property
     def psi(self):
         return self.R_z_psi[2].astype(np.float64)
 
+    def get_psi_slice(self, i):
+        return self.R_z_psi[2][i].astype(np.float64)
+
     @memoized_property
     def t(self):
-        return self.psi.t
+        return self.R_z_psi[2].t
 
     @memoized_property
     def shape(self):
-        return self.psi.shape
+        return self.R_z_psi[2].shape
 
     @memoized_property
     def psi0(self):
@@ -235,10 +247,14 @@ class Eqi:
     def psi1(self):
         return self.digitizer.get_R_z_psi_special('xpoint')[2]
 
-    @property
+    @memoized_property
     def psi_n(self):
         dpsi = self.psi1 - self.psi0
         return (self.psi - self.psi0[:, None, None]) / dpsi[:, None, None]
+
+    def get_psi_n_slice(self, i):
+        dpsi = self.psi1[i] - self.psi0[i]
+        return (self.get_psi_slice(i) - self.psi0[i]) / dpsi
 
     def _property_factory(name):
         @memoized_property
@@ -280,7 +296,8 @@ class Eqi:
 
     @property
     def interpolator_slice(self):
-        return InterpolatorSlice(self.t, self.R, self.z, self.psi_n.x)
+        return InterpolatorSlice(self.t, self.R, self.z, 
+                get_f_slice=self.get_psi_n_slice, shape=self.shape)
     
     def get_path_spline(self, s, R, z):
         return self.interpolator_slice.get_path_spline(s, R, z)
