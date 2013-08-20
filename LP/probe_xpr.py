@@ -10,7 +10,7 @@ ShotNotFoundError = config.ShotNotFoundError
 from tokamak.digitizer_aug import DigitizerAUG
 from tokamak.equilibrium import NormalizedFluxSignal
 
-from sig import memoized_property, Amp
+from utils.sig import memoized_property, Amp
 from probe import PositionSignal, Probe, PhysicalResults
 
 ampUnity = Amp(fact=1., offs=0.)

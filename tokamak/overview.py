@@ -3,7 +3,7 @@ import numpy.ma as ma
 
 from sm_pyplot.tight_figure import get_tfig, get_axes, show
 
-from LP.sig import memoized_property, BoundingBox
+from utils.sig import memoized_property, BoundingBox
 from LP.probe_xpr import ProbeXPR, ShotNotFoundError
 
 from digitizer_aug import DigitizerAUG, DigitizerAUGMAC, eqi_digitizers, dig_YGC

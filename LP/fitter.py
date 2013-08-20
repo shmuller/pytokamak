@@ -5,7 +5,7 @@ import scipy.odr as odr
 
 import minpack as mp
 
-from sig import memoized_property, get_axes
+from utils.sig import memoized_property, get_axes
 
 class FitterError(Exception):
     pass

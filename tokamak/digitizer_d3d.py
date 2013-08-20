@@ -1,6 +1,6 @@
 from digitizer import TdiError, IOMds, IOFile, Digitizer
 
-from LP.sig import Amp
+from utils.sig import Amp
 
 class IOMdsD3D(IOMds):
     def __init__(self, *args, **kw):

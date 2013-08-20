@@ -11,7 +11,7 @@ from mdsclient import *
 
 from sm_pyplot.tight_figure import get_fig
 
-from LP.sig import memoized_property, Signal
+from utils.sig import memoized_property, Signal
 
 
 class IOH5:
