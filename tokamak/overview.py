@@ -194,10 +194,10 @@ class AUGOverview:
         S = self.S['DCN']
         ax = get_axes(ax)
         ax.set_ylabel('n (10$^{\mathdefault{19}}$ m$^{\mathdefault{-3}}$)')
-        ax.yaxis.labelpad = -2
+        #ax.yaxis.labelpad = -2
         
         for c in chn:
-            (S[c]*1e-19).nonneg().plot(ax)
+            (S[c]*1e-19).nonneg().filled().plot(ax)
         ax.legend()
         return ax
 

@@ -1101,7 +1101,7 @@ E.rep(29868, 29867, "X-point higher",
             High n on HFS, arcing.""",
         stars = '****')
 
-E.rep(29869, 29868, "X-point inward", 
+E.rep(29869, 29868, "X-point inward (after plunge)", 
         times = 1.6,
         posit = 0.34,
         descr = """\
@@ -1122,7 +1122,7 @@ E.rep(29871, 29870, "Repeat",
             Good shot.""",
         stars = '****')
 
-E.rep(29872, 29871, "X-point outward", 
+E.rep(29872, 29871, "X-point outward (after plunge)", 
         times = 1.6,
         posit = 0.34,
         descr = """\

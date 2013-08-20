@@ -157,8 +157,8 @@ class Experiment(ShotContainer):
     def rep(self, shn, shn0, comment="", **kw):
         self.x[shn] = self.x[shn0].copy(comment, shn=shn, **kw)
 
-    def __repr__(self):
-        s = ["  " + repr(v) + "\n" for v in self.x.itervalues()]
+    def __str__(self):
+        s = ["  " + str(v) + "\n" for v in self.x.itervalues()]
         return self.date + ":\n" + np.array(s).tostring()
 
 
@@ -184,8 +184,8 @@ class Campaign(ShotContainer):
 
         raise ShotNotFoundError("No config information for shot %d" % shn)
     
-    def __repr__(self):
-        s = [repr(v) + "\n" for v in self.x.itervalues()]
+    def __str__(self):
+        s = [str(v) + "\n" for v in self.x.itervalues()]
         return np.array(s).tostring()
 
 

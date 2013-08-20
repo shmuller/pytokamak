@@ -28,7 +28,7 @@ class Interpolator:
         self.l, self.m, self.n = self.shape = f.shape
 
 
-class Interpolator3DSlab(Interpolator):    
+class Interpolator3DSlab(Interpolator):
     def __call__(self, t, x, y):
         coo = self.as_coo(t, self.t), self.as_coo(x, self.x), self.as_coo(y, self.y)
         return map_coordinates(self.f, coo)
@@ -206,15 +206,15 @@ class Eqi:
     def R_z_psi(self):
         return self.digitizer.get_R_z_psi()
 
-    @memoized_property
+    @property
     def R(self):
         return self.R_z_psi[0].astype(np.float64)
 
-    @memoized_property
+    @property
     def z(self):
         return self.R_z_psi[1].astype(np.float64)
 
-    @memoized_property
+    @property
     def psi(self):
         return self.R_z_psi[2].astype(np.float64)
 
@@ -234,7 +234,7 @@ class Eqi:
     def psi1(self):
         return self.digitizer.get_R_z_psi_special('xpoint')[2]
 
-    @memoized_property
+    @property
     def psi_n(self):
         dpsi = self.psi1 - self.psi0
         return (self.psi - self.psi0[:, None, None]) / dpsi[:, None, None]
@@ -247,7 +247,7 @@ class Eqi:
 
     psii = _property_factory('psii')
 
-    @memoized_property
+    @property
     def psii_n(self):
         dpsi = self.psi1 - self.psi0
         return (self.psii - self.psi0[:, None]) / dpsi[:, None]
@@ -269,7 +269,7 @@ class Eqi:
     def get_separatrix(self, ti, **kw):
         return self.get_flux_surf(ti, lvls=np.array([1.]), norm=True, **kw)
 
-    @memoized_property
+    @property
     def interpolator_3d_slab(self):
         return Interpolator3DSlab(self.t, self.z, self.R, self.psi_n.x)
 
@@ -277,7 +277,7 @@ class Eqi:
         psi = self.interpolator_3d_slab(t, z, R)
         return NormalizedFluxSignal(psi, t)
 
-    @memoized_property
+    @property
     def interpolator_slice(self):
         return InterpolatorSlice(self.t, self.R, self.z, self.psi_n.x)
     

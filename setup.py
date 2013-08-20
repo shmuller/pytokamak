@@ -8,7 +8,7 @@ def is_pyfile(s):
 def pyfiles(subdir):
     return [subdir + '.' + s[:-3] for s in os.listdir(subdir) if is_pyfile(s)]
 
-py_modules = pyfiles('LP') + pyfiles('tokamak')
+py_modules = pyfiles('LP') + pyfiles('tokamak') + pyfiles('utils')
 
 mag_fit = Extension('LP.mag_fit',
                      sources = ['mag_fit/python/mag_fitmodule.c', 

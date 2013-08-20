@@ -66,7 +66,8 @@ class DigitizerAUG(Digitizer):
     def calib(self):
         for node, x in self.x.iteritems():
             if x.ndim > 1:
-                self.x[node] = x.transpose(np.roll(np.arange(x.ndim), 1))
+                perm = np.roll(np.arange(x.ndim), 1)
+                self.x[node] = np.ascontiguousarray(x.transpose(perm))
         Digitizer.calib(self)
 
 
@@ -201,18 +202,18 @@ class DigitizerAUGYGC(DigitizerAUG):
         idx = np.r_[15:28, 10, 41:44, 36:40, 30:35, 9]
         return [self._xy[i:j] for i, j in ij[idx]]
 
-    def plot(self, ax=None, unfilled=(4, 5), col='k'):
+    def plot(self, ax=None, unfilled=(4, 5), edgecolors='k', facecolors=(0.75, 0.75, 0.75)):
         ax = get_axes(ax, xlab="R (m)", ylab="z (m)")
         ax.set_aspect('equal')
         ax.set_xlim((0.5, 2.5))
         ax.set_ylim((-1.5, 1.5))
 
         paths = [Path(xy) for i, xy in enumerate(self.xy) if i not in unfilled]
-        pc = PathCollection(paths, facecolors=col, edgecolors='none')
+        pc = PathCollection(paths, facecolors=facecolors, edgecolors=edgecolors)
         ax.add_collection(pc)
 
         paths = [Path(self.xy[i]) for i in unfilled]
-        pc = PathCollection(paths, facecolors='none', edgecolors=col)
+        pc = PathCollection(paths, facecolors='none', edgecolors=edgecolors)
         ax.add_collection(pc)
         return ax
 
