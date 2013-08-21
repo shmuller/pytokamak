@@ -4,7 +4,7 @@ import numpy as np
 from scipy.ndimage import map_coordinates
 
 from utils.utils import memoized_property
-from utils.sig import Signal
+from utils.sig import Signal, CalibratingSignal
 from utils.splines import Spline, Spline2D
 
 from sm_pyplot.tight_figure import get_tfig, get_axes, show
@@ -223,11 +223,12 @@ class Eqi:
     @memoized_property
     def z(self):
         return self.R_z_psi[1].astype(np.float64)
-
+   
     @memoized_property
     def psi(self):
-        return self.R_z_psi[2].astype(np.float64)
-
+        psi = self.R_z_psi[2]
+        return CalibratingSignal(psi.x, psi.t, dtype=np.float64, **psi.kw)
+     
     def get_psi_slice(self, i):
         return self.R_z_psi[2][i].astype(np.float64)
 
@@ -249,8 +250,11 @@ class Eqi:
 
     @memoized_property
     def psi_n(self):
-        dpsi = self.psi1 - self.psi0
-        return (self.psi - self.psi0[:, None, None]) / dpsi[:, None, None]
+        psi = self.R_z_psi[2]
+        fact = 1. / (self.psi1.x - self.psi0.x)
+        offs = -self.psi0.x * fact
+        return CalibratingSignal(psi.x, psi.t, dtype=np.float64,
+                fact=fact[:, None, None], offs=offs[:, None, None], **psi.kw)
 
     def get_psi_n_slice(self, i):
         dpsi = self.psi1[i] - self.psi0[i]

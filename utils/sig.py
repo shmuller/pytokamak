@@ -46,7 +46,7 @@ math_sel = MathSelector(usetex=usetex)
 
 from mediansmooth import *
 from cookb_signalsmooth import smooth
-from utils import memoized_property, dict_pop
+from utils import memoized_property, dict_pop, DictView
 
 
 class NodeInterpolator:
@@ -716,6 +716,7 @@ class SignalBase:
         self._t = np.atleast_1d(t)
         self.size, self.shape = self._x.size, self._x.shape
         self.kw = kw
+        self._result_class = self.__class__
 
     @property
     def x(self):
@@ -747,8 +748,11 @@ class SignalBase:
     def __array__(self):
         return self.x
 
-    def __array_wrap__(self, x):
+    def _wrap(self, x):
         return self.__class__(x, self._t, **self.kw)
+
+    def __array_wrap__(self, x):
+        return self._result_class(x, self._t, **self.kw)
 
     def _cmp_factory(op):
         def cmp(self, other, out=None):
@@ -768,36 +772,36 @@ class SignalBase:
         x, y = self._x, other._x
         x = x.reshape(x.shape + (1,)*(axis + 1 - x.ndim))
         y = y.reshape(y.shape + (1,)*(axis + 1 - y.ndim))
-        return self.__array_wrap__(ma.concatenate((x, y), axis=axis))
+        return self._wrap(ma.concatenate((x, y), axis=axis))
 
     def copy(self):
-        return self.__array_wrap__(self._x.copy())
+        return self._wrap(self._x.copy())
 
     def astype(self, dtype):
-        return self.__array_wrap__(self._x.astype(dtype))
+        return self._wrap(self._x.astype(dtype))
 
     def masked(self, mask):
-        return self.__array_wrap__(ma.masked_array(self._x, mask))
+        return self._wrap(ma.masked_array(self._x, mask))
 
     def unmasked(self):
         if not isinstance(self._x, ma.masked_array):
             return self
         else:
-            return self.__array_wrap__(self._x.data)
+            return self._wrap(self._x.data)
 
     def filled(self, fill=np.nan):
         if not isinstance(self._x, ma.masked_array):
             return self
         else:
-            return self.__array_wrap__(self._x.filled(fill))
+            return self._wrap(self._x.filled(fill))
 
 
 class Signal(SignalBase):
     fmtstr = "%s {name} with shape {shape}"
 
     def __init__(self, x, t=None, **kw):
-        SignalBase.__init__(self, x, t, **kw)
-        
+        SignalBase.__init__(self, x, t, **kw) 
+
         self.number = kw.get('number', -1)
         self.name = kw.get('name', "")
         self.label = kw.get('label', self.name)
@@ -912,12 +916,13 @@ class Signal(SignalBase):
         outl, outr = i0 < im, i0 > iM
         i0[outl], i0[outr] = im, iM
         i1 = i0 + 1
-        x0, x1 = self.x[i0], self.x[i1]
-        t0, t1 = self.t[i0], self.t[i1]
+        S = self[np.concatenate((i0, i1)).reshape((2, -1))]
+        x0, x1 = S.x
+        t0, t1 = S.t
         x = x0 + (x1 - x0) * ((t - t0) / (t1 - t0)).reshape(self.bcast)
         if masked:
             x = ma.masked_array(x, outl | outr)
-        return self.__class__(x, t, **self.kw)
+        return self._result_class(x, t, **self.kw)
 
     @classmethod
     def constfit(cls, x, y, deg=0):
@@ -1116,7 +1121,51 @@ class Signal(SignalBase):
         """
         C = self.xcorr(other, **kw)[0]
         return C[np.argmax(sign*C.x)]
-   
+
+
+class CalibratingSignal(Signal):
+    def __init__(self, x, t=None, **kw):
+        Signal.__init__(self, x, t, **kw)
+        self._result_class = Signal
+
+        self.dtype = kw.get('dtype', None)
+        self.fact = fact = kw.get('fact', 1)
+        self.offs = offs = kw.get('offs', 0)
+
+        fact_is_vect = hasattr(fact, '__len__') and len(fact) == self.shape[0]
+        offs_is_vect = hasattr(offs, '__len__') and len(offs) == self.shape[0]
+        if fact_is_vect and offs_is_vect:
+            self.__getitem__ = self._getitem_vector
+            self.kw_view = DictView(kw, set(kw.keys()) - set(['fact', 'offs']))
+        elif fact_is_vect:
+            self.__getitem__ = self._getitem_vector_fact
+            self.kw_view = DictView(kw, set(kw.keys()) - set(['fact']))
+        elif offs_is_vect:
+            self.__getitem__ = self._getitem_vector_offs
+            self.kw_view = DictView(kw, set(kw.keys()) - set(['offs']))
+
+    def _getitem_vector(self, indx):
+        if not isinstance(indx, tuple):
+            indx = (indx,)
+        return self.__class__(self._x[indx], self._t[indx[0]], 
+                fact=self.fact[indx[0]], offs=self.offs[indx[0]], **self.kw_view)
+
+    def _getitem_vector_fact(self, indx):
+        if not isinstance(indx, tuple):
+            indx = (indx,)
+        return self.__class__(self._x[indx], self._t[indx[0]], 
+                fact=self.fact[indx[0]], **self.kw_view)
+
+    def _getitem_vector_offs(self, indx):
+        if not isinstance(indx, tuple):
+            indx = (indx,)
+        return self.__class__(self._x[indx], self._t[indx[0]], 
+                offs=self.offs[indx[0]], **self.kw_view)
+    
+    @property
+    def x(self):
+        return self.fact * np.asarray(self._x, dtype=self.dtype) + self.offs
+
 
 class PeriodPhaseFinder:
     def __init__(self, x):
