@@ -704,21 +704,26 @@ class Filter:
             return ma.masked_array(self.filter(x.filled(0.)), mask)
 
 
-class Signal:
+class SignalBase:
+    """Signal base class - Makes no assumptions on x and t
+    """
+    fmtstr = "%s with shape {shape}"
+
     def __init__(self, x, t=None, **kw):
-        self.x = np.atleast_1d(x)
+        self._x = np.atleast_1d(x)
         if t is None:
             t = np.arange(x.shape[0])
-        self.t = np.atleast_1d(t)
-        self.size, self.shape = self.x.size, self.x.shape
-
+        self._t = np.atleast_1d(t)
+        self.size, self.shape = self._x.size, self._x.shape
         self.kw = kw
-        self.number = kw.get('number', -1)
-        self.name = kw.get('name', "")
-        self.label = kw.get('label', self.name)
-        self.type = kw.get('type', "")
-        self.units = kw.get('units', "")
-        self.tunits = kw.get('tunits', "s")
+
+    @property
+    def x(self):
+        return self._x
+
+    @property
+    def t(self):
+        return self._t
 
     def update(self, **kw):
         self.kw.update(kw)
@@ -726,26 +731,79 @@ class Signal:
             setattr(self, k, v)
 
     def __repr__(self):
-        fmtstr = "%s {name} with shape {shape}"
-        return (fmtstr % self.__class__.__name__).format(**self.__dict__)
+        return (self.fmtstr % self.__class__.__name__).format(**self.__dict__)
 
     def __str__(self):
         return self.__repr__() + ", with:\n%s" % pformat(self.__dict__)
 
-    def __call__(self, t, masked=False):
-        t = np.atleast_1d(t)
-        return self.__class__(self.PP(t, masked), t, **self.kw)
+    def __call__(self, t, *args, **kw):
+        return self.interp(t, *args, **kw)
 
     def __getitem__(self, indx):
         if not isinstance(indx, tuple):
             indx = (indx,)
-        return self.__class__(self.x[indx], self.t[indx[0]], **self.kw)
+        return self.__class__(self._x[indx], self._t[indx[0]], **self.kw)
 
     def __array__(self):
         return self.x
 
     def __array_wrap__(self, x):
-        return self.__class__(x, self.t, **self.kw)
+        return self.__class__(x, self._t, **self.kw)
+
+    def _cmp_factory(op):
+        def cmp(self, other, out=None):
+            if isinstance(other, SignalBase):
+                other = other.x
+            return op(self.x, other, out)
+        return cmp
+
+    __lt__ = _cmp_factory(np.less         )
+    __le__ = _cmp_factory(np.less_equal   )
+    __eq__ = _cmp_factory(np.equal        )
+    __ne__ = _cmp_factory(np.not_equal    )
+    __ge__ = _cmp_factory(np.greater_equal)
+    __gt__ = _cmp_factory(np.greater      )
+
+    def cat(self, other, axis=1):
+        x, y = self._x, other._x
+        x = x.reshape(x.shape + (1,)*(axis + 1 - x.ndim))
+        y = y.reshape(y.shape + (1,)*(axis + 1 - y.ndim))
+        return self.__array_wrap__(ma.concatenate((x, y), axis=axis))
+
+    def copy(self):
+        return self.__array_wrap__(self._x.copy())
+
+    def astype(self, dtype):
+        return self.__array_wrap__(self._x.astype(dtype))
+
+    def masked(self, mask):
+        return self.__array_wrap__(ma.masked_array(self._x, mask))
+
+    def unmasked(self):
+        if not isinstance(self._x, ma.masked_array):
+            return self
+        else:
+            return self.__array_wrap__(self._x.data)
+
+    def filled(self, fill=np.nan):
+        if not isinstance(self._x, ma.masked_array):
+            return self
+        else:
+            return self.__array_wrap__(self._x.filled(fill))
+
+
+class Signal(SignalBase):
+    fmtstr = "%s {name} with shape {shape}"
+
+    def __init__(self, x, t=None, **kw):
+        SignalBase.__init__(self, x, t, **kw)
+        
+        self.number = kw.get('number', -1)
+        self.name = kw.get('name', "")
+        self.label = kw.get('label', self.name)
+        self.type = kw.get('type', "")
+        self.units = kw.get('units', "")
+        self.tunits = kw.get('tunits', "s")
 
     def shift_t(self, dt):
         return self.__class__(self.x, self.t + dt, **self.kw)
@@ -758,13 +816,8 @@ class Signal:
 
     def _op_factory(op, calcfun):
         def apply(self, other, out=None):
-            try:
-                #if other.units != self.units:
-                #    raise Exception("Unit mismatch")
+            if isinstance(other, Signal):
                 other = other.x
-            except AttributeError:
-                pass
-            
             return op(self.x, other, out)
 
         def iapply(self, other):
@@ -775,13 +828,6 @@ class Signal:
             return self.__array_wrap__(apply(self, other))
         
         return locals()[calcfun]
-
-    __lt__   = _op_factory(np.less         , 'apply')
-    __le__   = _op_factory(np.less_equal   , 'apply')
-    __eq__   = _op_factory(np.equal        , 'apply')
-    __ne__   = _op_factory(np.not_equal    , 'apply')
-    __ge__   = _op_factory(np.greater_equal, 'apply')
-    __gt__   = _op_factory(np.greater      , 'apply')
 
     __add__  = _op_factory(np.add     , 'wapply')
     __iadd__ = _op_factory(np.add     , 'iapply')
@@ -804,33 +850,6 @@ class Signal:
         except AttributeError:
             np.multiply(self.x, other, self.x)
         return self
-
-    def cat(self, other, axis=1):
-        x, y = self.x, other.x
-        x = x.reshape(x.shape + (1,)*(axis + 1 - x.ndim))
-        y = y.reshape(y.shape + (1,)*(axis + 1 - y.ndim))
-        return self.__array_wrap__(ma.concatenate((x, y), axis=axis))
-
-    def copy(self):
-        return self.__array_wrap__(self.x.copy())
-
-    def astype(self, dtype):
-        return self.__array_wrap__(self.x.astype(dtype))
-
-    def masked(self, mask):
-        return self.__array_wrap__(ma.masked_array(self.x, mask))
-
-    def unmasked(self):
-        if not isinstance(self.x, ma.masked_array):
-            return self
-        else:
-            return self.__array_wrap__(self.x.data)
-
-    def filled(self, fill=np.nan):
-        if not isinstance(self.x, ma.masked_array):
-            return self
-        else:
-            return self.__array_wrap__(self.x.filled(fill))
 
     def nonneg(self):
         return self.masked(self < 0)
@@ -882,9 +901,23 @@ class Signal:
         dx_dt = (x1 - x0) / (t1 - t0).reshape(self.bcast)
         return PiecewisePolynomial((dx_dt, x0), t)
 
-    def interp(self, ti):
-        xi = self.PP(ti)
-        return self.__class__(xi, ti, **self.kw)
+    def interp_PP(self, t, masked=False):
+        t = np.atleast_1d(t)
+        return self.__class__(self.PP(t, masked), t, **self.kw)
+
+    def interp(self, t, masked=False):
+        t = np.atleast_1d(t)
+        i0 = np.searchsorted(self.t, t, 'right') - 1
+        im, iM = 0, self.shape[0] - 2
+        outl, outr = i0 < im, i0 > iM
+        i0[outl], i0[outr] = im, iM
+        i1 = i0 + 1
+        x0, x1 = self.x[i0], self.x[i1]
+        t0, t1 = self.t[i0], self.t[i1]
+        x = x0 + (x1 - x0) * ((t - t0) / (t1 - t0)).reshape(self.bcast)
+        if masked:
+            x = ma.masked_array(x, outl | outr)
+        return self.__class__(x, t, **self.kw)
 
     @classmethod
     def constfit(cls, x, y, deg=0):
