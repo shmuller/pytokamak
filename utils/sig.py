@@ -705,17 +705,17 @@ class Filter:
 
 
 class SignalBase:
-    """Signal base class - Makes no assumptions on x and t
-    """
+    '''Signal base class - Makes no assumptions on x and t
+    '''
     fmtstr = "%s with shape {shape}"
 
-    def __init__(self, x, t=None, **kw):
+    def __init__(self, x, t=None, *args, **kw):
         self._x = np.atleast_1d(x)
         if t is None:
             t = np.arange(x.shape[0])
         self._t = np.atleast_1d(t)
         self.size, self.shape = self._x.size, self._x.shape
-        self.kw = kw
+        self.args, self.kw = args, kw
         self._result_class = self.__class__
 
     @property
@@ -743,16 +743,16 @@ class SignalBase:
     def __getitem__(self, indx):
         if not isinstance(indx, tuple):
             indx = (indx,)
-        return self.__class__(self._x[indx], self._t[indx[0]], **self.kw)
+        return self.__class__(self._x[indx], self._t[indx[0]], *self.args, **self.kw)
 
     def __array__(self):
         return self.x
 
     def _wrap(self, x):
-        return self.__class__(x, self._t, **self.kw)
+        return self.__class__(x, self._t, *self.args, **self.kw)
 
     def __array_wrap__(self, x):
-        return self._result_class(x, self._t, **self.kw)
+        return self._result_class(x, self._t, *self.args, **self.kw)
 
     def _cmp_factory(op):
         def cmp(self, other, out=None):
@@ -761,12 +761,12 @@ class SignalBase:
             return op(self.x, other, out)
         return cmp
 
-    __lt__ = _cmp_factory(np.less         )
-    __le__ = _cmp_factory(np.less_equal   )
-    __eq__ = _cmp_factory(np.equal        )
-    __ne__ = _cmp_factory(np.not_equal    )
+    __lt__ = _cmp_factory(np.less)
+    __le__ = _cmp_factory(np.less_equal)
+    __eq__ = _cmp_factory(np.equal)
+    __ne__ = _cmp_factory(np.not_equal)
     __ge__ = _cmp_factory(np.greater_equal)
-    __gt__ = _cmp_factory(np.greater      )
+    __gt__ = _cmp_factory(np.greater)
 
     def cat(self, other, axis=1):
         x, y = self._x, other._x
@@ -799,8 +799,8 @@ class SignalBase:
 class Signal(SignalBase):
     fmtstr = "%s {name} with shape {shape}"
 
-    def __init__(self, x, t=None, **kw):
-        SignalBase.__init__(self, x, t, **kw) 
+    def __init__(self, x, t=None, *args, **kw):
+        SignalBase.__init__(self, x, t, *args, **kw) 
 
         self.number = kw.get('number', -1)
         self.name = kw.get('name', "")
@@ -810,50 +810,38 @@ class Signal(SignalBase):
         self.tunits = kw.get('tunits', "s")
 
     def shift_t(self, dt):
-        return self.__class__(self.x, self.t + dt, **self.kw)
+        return self.__class__(self.x, self.t + dt, *self.args, **self.kw)
 
     def to_ms(self):
         assert self.tunits == 's', "tunits must be seconds"
         kw = self.kw.copy()
         kw['tunits'] = 'ms'
-        return self.__class__(self.x, 1e3*self.t, **kw)
+        return self.__class__(self.x, 1e3*self.t, *self.args, **kw)
 
-    def _op_factory(op, calcfun):
-        def apply(self, other, out=None):
-            if isinstance(other, Signal):
-                other = other.x
-            return op(self.x, other, out)
-
-        def iapply(self, other):
-            apply(self, other, self.x)
-            return self
-
+    def _op_factory(op):
         def wapply(self, other):
-            return self.__array_wrap__(apply(self, other))
-        
-        return locals()[calcfun]
+            return self.__array_wrap__(op(self, other))
+        return wapply
 
-    __add__  = _op_factory(np.add     , 'wapply')
-    __iadd__ = _op_factory(np.add     , 'iapply')
-    __sub__  = _op_factory(np.subtract, 'wapply')
-    __isub__ = _op_factory(np.subtract, 'iapply')
-    __div__  = _op_factory(np.divide  , 'wapply')
-    __idiv__ = _op_factory(np.divide  , 'iapply')
+    def _iop_factory(op):
+        def iapply(self, other):
+            op(self.x, other, self.x)
+            return self
+        return iapply
 
-    __pow__  = _op_factory(np.power   , 'wapply')
+    __add__  = _op_factory(np.add)
+    __sub__  = _op_factory(np.subtract)
+    __mul__  = _op_factory(np.multiply)
+    __div__  = _op_factory(np.divide)
+    __pow__  = _op_factory(np.power)
 
+    __iadd__ = _iop_factory(np.add)
+    __isub__ = _iop_factory(np.subtract)
+    __imul__ = _iop_factory(np.multiply)
+    __idiv__ = _iop_factory(np.divide)
+    
     def __neg__(self):
         return self.__array_wrap__(-self.x)
-
-    def __mul__(self, other):
-        return self.__array_wrap__(other*self.x)
-    
-    def __imul__(self, other):
-        try:
-            other.apply(self.x)
-        except AttributeError:
-            np.multiply(self.x, other, self.x)
-        return self
 
     def nonneg(self):
         return self.masked(self < 0)
@@ -922,7 +910,7 @@ class Signal(SignalBase):
         x = x0 + (x1 - x0) * ((t - t0) / (t1 - t0)).reshape(self.bcast)
         if masked:
             x = ma.masked_array(x, outl | outr)
-        return self._result_class(x, t, **self.kw)
+        return self._result_class(x, t, *self.args, **self.kw)
 
     @classmethod
     def constfit(cls, x, y, deg=0):
@@ -1124,47 +1112,86 @@ class Signal(SignalBase):
 
 
 class CalibratingSignal(Signal):
-    def __init__(self, x, t=None, **kw):
-        Signal.__init__(self, x, t, **kw)
+    def __init__(self, x, t=None, fact=1, offs=0, **kw):
+        Signal.__init__(self, x, t, fact, offs, **kw)
         self._result_class = Signal
 
+        self.fact, self.offs = fact, offs
         self.dtype = kw.get('dtype', None)
-        self.fact = fact = kw.get('fact', 1)
-        self.offs = offs = kw.get('offs', 0)
 
-        fact_is_vect = hasattr(fact, '__len__') and len(fact) == self.shape[0]
-        offs_is_vect = hasattr(offs, '__len__') and len(offs) == self.shape[0]
+        fact_is_vect = not np.isscalar(fact)
+        offs_is_vect = not np.isscalar(offs)
+
         if fact_is_vect and offs_is_vect:
             self.__getitem__ = self._getitem_vector
-            self.kw_view = DictView(kw, set(kw.keys()) - set(['fact', 'offs']))
         elif fact_is_vect:
             self.__getitem__ = self._getitem_vector_fact
-            self.kw_view = DictView(kw, set(kw.keys()) - set(['fact']))
         elif offs_is_vect:
             self.__getitem__ = self._getitem_vector_offs
-            self.kw_view = DictView(kw, set(kw.keys()) - set(['offs']))
+
+    @property
+    def x(self):
+        return self.fact * np.asarray(self._x, dtype=self.dtype) + self.offs
 
     def _getitem_vector(self, indx):
         if not isinstance(indx, tuple):
             indx = (indx,)
         return self.__class__(self._x[indx], self._t[indx[0]], 
-                fact=self.fact[indx[0]], offs=self.offs[indx[0]], **self.kw_view)
+                              self.fact[indx[0]], self.offs[indx[0]], **self.kw)
 
     def _getitem_vector_fact(self, indx):
         if not isinstance(indx, tuple):
             indx = (indx,)
         return self.__class__(self._x[indx], self._t[indx[0]], 
-                fact=self.fact[indx[0]], **self.kw_view)
+                              self.fact[indx[0]], self.offs, **self.kw)
 
     def _getitem_vector_offs(self, indx):
         if not isinstance(indx, tuple):
             indx = (indx,)
         return self.__class__(self._x[indx], self._t[indx[0]], 
-                offs=self.offs[indx[0]], **self.kw_view)
+                              self.fact, self.offs[indx[0]], **self.kw)
     
-    @property
-    def x(self):
-        return self.fact * np.asarray(self._x, dtype=self.dtype) + self.offs
+    def __add__(self, other):
+        if np.isscalar(other) and np.isscalar(self.offs):
+            return self.__class__(self._x, self._t, self.fact, 
+                                  self.offs + other, **self.kw)
+        elif self.offs == 0:
+            return self.__class__(self._x, self._t, self.fact,
+                                  other, **self.kw)
+        else:
+            return Signal.__add__(self, other)
+
+    def __iadd__(self, other):
+        if np.isscalar(other) and np.isscalar(self.offs):
+            self.offs = self.offs + other
+            self.args = (self.fact, self.offs)
+        elif self.offs == 0:
+            self.offs = other
+            self.args = (self.fact, self.offs)
+        else:
+            Signal.__iadd__(self, other)
+        return self
+
+    def __mul__(self, other):
+        if np.isscalar(other) and np.isscalar(self.fact) and np.isscalar(self.offs):
+            return self.__class__(self._x, self._t, self.fact * other,
+                                  self.offs * other, **self.kw)
+        elif self.fact == 1 and self.offs == 0:
+            return self.__class__(self._x, self._t, other, self.offs, **self.kw)
+        else:
+            return Signal.__mul__(self, other)
+
+    def __imul__(self, other):
+        if np.isscalar(other) and np.isscalar(self.fact) and np.isscalar(self.offs):
+            self.fact = self.fact * other
+            self.offs = self.offs * other
+            self.args = (self.fact, self.offs)
+        elif self.fact == 1 and self.offs == 0:
+            self.fact = other
+            self.args = (self.fact, self.offs)
+        else:
+            Signal.__imul__(self, other)
+        return self
 
 
 class PeriodPhaseFinder:

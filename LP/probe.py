@@ -283,7 +283,7 @@ class PhysicalResults:
         
         y = {k: v[mask] for k, v in self.res.iteritems()}
 
-        y['Dt'] = y['t']
+        y['Dt'] = y['t'].copy()
         tM = self.R.tM(plunge)
         if len(tM) == 1:
             y['Dt'] -= tM[0]
