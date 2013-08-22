@@ -1,6 +1,7 @@
 import numpy as np
 import numpy.ma as ma
 
+import operator
 from math import sqrt
 
 from pprint import pformat
@@ -426,53 +427,100 @@ def PP_test():
     return PP, PPE
 
 
+def _op_factory(op, neutral):
+    def _op(x, other):
+        if np.isscalar(other):
+            if other == neutral:
+                return x
+            elif np.isscalar(x):
+                return op(x, other)
+        raise TypeError("cannot apply operation")
+    return _op
+
+add = _op_factory(operator.add, 0)
+sub = _op_factory(operator.sub, 0)
+mul = _op_factory(operator.mul, 1)
+div = _op_factory(operator.div, 1)
+
 class Amp:
-    def __init__(self, fact=1., offs=0., fixpoints=None):
+    def __init__(self, fact=1, offs=0, fixpoints=None):
         if fixpoints is not None:
             (x0, y0), (x1, y1) = fixpoints
-            self.fact = (y1-y0)/(x1-x0)
-            self.offs = y0 - self.fact*x0
+            self.fact = (y1 - y0) / (x1 - x0)
+            self.offs = y0 - self.fact * x0
         else:
             self.fact, self.offs = fact, offs
 
     def __call__(self, x):
-        return x*self.fact + self.offs   # try x.__mul__ if x is object
+        return x * self.fact + self.offs   # try x.__mul__ if x is object
+
+    def __getitem__(self, indx):
+        try:
+            fact = self.fact[indx]
+        except TypeError:
+            fact = self.fact
+        try:
+            offs = self.offs[indx]
+        except TypeError:
+            offs = self.offs
+        return self.__class__(fact, offs)
 
     def apply(self, x):
         x *= self.fact
         x += self.offs
         return x
 
+    def _add_factory(op):
+        def wapply(self, other):
+            return self.__class__(self.fact, op(self.offs, other))
+
+        def iapply(self, other):
+            self.offs = op(self.offs, other)
+            return self
+        return wapply, iapply
+
+    def _mul_factory(op):
+        def wapply(self, other):
+            return self.__class__(op(self.fact, other), op(self.offs, other))
+
+        def iapply(self, other):
+            self.fact = op(self.fact, other)
+            self.offs = op(self.offs, other)
+            return self
+        return wapply, iapply
+
+    __add__, __iadd__ = _add_factory(add)
+    __sub__, __isub__ = _add_factory(sub)
+    __mul  , __imul   = _mul_factory(mul)
+    __div__, __idiv__ = _mul_factory(div)
+
     def __mul__(self, other):
         if isinstance(other, Amp):
-            fact = self.fact*other.fact
-            offs = self.fact*other.offs + self.offs
-            return Amp(fact, offs)
+            fact = self.fact * other.fact
+            offs = self.fact * other.offs + self.offs
+            return self.__class__(fact, offs)
         else:
-            return self(other)
-
+            return self.__mul(other)
+            
     def __imul__(self, other):
         if isinstance(other, Amp):
             self.offs *= other.fact
             self.offs += other.offs
             self.fact *= other.fact
-            #self.offs += self.fact*other.offs
-            #self.fact *= other.fact
+            return self
         else:
-            self.offs *= other
-            self.fact *= other
-        return self
+            return self.__imul(other)
 
     def inv(self):
-        ifact = 1./self.fact
-        ioffs = -self.offs*ifact
-        return Amp(ifact, ioffs)
+        ifact = 1. / self.fact
+        ioffs = -self.offs * ifact
+        return self.__class__(ifact, ioffs)
 
     def copy(self):
-        return Amp(self.fact, self.offs)
+        return self.__class__(self.fact, self.offs)
 
     def __repr__(self):
-        fmtstr = "%s (fact={fact:.3e}, offs={offs:.3e})"
+        fmtstr = "%s (fact={fact}, offs={offs})"
         return (fmtstr % self.__class__.__name__).format(**self.__dict__)
 
 
@@ -820,25 +868,22 @@ class Signal(SignalBase):
 
     def _op_factory(op):
         def wapply(self, other):
-            return self.__array_wrap__(op(self, other))
-        return wapply
+            if isinstance(other, SignalBase):
+                other = other.x
+            return self.__array_wrap__(op(self.x, other))
 
-    def _iop_factory(op):
         def iapply(self, other):
+            if isinstance(other, SignalBase):
+                other = other.x
             op(self.x, other, self.x)
             return self
-        return iapply
+        return wapply, iapply
 
-    __add__  = _op_factory(np.add)
-    __sub__  = _op_factory(np.subtract)
-    __mul__  = _op_factory(np.multiply)
-    __div__  = _op_factory(np.divide)
-    __pow__  = _op_factory(np.power)
-
-    __iadd__ = _iop_factory(np.add)
-    __isub__ = _iop_factory(np.subtract)
-    __imul__ = _iop_factory(np.multiply)
-    __idiv__ = _iop_factory(np.divide)
+    __add__, __iadd__ = _op_factory(np.add)
+    __sub__, __isub__ = _op_factory(np.subtract)
+    __mul__, __imul__ = _op_factory(np.multiply)
+    __div__, __idiv__ = _op_factory(np.divide)
+    __pow__, __ipow__ = _op_factory(np.power)
     
     def __neg__(self):
         return self.__array_wrap__(-self.x)
@@ -1111,87 +1156,43 @@ class Signal(SignalBase):
         return C[np.argmax(sign*C.x)]
 
 
-class CalibratingSignal(Signal):
-    def __init__(self, x, t=None, fact=1, offs=0, **kw):
-        Signal.__init__(self, x, t, fact, offs, **kw)
+class AmpSignal(Signal):
+    def __init__(self, x, t=None, amp=Amp(), **kw):
+        Signal.__init__(self, x, t, amp, **kw)
         self._result_class = Signal
 
-        self.fact, self.offs = fact, offs
+        self.amp = amp
         self.dtype = kw.get('dtype', None)
-
-        fact_is_vect = not np.isscalar(fact)
-        offs_is_vect = not np.isscalar(offs)
-
-        if fact_is_vect and offs_is_vect:
-            self.__getitem__ = self._getitem_vector
-        elif fact_is_vect:
-            self.__getitem__ = self._getitem_vector_fact
-        elif offs_is_vect:
-            self.__getitem__ = self._getitem_vector_offs
 
     @property
     def x(self):
-        return self.fact * np.asarray(self._x, dtype=self.dtype) + self.offs
+        return self.amp(np.asarray(self._x, dtype=self.dtype))
 
-    def _getitem_vector(self, indx):
+    def apply(self):
+        return self._result_class(self.x, self.t, **self.kw)
+
+    def __getitem__(self, indx):
         if not isinstance(indx, tuple):
             indx = (indx,)
-        return self.__class__(self._x[indx], self._t[indx[0]], 
-                              self.fact[indx[0]], self.offs[indx[0]], **self.kw)
-
-    def _getitem_vector_fact(self, indx):
-        if not isinstance(indx, tuple):
-            indx = (indx,)
-        return self.__class__(self._x[indx], self._t[indx[0]], 
-                              self.fact[indx[0]], self.offs, **self.kw)
-
-    def _getitem_vector_offs(self, indx):
-        if not isinstance(indx, tuple):
-            indx = (indx,)
-        return self.__class__(self._x[indx], self._t[indx[0]], 
-                              self.fact, self.offs[indx[0]], **self.kw)
+        return self.__class__(self._x[indx], self._t[indx[0]], self.amp[indx[0]], **self.kw)
     
-    def __add__(self, other):
-        if np.isscalar(other) and np.isscalar(self.offs):
-            return self.__class__(self._x, self._t, self.fact, 
-                                  self.offs + other, **self.kw)
-        elif self.offs == 0:
-            return self.__class__(self._x, self._t, self.fact,
-                                  other, **self.kw)
-        else:
-            return Signal.__add__(self, other)
+    def _op_factory(op, fallback_op):
+        def wapply(self, other):
+            try:
+                return self.__class__(self._x, self._t, op(self.amp, other), **self.kw)
+            except TypeError:
+                return fallback_op(self, other)
 
-    def __iadd__(self, other):
-        if np.isscalar(other) and np.isscalar(self.offs):
-            self.offs = self.offs + other
-            self.args = (self.fact, self.offs)
-        elif self.offs == 0:
-            self.offs = other
-            self.args = (self.fact, self.offs)
-        else:
-            Signal.__iadd__(self, other)
-        return self
+        def iapply(self, other):
+            self.amp = op(self.amp, other)
+            self.args = (self.amp,)
+            return self
+        return wapply, iapply
 
-    def __mul__(self, other):
-        if np.isscalar(other) and np.isscalar(self.fact) and np.isscalar(self.offs):
-            return self.__class__(self._x, self._t, self.fact * other,
-                                  self.offs * other, **self.kw)
-        elif self.fact == 1 and self.offs == 0:
-            return self.__class__(self._x, self._t, other, self.offs, **self.kw)
-        else:
-            return Signal.__mul__(self, other)
-
-    def __imul__(self, other):
-        if np.isscalar(other) and np.isscalar(self.fact) and np.isscalar(self.offs):
-            self.fact = self.fact * other
-            self.offs = self.offs * other
-            self.args = (self.fact, self.offs)
-        elif self.fact == 1 and self.offs == 0:
-            self.fact = other
-            self.args = (self.fact, self.offs)
-        else:
-            Signal.__imul__(self, other)
-        return self
+    __add__, __iadd__ = _op_factory(operator.add, Signal.__add__)
+    __sub__, __isub__ = _op_factory(operator.sub, Signal.__sub__)
+    __mul__, __imul__ = _op_factory(operator.mul, Signal.__mul__)
+    __div__, __idiv__ = _op_factory(operator.div, Signal.__div__)
 
 
 class PeriodPhaseFinder:
