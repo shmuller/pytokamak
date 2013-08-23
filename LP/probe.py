@@ -416,16 +416,12 @@ class Probe:
         return self.S[index]
    
     @memoized_property
-    def x(self):
-        return self.digitizer.x
-
-    @memoized_property
     def S(self):
         self.S = self.mapsig()
         self.calib()
         return self.S
 
-    @memoized_property
+    @property
     def pos(self):
         raise NotImplementedError
 
@@ -444,10 +440,10 @@ class Probe:
         raise NotImplementedError
 
     def get_sig(self, key):
-        return self.x[self.get_mapping(key)]
+        return self.digitizer.x[self.get_mapping(key)]
 
     def mapsig(self):
-        t = self.x['t'].astype('d')
+        t = self.digitizer.x['t'].astype('d')
         R = self.unique_sigs['ampR']
         S = OrderedDict(R=PositionSignal(R, t, name='R'))
 
@@ -470,6 +466,8 @@ class Probe:
             I = CurrentSignal(x_I, t, V=V, number=i, name='I%d' % i, label=tip.label)
             S[tip.name] = I
 
+        # delete unused data - will be regenerated if needed again
+        del self.digitizer.x
         return S
 
     def calib(self):
@@ -484,17 +482,6 @@ class Probe:
             # I_keys is None: floating potential
             if self.get_keys(tip.name)['I'] is None:
                 S.V.norm_to_region(s)
-
-    def load_raw(self, loadfun='load', plunge=None, calib=True, corr_capa=False, **kw):
-        self.x = getattr(self.digitizer, loadfun)(**kw)
-
-        self.mapsig()
-        if calib:
-            self.calib()
-        if corr_capa:
-            self.corr_capa()
-        if plunge is not None:
-            self.trim(plunge)
     
     def get_type(self, type):
         keys = [k for k, v in self.S.iteritems() if v.type == type]
@@ -574,7 +561,7 @@ class Probe:
 
     @memoized_property
     def t0(self):
-        return self.x['t'][0]
+        return self.digitizer.x['t'][0]
 
     def shift_t(self, plunge=None, phase=1):
         t0 = self.t0

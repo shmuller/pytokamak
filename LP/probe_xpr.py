@@ -130,7 +130,7 @@ class ProbeXPR(Probe):
         reload(config)
         return config.campaign.find_shot(shn)
 
-    @memoized_property
+    @property
     def pos(self):
         t = self.S['R'].t
         Rz = np.empty((t.size, 2))
