@@ -427,111 +427,6 @@ def PP_test():
     return PP, PPE
 
 
-class OperationTypeError(TypeError):
-    pass
-
-def _op_factory(op, neutral):
-    def _op(x, other):
-        if np.isscalar(other):
-            if other == neutral:
-                return x
-            elif np.isscalar(x):
-                return op(x, other)
-        raise OperationTypeError("cannot apply operation")
-    return _op
-
-add = _op_factory(operator.add, 0)
-sub = _op_factory(operator.sub, 0)
-mul = _op_factory(operator.mul, 1)
-div = _op_factory(operator.div, 1)
-
-class Amp:
-    def __init__(self, fact=1, offs=0, fixpoints=None):
-        if fixpoints is not None:
-            (x0, y0), (x1, y1) = fixpoints
-            self.fact = (y1 - y0) / (x1 - x0)
-            self.offs = y0 - self.fact * x0
-        else:
-            self.fact, self.offs = fact, offs
-
-    def __call__(self, x):
-        if self.fact is 1 and self.offs is 0:
-            return x
-        else:
-            return x * self.fact + self.offs   # try x.__mul__ if x is object
-
-    def apply(self, x):
-        if self.fact is not 1: 
-            x *= self.fact
-        if self.offs is not 0: 
-            x += self.offs
-        return x
-
-    def __getitem__(self, indx):
-        try:
-            fact = self.fact[indx]
-        except TypeError:
-            fact = self.fact
-        try:
-            offs = self.offs[indx]
-        except TypeError:
-            offs = self.offs
-        return self.__class__(fact, offs)
-
-    def _add_factory(op):
-        def wapply(self, other):
-            return self.__class__(self.fact, op(self.offs, other))
-
-        def iapply(self, other):
-            self.offs = op(self.offs, other)
-            return self
-        return wapply, iapply
-
-    def _mul_factory(op):
-        def wapply(self, other):
-            return self.__class__(op(self.fact, other), op(self.offs, other))
-
-        def iapply(self, other):
-            self.fact = op(self.fact, other)
-            self.offs = op(self.offs, other)
-            return self
-        return wapply, iapply
-
-    __add__, __iadd__ = _add_factory(add)
-    __sub__, __isub__ = _add_factory(sub)
-    __mul  , __imul   = _mul_factory(mul)
-    __div__, __idiv__ = _mul_factory(div)
-
-    def __mul__(self, other):
-        if isinstance(other, Amp):
-            fact = self.fact * other.fact
-            offs = self.fact * other.offs + self.offs
-            return self.__class__(fact, offs)
-        else:
-            return self.__mul(other)
-            
-    def __imul__(self, other):
-        if isinstance(other, Amp):
-            self.offs *= other.fact
-            self.offs += other.offs
-            self.fact *= other.fact
-            return self
-        else:
-            return self.__imul(other)
-
-    def inv(self):
-        ifact = 1. / self.fact
-        ioffs = -self.offs * ifact
-        return self.__class__(ifact, ioffs)
-
-    def copy(self):
-        return self.__class__(self.fact, self.offs)
-
-    def __repr__(self):
-        fmtstr = "%s (fact={fact}, offs={offs})"
-        return (fmtstr % self.__class__.__name__).format(**self.__dict__)
-
-
 class Detrender:
     def __init__(self, N, detrend='linear'):
         xm = (N - 1) / 2.
@@ -1161,6 +1056,111 @@ class Signal(SignalBase):
         """
         C = self.xcorr(other, **kw)[0]
         return C[np.argmax(sign*C.x)]
+
+
+class OperationTypeError(TypeError):
+    pass
+
+def _op_factory(op, neutral):
+    def _op(x, other):
+        if np.isscalar(other):
+            if other == neutral:
+                return x
+            elif np.isscalar(x):
+                return op(x, other)
+        raise OperationTypeError("cannot apply operation")
+    return _op
+
+add = _op_factory(operator.add, 0)
+sub = _op_factory(operator.sub, 0)
+mul = _op_factory(operator.mul, 1)
+div = _op_factory(operator.div, 1)
+
+class Amp:
+    def __init__(self, fact=1, offs=0, fixpoints=None):
+        if fixpoints is not None:
+            (x0, y0), (x1, y1) = fixpoints
+            self.fact = (y1 - y0) / (x1 - x0)
+            self.offs = y0 - self.fact * x0
+        else:
+            self.fact, self.offs = fact, offs
+
+    def __call__(self, x):
+        if self.fact is 1 and self.offs is 0:
+            return x
+        else:
+            return x * self.fact + self.offs   # try x.__mul__ if x is object
+
+    def apply(self, x):
+        if self.fact is not 1: 
+            x *= self.fact
+        if self.offs is not 0: 
+            x += self.offs
+        return x
+
+    def __getitem__(self, indx):
+        try:
+            fact = self.fact[indx]
+        except TypeError:
+            fact = self.fact
+        try:
+            offs = self.offs[indx]
+        except TypeError:
+            offs = self.offs
+        return self.__class__(fact, offs)
+
+    def _add_factory(op):
+        def wapply(self, other):
+            return self.__class__(self.fact, op(self.offs, other))
+
+        def iapply(self, other):
+            self.offs = op(self.offs, other)
+            return self
+        return wapply, iapply
+
+    def _mul_factory(op):
+        def wapply(self, other):
+            return self.__class__(op(self.fact, other), op(self.offs, other))
+
+        def iapply(self, other):
+            self.fact = op(self.fact, other)
+            self.offs = op(self.offs, other)
+            return self
+        return wapply, iapply
+
+    __add__, __iadd__ = _add_factory(add)
+    __sub__, __isub__ = _add_factory(sub)
+    __mul  , __imul   = _mul_factory(mul)
+    __div__, __idiv__ = _mul_factory(div)
+
+    def __mul__(self, other):
+        if isinstance(other, Amp):
+            fact = self.fact * other.fact
+            offs = self.fact * other.offs + self.offs
+            return self.__class__(fact, offs)
+        else:
+            return self.__mul(other)
+            
+    def __imul__(self, other):
+        if isinstance(other, Amp):
+            self.offs *= other.fact
+            self.offs += other.offs
+            self.fact *= other.fact
+            return self
+        else:
+            return self.__imul(other)
+
+    def inv(self):
+        ifact = 1. / self.fact
+        ioffs = -self.offs * ifact
+        return self.__class__(ifact, ioffs)
+
+    def copy(self):
+        return self.__class__(self.fact, self.offs)
+
+    def __repr__(self):
+        fmtstr = "%s (fact={fact}, offs={offs})"
+        return (fmtstr % self.__class__.__name__).format(**self.__dict__)
 
 
 class AmpSignal(Signal):
