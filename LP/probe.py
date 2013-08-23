@@ -27,14 +27,15 @@ from sm_pyplot.tight_figure import get_fig, get_tfig, get_axes
 from sm_pyplot.annotations import vlines, vrect
 
 from utils.utils import memoized_property, dict_pop, DictView, GeneratorDict
-from utils.sig import math_sel, usetex, Signal, PeriodPhaseFinder
+from utils.sig import math_sel, usetex, Signal, AmpSignal, PeriodPhaseFinder
 
-class PositionSignal(Signal):
-    def __init__(self, x, t, **kw):
+class PositionSignal(AmpSignal):
+    def __init__(self, x, t, *args, **kw):
+        kw.setdefault('dtype', np.float64)
         kw.setdefault('type', 'Position')
         kw.setdefault('units', 'm')
 
-        Signal.__init__(self, x, t, **kw)
+        AmpSignal.__init__(self, x, t, *args, **kw)
     
         self.baseline_slice = kw.get('baseline_slice', slice(None, 1000))
         self.lvl_fact = kw.get('lvl_fact', 0.1)
@@ -108,15 +109,16 @@ class PositionSignal(Signal):
         return ax
 
 
-class VoltageSignal(Signal):
-    def __init__(self, x, t, **kw):
+class VoltageSignal(AmpSignal):
+    def __init__(self, x, t, *args, **kw):
+        kw.setdefault('dtype', np.float64)
         kw.setdefault('type', 'Voltage')
         kw.setdefault('units', 'V')
 
         self.dt = kw.pop('dt', 0.1)
         self.min_ptp = kw.pop('min_ptp', 50)
 
-        Signal.__init__(self, x, t, **kw)
+        AmpSignal.__init__(self, x, t, *args, **kw)
 
     @memoized_property
     def PPF(self):
@@ -138,12 +140,13 @@ class VoltageSignal(Signal):
         return ax
 
 
-class CurrentSignal(Signal):
-    def __init__(self, x, t, **kw):
+class CurrentSignal(AmpSignal):
+    def __init__(self, x, t, *args, **kw):
+        kw.setdefault('dtype', np.float64)
         kw.setdefault('type', 'Current')
         kw.setdefault('units', 'A')
 
-        Signal.__init__(self, x, t, **kw)
+        AmpSignal.__init__(self, x, t, *args, **kw)
 
         self.V = kw.get('V', None)
         self.C = kw.get('C', None)
@@ -441,7 +444,7 @@ class Probe:
         raise NotImplementedError
 
     def get_sig(self, key):
-        return self.x[self.get_mapping(key)].astype('d')
+        return self.x[self.get_mapping(key)]
 
     def mapsig(self):
         t = self.x['t'].astype('d')

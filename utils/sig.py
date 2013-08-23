@@ -427,6 +427,9 @@ def PP_test():
     return PP, PPE
 
 
+class OperationTypeError(TypeError):
+    pass
+
 def _op_factory(op, neutral):
     def _op(x, other):
         if np.isscalar(other):
@@ -434,7 +437,7 @@ def _op_factory(op, neutral):
                 return x
             elif np.isscalar(x):
                 return op(x, other)
-        raise TypeError("cannot apply operation")
+        raise OperationTypeError("cannot apply operation")
     return _op
 
 add = _op_factory(operator.add, 0)
@@ -452,7 +455,17 @@ class Amp:
             self.fact, self.offs = fact, offs
 
     def __call__(self, x):
-        return x * self.fact + self.offs   # try x.__mul__ if x is object
+        if self.fact is 1 and self.offs is 0:
+            return x
+        else:
+            return x * self.fact + self.offs   # try x.__mul__ if x is object
+
+    def apply(self, x):
+        if self.fact is not 1: 
+            x *= self.fact
+        if self.offs is not 0: 
+            x += self.offs
+        return x
 
     def __getitem__(self, indx):
         try:
@@ -464,11 +477,6 @@ class Amp:
         except TypeError:
             offs = self.offs
         return self.__class__(fact, offs)
-
-    def apply(self, x):
-        x *= self.fact
-        x += self.offs
-        return x
 
     def _add_factory(op):
         def wapply(self, other):
@@ -764,7 +772,6 @@ class SignalBase:
         self._t = np.atleast_1d(t)
         self.size, self.shape = self._x.size, self._x.shape
         self.args, self.kw = args, kw
-        self._result_class = self.__class__
 
     @property
     def x(self):
@@ -800,7 +807,7 @@ class SignalBase:
         return self.__class__(x, self._t, *self.args, **self.kw)
 
     def __array_wrap__(self, x):
-        return self._result_class(x, self._t, *self.args, **self.kw)
+        return self.__class__(x, self._t, **self.kw)
 
     def _cmp_factory(op):
         def cmp(self, other, out=None):
@@ -895,14 +902,14 @@ class Signal(SignalBase):
         return self.masked(self > 0)
 
     def normed(self):
-        return self.__array_wrap__(self.x / np.abs(self.range).max())
+        return self.__array_wrap__(self / np.abs(self.range).max())
 
     def normed_zero_one(self):
         xm, xM = self.range
-        return self.__array_wrap__((self.x - xm) / (xM - xm))
+        return self.__array_wrap__((self - xm) / (xM - xm))
 
     def standardized(self):
-        return self.__array_wrap__((self.x - self.x.mean()) / self.x.std())
+        return self.__array_wrap__((self - self.x.mean()) / self.x.std())
 
     def trim(self, s):
         self.x, self.t = self.x[s], self.t[s]
@@ -923,7 +930,7 @@ class Signal(SignalBase):
         return tuple(self._percentiles(self.x, [r, 1. - r]))
 
     def norm_to_region(self, cnd):
-        self.x[:] -= self.x[cnd].mean()
+        self -= self.x[cnd].mean()
         return self
 
     @memoized_property
@@ -955,7 +962,7 @@ class Signal(SignalBase):
         x = x0 + (x1 - x0) * ((t - t0) / (t1 - t0)).reshape(self.bcast)
         if masked:
             x = ma.masked_array(x, outl | outr)
-        return self._result_class(x, t, *self.args, **self.kw)
+        return self.__class__(x, t, **self.kw)
 
     @classmethod
     def constfit(cls, x, y, deg=0):
@@ -1157,19 +1164,20 @@ class Signal(SignalBase):
 
 
 class AmpSignal(Signal):
-    def __init__(self, x, t=None, amp=Amp(), **kw):
+    def __init__(self, x, t=None, amp=None, **kw):
+        if amp is None:
+            amp = Amp()
         Signal.__init__(self, x, t, amp, **kw)
-        self._result_class = Signal
 
         self.amp = amp
         self.dtype = kw.get('dtype', None)
 
     @property
     def x(self):
-        return self.amp(np.asarray(self._x, dtype=self.dtype))
+        return self.amp(np.asanyarray(self._x, dtype=self.dtype))
 
     def apply(self):
-        return self._result_class(self.x, self.t, **self.kw)
+        return self.__array_wrap__(self.x)
 
     def __getitem__(self, indx):
         if not isinstance(indx, tuple):
@@ -1180,7 +1188,7 @@ class AmpSignal(Signal):
         def wapply(self, other):
             try:
                 return self.__class__(self._x, self._t, op(self.amp, other), **self.kw)
-            except TypeError:
+            except OperationTypeError:
                 return fallback_op(self, other)
 
         def iapply(self, other):
