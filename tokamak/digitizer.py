@@ -235,16 +235,6 @@ class Digitizer(IO, Mapping):
         for k in self.keys():
             yield k
 
-    def load_raw_mds(self, **kw):
-        self.x = self.IO_mds.load(self.all_nodes, **kw)
-        for k in self.x.keys():
-            self.x[k] = self.x[k].astype(np.float32)
-        return self.x
-        
-    def load_raw_file(self, **kw):
-        self.x = self.IO_file.load(self.all_nodes, **kw)
-        return self.x
-
     def get_size(self, node, **kw):
         try:
             return self.IO_file.get_size(node, **kw)
@@ -263,11 +253,7 @@ class Digitizer(IO, Mapping):
 
     def put_node(self, node, val):
         return self.IO_file.put_node(node, val)
-        
-    def load_raw(self, **kw):
-        self.x = IO.load(self, self.all_nodes, **kw)
-        return self.x
-    
+
     def save(self):
         self.IO_file.save(self.x, self.all_nodes)
 
@@ -280,16 +266,10 @@ class Digitizer(IO, Mapping):
             for node in self.all_nodes:
                 self.x[node] = self.x[node][self.window]
 
-    def _load_calib_factory(name):
-        def load_calib(self, **kw):
-            getattr(self, name)(**kw)
-            self.calib()
-            return self.x
-        return load_calib
-
-    load_mds  = _load_calib_factory('load_raw_mds')
-    load_file = _load_calib_factory('load_raw_file')
-    load      = _load_calib_factory('load_raw')
+    def load(self, **kw):
+        self.x = IO.load(self, self.all_nodes, **kw)
+        self.calib()
+        return self.x
 
     def calib_offset(self, **kw):
         self.load_raw(**kw)
