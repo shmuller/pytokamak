@@ -740,10 +740,13 @@ class SignalBase:
             return self._wrap(self._x.data)
 
     def filled(self, fill=np.nan):
-        if not isinstance(self._x, ma.masked_array):
+        x = self._x
+        if not isinstance(x, ma.masked_array):
             return self
         else:
-            return self._wrap(self._x.filled(fill))
+            if not np.isfinite(fill):
+                x = np.asanyarray(x, np.float_)
+            return self._wrap(x.filled(fill))
 
 
 class Signal(SignalBase):
@@ -1162,11 +1165,13 @@ class Amp:
         fmtstr = "%s (fact={fact}, offs={offs})"
         return (fmtstr % self.__class__.__name__).format(**self.__dict__)
 
+amp_unity = Amp()
 
 class AmpSignal(Signal):
     def __init__(self, x, t=None, amp=None, **kw):
         if amp is None:
-            amp = Amp()
+            amp = amp_unity
+        amp = amp.copy()
         Signal.__init__(self, x, t, amp, **kw)
 
         self.amp = amp

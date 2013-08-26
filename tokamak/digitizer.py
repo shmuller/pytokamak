@@ -11,15 +11,15 @@ from mdsclient import *
 
 from sm_pyplot.tight_figure import get_fig
 
-from utils.utils import memoized_property
-from utils.sig import Signal
+from utils.utils import memoized_property, GeneratorDict
+from utils.sig import Signal, AmpSignal
 
 
 class IOH5:
     def __init__(self, h5name="test.h5"):
         self.h5name = h5name
 
-    def save(self, d, compression="gzip"):
+    def save(self, d, compression="szip"):
         with H5.File(self.h5name, "w") as f:
             for key, val in d.iteritems():
                 f.create_dataset(key, data=val, compression=compression)
@@ -94,7 +94,7 @@ class IOFile(IO):
         name = self.group + '/' + node
         if name in self._f:
             del self._f[name]
-        self._f.create_dataset(name, data=val, compression="gzip")
+        self._f.create_dataset(name, data=val, compression="szip")
 
     @ensure_open("r")
     def load(self, *args, **kw):
@@ -197,16 +197,14 @@ class Digitizer(IO, Mapping):
         self.nodes, self.tnode, self.tunits = nodes, tnode, tunits
         self.IO_mds, self.IO_file = IO_mds, IO_file
 
-        self.window = None
-        self.perm = dict()
         self.amp = dict()
-
-        if tnode in nodes:
-            self.all_nodes = nodes
-        else:
-            self.all_nodes = nodes[:1] + (tnode,) + nodes[1:]
+        self.x = GeneratorDict(generator=self.get_node)
 
         IO.__init__(self)
+
+    @memoized_property
+    def window(self):
+        return None
 
     def __repr__(self):
         fmtstr = "%s {name} for shot {shn}"
@@ -215,18 +213,8 @@ class Digitizer(IO, Mapping):
     def __str__(self):
         return self.__repr__() + ", with:\n%s" % pformat(self.__dict__)
 
-    @memoized_property
-    def x(self):
-        return self.load()
-
-    def assignal(self, *args, **kw):
-        return Signal(*args, tunits=self.tunits, **kw)
-
-    def __getitem__(self, indx):
-        return self.assignal(self.x[indx], self.x[self.tnode], name=indx)
-
     def keys(self):
-        return [k for k in self.x.keys() if k != self.tnode]
+        return self.nodes
 
     def __len__(self):
         return len(self.keys())
@@ -244,37 +232,36 @@ class Digitizer(IO, Mapping):
 
     def get_node(self, node, **kw):
         try:
-            return self.IO_file.get_node(node, **kw)
+            x = self.IO_file.get_node(node, **kw)
         except (IOError, KeyError):
             kw.setdefault('s', self.s)
-            val = self.IO_mds.get_node(node, **kw).astype(np.float32)
-            self.put_node(node, val)
-            return val
+            x = self.IO_mds.get_node(node, **kw)
+            self.put_node(node, x)
+        return x
+
+    @memoized_property
+    def window(self):
+        return None
+
+    def __getitem__(self, node):
+        if node not in self.keys():
+            raise KeyError
+        x = self.x[node]
+        t = self.x[self.tnode]
+        if self.window is not None:
+            x = x[self.window]
+            t = t[self.window]
+        if node in self.amp:
+            amp = self.amp[node]
+        else:
+            amp = None
+        return AmpSignal(x, t, amp=amp, dtype=np.float64, name=node)
 
     def put_node(self, node, val):
         return self.IO_file.put_node(node, val)
 
     def save(self):
-        self.IO_file.save(self.x, self.all_nodes)
-
-    def calib(self):
-        for node in self.perm:
-            self.x[node][:] = self.x[node].transpose(self.perm[node])
-        for node in self.amp:
-            self.amp[node].apply(self.x[node])
-        if self.window is not None:
-            for node in self.all_nodes:
-                self.x[node] = self.x[node][self.window]
-
-    def load(self, **kw):
-        self.x = IO.load(self, self.all_nodes, **kw)
-        self.calib()
-        return self.x
-
-    def calib_offset(self, **kw):
-        self.load_raw(**kw)
-        offs = [median(self.x[node]) for node in self.nodes]
-        return offs
+        self.IO_file.save(self.x, self.x.keys())
 
     def plot(self, nodes=None, fig=None):
         if nodes is None:

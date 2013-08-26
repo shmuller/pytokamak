@@ -25,7 +25,8 @@ class DigitizerXPR(DigitizerAUG):
         DigitizerAUG.__init__(self, shn, diag='XPR', suffix='_XPR', group='', raw=raw,
             nodes=('S1', 'S2', 'S3', 'S4', 'S5', 'S6', 'S7', 'S8'), **kw)
 
-    def update_window(self):
+    @memoized_property
+    def window(self):
         '''Detect failing data readout and cut window
         '''
         t = self.x['t']
@@ -36,11 +37,7 @@ class DigitizerXPR(DigitizerAUG):
         stop = None
         if cnd[iM] == True:
             stop = iM+1
-        self.window = slice(None, stop)
-        
-    def calib(self):
-        self.update_window()
-        DigitizerAUG.calib(self)
+        return slice(None, stop)
 
 
 class DigitizerXPRRaw(DigitizerXPR):
@@ -53,17 +50,17 @@ class DigitizerXPRRaw(DigitizerXPR):
 class DigitizerXPRRawPos(DigitizerXPRRaw):
     def __init__(self, shn):
         DigitizerXPRRaw.__init__(self, shn)
-        self.nodes += ('PosL', 'PosH')
-        self.all_nodes += ('PosL', 'PosH')
+        self.nodes += ('PosL', 'PosH', 'Pos')
 
-    def calib(self):
-        DigitizerXPRRaw.calib(self)
-        PosL = self.x['PosL'].astype(np.int16).view(np.uint16)
-        PosH = self.x['PosH'].astype(np.int16).view(np.uint16) & 0b0011111111111111
-        Pos  = np.c_[PosL, np.r_[PosH[0], PosH[:-1]]]
-
-        self.x['Pos'] = Pos.copy().view(np.uint32)[:,0].astype(np.float32)
-
+    def get_node(self, node, **kw):
+        if node == 'Pos':
+            PosL = self.x['PosL'].astype(np.int16).view(np.uint16)
+            PosH = self.x['PosH'].astype(np.int16).view(np.uint16) & 0b0011111111111111
+            Pos  = np.c_[PosL, np.r_[PosH[0], PosH[:-1]]]
+            return Pos.copy().view(np.uint32)[:,0]
+        else:
+            return DigitizerXPRRaw.get_node(self, node, **kw)
+            
 
 class DigitizerLPS(DigitizerAUG):
     def __init__(self, shn, raw=False):
@@ -86,6 +83,7 @@ class DigitizerLPSRaw(DigitizerLPS):
 class DigitizerLPSOld(DigitizerLPS):
     def __init__(self, shn):
         DigitizerLPS.__init__(self, shn)
+        self.nodes += ('XPOS',)
 
         for node in ('CUR1', 'CUR2', 'VOL3'):
             self.amp[node] = ampInv.copy()
@@ -93,10 +91,12 @@ class DigitizerLPSOld(DigitizerLPS):
         self.dig_xpos = DigitizerAUG(shn, diag='LPS', suffix='_LPS', group='XPOS',
                 nodes=('XPOS',))
 
-    def calib(self):
-        DigitizerLPS.calib(self)
-        R = self.dig_xpos['XPOS'].astype(np.float64).despike()
-        self.x['XPOS'] = R(self.x['t']).x.astype(np.float32)
+    def get_node(self, node, **kw):
+        if node == 'XPOS':
+            R = self.dig_xpos['XPOS'].astype(np.float64).despike()
+            return R(self.x['t']).x.astype(np.float32)
+        else:
+            return DigitizerLPS.get_node(self, node, **kw)
 
 
 DigitizerClasses = dict(

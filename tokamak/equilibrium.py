@@ -226,8 +226,7 @@ class Eqi:
    
     @memoized_property
     def psi(self):
-        psi = self.R_z_psi[2]
-        return AmpSignal(psi.x, psi.t, dtype=np.float64, **psi.kw)
+        return self.R_z_psi[2]
      
     def get_psi_slice(self, i):
         return self.R_z_psi[2][i].astype(np.float64)
@@ -251,10 +250,10 @@ class Eqi:
     @memoized_property
     def psi_n(self):
         psi = self.R_z_psi[2]
-        fact = 1. / (self.psi1.x - self.psi0.x)
-        offs = -self.psi0.x * fact
+        fact = 1. / (self.psi1._x - self.psi0._x)
+        offs = -self.psi0._x * fact
         amp = Amp(fact[:, None, None], offs[:, None, None])
-        return AmpSignal(psi.x, psi.t, amp, dtype=np.float64, **psi.kw)
+        return AmpSignal(psi._x, psi._t, amp, **psi.kw)
 
     def get_psi_n_slice(self, i):
         dpsi = self.psi1[i] - self.psi0[i]

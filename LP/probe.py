@@ -26,8 +26,8 @@ IVContainer = fitter_IV.IVContainer
 from sm_pyplot.tight_figure import get_fig, get_tfig, get_axes
 from sm_pyplot.annotations import vlines, vrect
 
-from utils.utils import memoized_property, dict_pop, DictView, GeneratorDict
-from utils.sig import math_sel, usetex, Signal, AmpSignal, PeriodPhaseFinder
+from utils.utils import memoized_property, dict_pop, DictView
+from utils.sig import math_sel, usetex, Signal, amp_unity, AmpSignal, PeriodPhaseFinder
 
 class PositionSignal(AmpSignal):
     def __init__(self, x, t, *args, **kw):
@@ -410,8 +410,6 @@ class Probe:
         self.head, self.digitizer, self.R0, self.z0 = head, digitizer, R0, z0
         self.eqi, self.viewers = eqi, viewers
 
-        self.unique_sigs = GeneratorDict(self.get_sig)
-    
     def __getitem__(self, index):
         return self.S[index]
    
@@ -440,39 +438,43 @@ class Probe:
         raise NotImplementedError
 
     def get_sig(self, key):
-        return self.digitizer.x[self.get_mapping(key)]
+        return self.digitizer[self.get_mapping(key)]
 
     def mapsig(self):
-        t = self.digitizer.x['t'].astype('d')
-        R = self.unique_sigs['ampR']
-        S = OrderedDict(R=PositionSignal(R, t, name='R'))
-
-        nans = np.zeros_like(t)
+        x = self.get_sig('ampR')
+        nans = np.zeros(x.shape, np.float32)
         nans.fill(np.nan)
+        Nans = AmpSignal(nans, x._t)
 
-        def get_sig(key):
+        def get_sig_amp(key):
             try:
-                return self.unique_sigs[key]
+                return self.get_sig(key), self.get_amp(key)
             except KeyError:
-                return nans
+                return Nans, amp_unity
+        
+        x, amp = get_sig_amp('ampR')
+        R = PositionSignal(x._x, x._t, amp*x.amp, name='R')
+
+        S = OrderedDict(R=R)
 
         for tip in self.head.tips:
             i = tip.number
             keys = self.get_keys(tip.name)
-            x_V = get_sig(keys['V'])
-            x_I = get_sig(keys['I'])
 
-            V = VoltageSignal(x_V, t, number=i, name='V%d' % i, label=tip.label)
-            I = CurrentSignal(x_I, t, V=V, number=i, name='I%d' % i, label=tip.label)
+            x, amp = get_sig_amp(keys['V'])
+            V = VoltageSignal(x._x, x._t, amp*x.amp, 
+                              number=i, name='V%d' % i, label=tip.label)
+            
+            x, amp = get_sig_amp(keys['I'])
+            I = CurrentSignal(x._x, x._t, amp*x.amp, V=V, 
+                              number=i, name='I%d' % i, label=tip.label)
+
             S[tip.name] = I
 
-        # delete unused data - will be regenerated if needed again
-        del self.digitizer.x
         return S
 
     def calib(self):
-        for k, v in self.unique_sigs.iteritems():
-            self.get_amp(k).apply(v)
+        pass
 
     def norm_to_region(self, s):
         for tip in self.head.tips:

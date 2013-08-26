@@ -29,6 +29,7 @@ class IOMdsAUG(IOMds):
         if raw:
             self.mdsfmt = 'augdiag(%s,*,*,"raw")' % fmtargs
             self.datadeco = 'word(data(%s))'
+            self.timedeco = 'f_float(dim_of(%s))'
         else:
             self.mdsfmt = 'augdiag(%s)' % fmtargs
 
@@ -50,26 +51,13 @@ class DigitizerAUG(Digitizer):
 
     def get_node(self, node, **kw):
         try:
-            return Digitizer.get_node(self, node, **kw)
-        except TdiError:
-            return np.zeros(1)
-
-    """
-    def load(self, **kw):
-        '''If any node fails to load, assume that all will fail and return dummy
-        '''
-        try:
-            return Digitizer.load(self, **kw)
-        except TdiError:
-            return {node: np.zeros(1) for node in self.nodes}
-    """
-
-    def calib(self):
-        for node, x in self.x.iteritems():
+            x = Digitizer.get_node(self, node, **kw)
             if x.ndim > 1:
                 perm = np.roll(np.arange(x.ndim), 1)
-                self.x[node] = np.ascontiguousarray(x.transpose(perm))
-        Digitizer.calib(self)
+                x = np.ascontiguousarray(x.transpose(perm))
+            return x
+        except TdiError:
+            return np.zeros(1)
 
 
 class DigitizerAUGMAC(DigitizerAUG):
@@ -126,9 +114,7 @@ class DigitizerAUGEQI(DigitizerAUGFPP):
     def __init__(self, shn, diag='EQI'):
         DigitizerAUGFPP.__init__(self, shn, diag=diag)
 
-        more_nodes = ('FFP', 'CLD', 'Rinv', 'R2inv', 'Bave', 'B2ave', 'FTRA')
-        self.nodes += more_nodes
-        self.all_nodes += more_nodes
+        self.nodes += ('FFP', 'CLD', 'Rinv', 'R2inv', 'Bave', 'B2ave', 'FTRA')
         self.amp.update(FFP=amp_mu0_2pi*amp_mu0_2pi)
         self.alias.update(ffprime='FFP', Bt='Bave')
 
