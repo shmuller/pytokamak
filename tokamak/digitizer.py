@@ -194,13 +194,18 @@ class Digitizer(IO, Mapping):
     def __init__(self, shn=0, name="", s=None, nodes=(), tnode='t', tunits='s',
             IO_mds=None, IO_file=None):
         self.shn, self.name, self.s = shn, name, s
-        self.nodes, self.tnode, self.tunits = nodes, tnode, tunits
+        self.nodes = nodes
+        self.tnode, self.tunits = tnode, tunits
         self.IO_mds, self.IO_file = IO_mds, IO_file
 
         self.amp = dict()
         self.x = GeneratorDict(generator=self.get_node)
 
         IO.__init__(self)
+
+    @property
+    def loaded_nodes(self):
+        return [k for k in self.nodes if k in self.x]
 
     @memoized_property
     def window(self):
@@ -243,11 +248,7 @@ class Digitizer(IO, Mapping):
     def window(self):
         return None
 
-    def __getitem__(self, node):
-        if node not in self.keys():
-            raise KeyError
-        x = self.x[node]
-        t = self.x[self.tnode]
+    def make_sig(self, node, x, t):
         if self.window is not None:
             x = x[self.window]
             t = t[self.window]
@@ -257,15 +258,22 @@ class Digitizer(IO, Mapping):
             amp = None
         return AmpSignal(x, t, amp=amp, dtype=np.float64, name=node)
 
+    def __getitem__(self, node):
+        if node not in self.nodes:
+            raise KeyError(node)
+        return self.make_sig(node, self.x[node], self.x[self.tnode])
+        
     def put_node(self, node, val):
         return self.IO_file.put_node(node, val)
 
-    def save(self):
-        self.IO_file.save(self.x, self.x.keys())
-
+    def load(self):
+        # visit all signals to load them
+        self.values()
+        return self
+ 
     def plot(self, nodes=None, fig=None):
         if nodes is None:
-            nodes = self.keys()
+            nodes = self.loaded_nodes
 
         fig = get_fig(fig, (len(nodes), 1), xlab=self[nodes[0]].xlab, ylab=nodes)
 

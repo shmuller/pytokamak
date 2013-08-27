@@ -29,7 +29,7 @@ class DigitizerXPR(DigitizerAUG):
     def window(self):
         '''Detect failing data readout and cut window
         '''
-        t = self.x['t']
+        t = self.x[self.tnode]
         dt = np.abs(np.diff(t))
         cnd = dt > 2*dt[0]
         iM = np.argmax(cnd)
@@ -50,16 +50,19 @@ class DigitizerXPRRaw(DigitizerXPR):
 class DigitizerXPRRawPos(DigitizerXPRRaw):
     def __init__(self, shn):
         DigitizerXPRRaw.__init__(self, shn)
-        self.nodes += ('PosL', 'PosH', 'Pos')
+        self.nodes += ('PosL', 'PosH')
 
-    def get_node(self, node, **kw):
-        if node == 'Pos':
-            PosL = self.x['PosL'].astype(np.int16).view(np.uint16)
-            PosH = self.x['PosH'].astype(np.int16).view(np.uint16) & 0b0011111111111111
-            Pos  = np.c_[PosL, np.r_[PosH[0], PosH[:-1]]]
-            return Pos.copy().view(np.uint32)[:,0]
-        else:
-            return DigitizerXPRRaw.get_node(self, node, **kw)
+    def __getitem__(self, node):
+        try:
+            return DigitizerXPRRaw.__getitem__(self, node)
+        except KeyError:
+            if node == 'Pos':
+                L = self.x['PosL'].astype(np.int16).view(np.uint16)
+                H = self.x['PosH'].astype(np.int16).view(np.uint16) & 0b0011111111111111
+                x = np.c_[L, np.r_[H[0], H[:-1]]].copy().view(np.uint32)[:,0]
+                return self.make_sig(node, x, self.x[self.tnode])
+            else:
+                raise
             
 
 class DigitizerLPS(DigitizerAUG):
@@ -83,7 +86,7 @@ class DigitizerLPSRaw(DigitizerLPS):
 class DigitizerLPSOld(DigitizerLPS):
     def __init__(self, shn):
         DigitizerLPS.__init__(self, shn)
-        self.nodes += ('XPOS',)
+        self.tnode = 'TIME2'
 
         for node in ('CUR1', 'CUR2', 'VOL3'):
             self.amp[node] = ampInv.copy()
@@ -91,12 +94,16 @@ class DigitizerLPSOld(DigitizerLPS):
         self.dig_xpos = DigitizerAUG(shn, diag='LPS', suffix='_LPS', group='XPOS',
                 nodes=('XPOS',))
 
-    def get_node(self, node, **kw):
-        if node == 'XPOS':
-            R = self.dig_xpos['XPOS'].astype(np.float64).despike()
-            return R(self.x['t']).x.astype(np.float32)
-        else:
-            return DigitizerLPS.get_node(self, node, **kw)
+    def __getitem__(self, node):
+        try:
+            return DigitizerLPS.__getitem__(self, node)
+        except KeyError:
+            if node == 'XPOS':
+                R = self.dig_xpos['XPOS'].despike()
+                x = R(self.x[self.tnode]).x.astype(np.float32)
+                return self.make_sig(node, x, self.x[self.tnode])
+            else:
+                raise
 
 
 DigitizerClasses = dict(

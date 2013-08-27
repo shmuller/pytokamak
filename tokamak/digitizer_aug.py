@@ -29,9 +29,9 @@ class IOMdsAUG(IOMds):
         if raw:
             self.mdsfmt = 'augdiag(%s,*,*,"raw")' % fmtargs
             self.datadeco = 'word(data(%s))'
-            self.timedeco = 'f_float(dim_of(%s))'
         else:
             self.mdsfmt = 'augdiag(%s)' % fmtargs
+        self.timedeco = 'f_float(dim_of(%s))'
 
 
 class IOFileAUG(IOFile):
@@ -86,21 +86,19 @@ class DigitizerAUGFPP(DigitizerAUG):
         self.alias_primed = dict(f='Jpol', p='Pres', V='Vol', A='Area')
         
         self.mapspec = dict(magnaxis=0, xpoint=1, innerlim=2, xpoint2=3, outerlim=4)
-
-    def get(self, indx):
-        return DigitizerAUG.__getitem__(self, indx)
-
+    
     def __getitem__(self, indx):
+        get = DigitizerAUG.__getitem__
         try:
-            return self.get(self.alias[indx])
+            return get(self, self.alias[indx])
         except KeyError:
             pass
 
         indx, prime, tail = indx.partition('prime')
         try:
-            return self.get(self.alias_primed[indx])[:,bool(prime)::2]
+            return get(self, self.alias_primed[indx])[:,bool(prime)::2]
         except KeyError:
-            return self.get(indx)
+            return get(self, indx)
 
     def get_R_z_psi(self):
         return self.x['Ri'][0], self.x['Zj'][0], self['PFM']
@@ -132,9 +130,6 @@ class DigitizerAUGYGC(DigitizerAUG):
         DigitizerAUG.__init__(self, shn, diag='YGC', 
                 nodes=('RGC2', 'zGC2', 'inxbeg', 'inxlen', 'inxlps', 'ixplin',
                        'RrGC', 'zzGC'))
-    
-    def calib(self):
-        DigitizerAUG.calib(self)
 
         self.x['chGCnm'] = np.array(('PCup', 'PClow', 'PCled3', 'PCled4', 'TPRT', 'TPRB', 
                 'TPLT', 'TPLB', 'LIM09', 'SBi', 'ICRHa', 'VESiR', 'LIaux13', 'LIaux14', 
@@ -143,7 +138,7 @@ class DigitizerAUGYGC(DigitizerAUG):
                 'D2d.Bl3', 'D2d.Bl2', 'D2d.Bl1', 'D2.SBiu', 'TPLT_1', 'TPLT_2', 'TPLT_3',
                 'TPLT_4', 'TPLT_5', 'TPRT_1', 'TPRT_2', 'TPRT_3', 'TPRT_4', 'TPRT_5',
                 'D2d.Bu4', 'D2d.Bu3', 'D2d.Bu2', 'D2d.Bu1'))
-
+        
     @memoized_property
     def label(self):
         x = self.x
