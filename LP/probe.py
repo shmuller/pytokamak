@@ -30,12 +30,11 @@ from utils.utils import memoized_property, dict_pop, DictView
 from utils.sig import math_sel, usetex, Signal, amp_unity, AmpSignal, PeriodPhaseFinder
 
 class PositionSignal(AmpSignal):
-    def __init__(self, x, t, *args, **kw):
-        kw.setdefault('dtype', np.float64)
+    def __init__(self, x, t, amp=None, dtype=np.float64, **kw):
         kw.setdefault('type', 'Position')
         kw.setdefault('units', 'm')
 
-        AmpSignal.__init__(self, x, t, *args, **kw)
+        AmpSignal.__init__(self, x, t, amp, dtype, **kw)
     
         self.baseline_slice = kw.get('baseline_slice', slice(None, 1000))
         self.lvl_fact = kw.get('lvl_fact', 0.1)
@@ -110,15 +109,14 @@ class PositionSignal(AmpSignal):
 
 
 class VoltageSignal(AmpSignal):
-    def __init__(self, x, t, *args, **kw):
-        kw.setdefault('dtype', np.float64)
+    def __init__(self, x, t, amp=None, dtype=np.float64, **kw):
         kw.setdefault('type', 'Voltage')
         kw.setdefault('units', 'V')
 
         self.dt = kw.pop('dt', 0.1)
         self.min_ptp = kw.pop('min_ptp', 50)
 
-        AmpSignal.__init__(self, x, t, *args, **kw)
+        AmpSignal.__init__(self, x, t, amp, dtype, **kw)
 
     @memoized_property
     def PPF(self):
@@ -141,12 +139,11 @@ class VoltageSignal(AmpSignal):
 
 
 class CurrentSignal(AmpSignal):
-    def __init__(self, x, t, *args, **kw):
-        kw.setdefault('dtype', np.float64)
+    def __init__(self, x, t, amp=None, dtype=np.float64, **kw):
         kw.setdefault('type', 'Current')
         kw.setdefault('units', 'A')
 
-        AmpSignal.__init__(self, x, t, *args, **kw)
+        AmpSignal.__init__(self, x, t, amp, dtype, **kw)
 
         self.V = kw.get('V', None)
         self.C = kw.get('C', None)

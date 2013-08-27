@@ -11,13 +11,11 @@ from tokamak.digitizer_aug import DigitizerAUG
 from tokamak.equilibrium import NormalizedFluxSignal
 
 from utils.utils import memoized_property
-from utils.sig import Amp
+from utils.sig import Amp, amp_inv
 from probe import PositionSignal, Probe, PhysicalResults
 
-ampUnity = Amp(fact=1., offs=0.)
-ampInv   = Amp(fact=-1., offs=0.)
-amp12Bit = Amp(fact=10./4095, offs=-5.)
-amp14Bit = Amp(fact=20./16383, offs=-10.)
+amp_12bit = Amp(fact=10./4095, offs=-5.)
+amp_14bit = Amp(fact=20./16383, offs=-10.)
 
 
 class DigitizerXPR(DigitizerAUG):
@@ -44,7 +42,7 @@ class DigitizerXPRRaw(DigitizerXPR):
     def __init__(self, shn):
         DigitizerXPR.__init__(self, shn, raw=True)
 
-        self.amp = {node: amp14Bit.copy() for node in self.nodes}
+        self.amp = {node: amp_14bit.copy() for node in self.nodes}
 
 
 class DigitizerXPRRawPos(DigitizerXPRRaw):
@@ -77,10 +75,10 @@ class DigitizerLPSRaw(DigitizerLPS):
     def __init__(self, shn):
         DigitizerLPS.__init__(self, shn, raw=True)
 
-        self.amp = {node: amp12Bit.copy() for node in self.nodes}
+        self.amp = {node: amp_12bit.copy() for node in self.nodes}
 
         for node in ('CUR1', 'VOL3'):
-            self.amp[node] *= ampInv
+            self.amp[node] *= amp_inv
 
 
 class DigitizerLPSOld(DigitizerLPS):
@@ -89,7 +87,7 @@ class DigitizerLPSOld(DigitizerLPS):
         self.tnode = 'TIME2'
 
         for node in ('CUR1', 'CUR2', 'VOL3'):
-            self.amp[node] = ampInv.copy()
+            self.amp[node] = amp_inv.copy()
 
         self.dig_xpos = DigitizerAUG(shn, diag='LPS', suffix='_LPS', group='XPOS',
                 nodes=('XPOS',))

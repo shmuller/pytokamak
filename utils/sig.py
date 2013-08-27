@@ -1165,17 +1165,16 @@ class Amp:
         fmtstr = "%s (fact={fact}, offs={offs})"
         return (fmtstr % self.__class__.__name__).format(**self.__dict__)
 
-amp_unity = Amp()
+amp_unity = Amp(fact= 1, offs=0)
+amp_inv   = Amp(fact=-1, offs=0)
+
 
 class AmpSignal(Signal):
-    def __init__(self, x, t=None, amp=None, **kw):
+    def __init__(self, x, t=None, amp=None, dtype=None, **kw):
         if amp is None:
             amp = amp_unity
-        amp = amp.copy()
-        Signal.__init__(self, x, t, amp, **kw)
-
-        self.amp = amp
-        self.dtype = kw.get('dtype', None)
+        self.amp, self.dtype = amp.copy(), dtype
+        Signal.__init__(self, x, t, self.amp, self.dtype, **kw)
 
     @property
     def x(self):
@@ -1187,25 +1186,29 @@ class AmpSignal(Signal):
     def __getitem__(self, indx):
         if not isinstance(indx, tuple):
             indx = (indx,)
-        return self.__class__(self._x[indx], self._t[indx[0]], self.amp[indx[0]], **self.kw)
+        return self.__class__(self._x[indx], self._t[indx[0]], 
+                              self.amp[indx[0]], self.dtype, **self.kw)
     
-    def _op_factory(op, fallback_op):
+    def _op_factory(op, iop, fallback_op):
         def wapply(self, other):
             try:
-                return self.__class__(self._x, self._t, op(self.amp, other), **self.kw)
+                return self.__class__(self._x, self._t, 
+                                      op(self.amp, other), self.dtype, **self.kw)
             except OperationTypeError:
                 return fallback_op(self, other)
 
         def iapply(self, other):
-            self.amp = op(self.amp, other)
-            self.args = (self.amp,)
+            iop(self.amp, other)
             return self
         return wapply, iapply
 
-    __add__, __iadd__ = _op_factory(operator.add, Signal.__add__)
-    __sub__, __isub__ = _op_factory(operator.sub, Signal.__sub__)
-    __mul__, __imul__ = _op_factory(operator.mul, Signal.__mul__)
-    __div__, __idiv__ = _op_factory(operator.div, Signal.__div__)
+    __add__, __iadd__ = _op_factory(operator.add, operator.iadd, Signal.__add__)
+    __sub__, __isub__ = _op_factory(operator.sub, operator.isub, Signal.__sub__)
+    __mul__, __imul__ = _op_factory(operator.mul, operator.imul, Signal.__mul__)
+    __div__, __idiv__ = _op_factory(operator.div, operator.idiv, Signal.__div__)
+
+    def raw(self):
+        return self.__class__(self._x, self._t, **self.kw)
 
 
 class PeriodPhaseFinder:
