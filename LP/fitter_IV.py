@@ -486,7 +486,9 @@ class IV:
         sl, sr, i0, i1, ind, out, shift = self._prepare(n, incr, nvars)
         
         S = self.S
-        V, I, t = S.V.x, S.x, S.t
+        V = np.asanyarray(S.V.x, np.float64)
+        I = np.asanyarray(S.x, np.float64)
+        t = np.asanyarray(S.t, np.float64)
         out_mask = np.zeros(V.size, bool)
 
         if mask is None:
@@ -512,7 +514,9 @@ class IV:
         sl, sr, i0, i1, ind, out, shift = self._prepare(n, incr, nvars)
 
         S = self.S
-        V, I, t = S.V.x, S.x, S.t
+        V = np.asanyarray(S.V.x, np.float64)
+        I = np.asanyarray(S.x, np.float64)
+        t = np.asanyarray(S.t, np.float64)
         t0, t1 = t[i0], t[i1]
         dt = t1 - t0
 
