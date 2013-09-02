@@ -751,6 +751,7 @@ class SignalBase:
 
 class Signal(SignalBase):
     fmtstr = "%s {name} with shape {shape}"
+    rasterized_threshold = 10000
 
     def __init__(self, x, t=None, *args, **kw):
         SignalBase.__init__(self, x, t, *args, **kw) 
@@ -1010,7 +1011,10 @@ class Signal(SignalBase):
     def plot(self, ax=None, **kw):
         ax = get_axes(ax, xlab=self.xlab, ylab=self.ylab)
         kw.setdefault('label', self.label)
-        ax.plot(self.t, self.x, **kw)
+        lines = ax.plot(self.t, self.x, **kw)
+        if self.x.size > self.rasterized_threshold:
+            for l in lines: 
+                l.set_rasterized(True)
         return ax
 
     @memoized_property
