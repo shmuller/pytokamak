@@ -40,7 +40,7 @@ class Head:
         self.tips, self.d = tips, d
 
         zp, zm = d/2., -d/2.
-        self.xy = np.array([(0., zp), (0., zm), (2.5, zm), (2.5, zp)])
+        self.xy = np.array([(0., zp), (0., zm), (3.0, zm), (3.0, zp)])
    
     def get_tip_by_name(self, name):
         for tip in self.tips:

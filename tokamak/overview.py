@@ -4,6 +4,7 @@ import numpy.ma as ma
 from sm_pyplot.tight_figure import get_tfig, get_axes, show
 
 from utils.utils import memoized_property, BoundingBox
+from utils.sig import math_sel
 from LP.probe_xpr import ProbeXPR, ShotNotFoundError
 
 from digitizer_aug import DigitizerAUG, DigitizerAUGMAC, eqi_digitizers, dig_YGC
@@ -15,6 +16,7 @@ from sm_pyplot.observer_viewer import ToggleViewer, ToggleViewerVtk
 
 aug_diags = dict(
     DCN = dict(nodes=('H-1', 'H-2', 'H-3', 'H-4', 'H-5')),
+    DCR = dict(nodes=('dbl_res',)),
     TOT = dict(nodes=('H-1_corr', 'H-2_corr', 'H-3_corr', 'H-4_corr', 'H-5_corr')),
     NIS = dict(nodes=('PNI',)),
     ECS = dict(nodes=('PECRH',)),
@@ -191,13 +193,19 @@ class AUGOverview:
         return self.plot_rad(ax, **kw)
 
     def plot_density(self, ax=None, chn=('H-1', 'H-4', 'H-5'), **kw):
-        S = self.S['DCN']
+        S = self.S['DCR']['dbl_res'][:,5:10]
+        S = S.t_masked(S.t < 0.)
         ax = get_axes(ax)
-        ax.set_ylabel('n (10$^{\mathdefault{19}}$ m$^{\mathdefault{-3}}$)')
+        ax.set_ylabel(r'$\bm{\int}$n dl (10$^{\mathdefault{19}}$ m$^{\mathdefault{-2}}$)')
         #ax.yaxis.labelpad = -2
         
+        keys = ('H-1', 'H-2', 'H-3', 'H-4', 'H-5')
+        S_map = {keys[i]: S[:,i] for i in range(5)}
+        for k, v in S_map.iteritems():
+            v.update(name=k, label=k)
+
         for c in chn:
-            (S[c]*1e-19).nonneg().filled().plot(ax)
+            (S_map[c]*1e-19).nonneg().filled().plot(ax)
         ax.legend()
         return ax
 
@@ -205,7 +213,7 @@ class AUGOverview:
         S = self.S['TOT']
         ax = get_axes(ax)
         ax.set_ylabel('n (10$^{\mathdefault{19}}$ m$^{\mathdefault{-3}}$)')
-        ax.yaxis.labelpad = -2
+        #ax.yaxis.labelpad = -2
         
         for c in chn:
             (S[c]*1e-19).nonneg().plot(ax)

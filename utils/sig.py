@@ -41,7 +41,7 @@ except ImportError:
 
 from sm_pyplot.tight_figure import get_axes, MathSelector
 
-usetex = False
+usetex = True
 
 math_sel = MathSelector(usetex=usetex)
 
@@ -738,6 +738,16 @@ class SignalBase:
             return self
         else:
             return self._wrap(self._x.data)
+
+    def t_masked(self, mask):
+        return self.__class__(self._x, ma.masked_array(self._t, mask), 
+                              *self.args, **self.kw)
+
+    def t_unmasked(self):
+        if not isinstance(self._t, ma.masked_array):
+            return self
+        else:
+            return self.__class__(self._x, self._t.data, *self.args, **self.kw)
 
     def filled(self, fill=np.nan):
         x = self._x
