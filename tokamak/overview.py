@@ -4,7 +4,6 @@ import numpy.ma as ma
 from sm_pyplot.tight_figure import get_tfig, get_axes, show
 
 from utils.utils import memoized_property, BoundingBox
-from utils.sig import math_sel
 from LP.probe_xpr import ProbeXPR, ShotNotFoundError
 
 from digitizer_aug import DigitizerAUG, DigitizerAUGMAC, eqi_digitizers, dig_YGC
@@ -108,7 +107,7 @@ class ProfViewerAUG(ToggleViewer):
 
     def viewer(self, event=None):
         fig = get_tfig(pos=(950, 150), figsize=(5, 5), 
-                xlab="R (m)", ylab="vrot (km s$^{\mathdefault{-1}}$)")
+                xlab='R (m)', ylab=r'vrot (km s$^{\text{-1}}$)')
         self.ax = ax = fig.axes[0]
         ax.set_xlim((1.5, 2.5))
         ax.set_ylim((-50, 100))
@@ -196,7 +195,7 @@ class AUGOverview:
         S = self.S['DCR']['dbl_res'][:,5:10]
         S = S.t_masked(S.t < 0.)
         ax = get_axes(ax)
-        ax.set_ylabel(r'$\bm{\int}$n dl (10$^{\mathdefault{19}}$ m$^{\mathdefault{-2}}$)')
+        ax.set_ylabel(r'$\int$n dl (10$^{\text{19}}$ m$^{\text{-2}}$)')
         #ax.yaxis.labelpad = -2
         
         keys = ('H-1', 'H-2', 'H-3', 'H-4', 'H-5')
@@ -212,7 +211,7 @@ class AUGOverview:
     def plot_n(self, ax=None, chn=('H-1_corr', 'H-4_corr', 'H-5_corr'), **kw):
         S = self.S['TOT']
         ax = get_axes(ax)
-        ax.set_ylabel('n (10$^{\mathdefault{19}}$ m$^{\mathdefault{-3}}$)')
+        ax.set_ylabel(r'n (10$^{\text{19}}$ m$^{\text{-3}}$)')
         #ax.yaxis.labelpad = -2
         
         for c in chn:
@@ -278,7 +277,7 @@ class AUGOverview:
     def plot_gas(self, ax=None, **kw):
         S = self.S['UVS']['D_tot']*1e-21
         ax = get_axes(ax)
-        ax.set_ylabel('Gas (10$^{\mathdefault{21}}$ el s$^{\mathdefault{-1}}$)')
+        ax.set_ylabel(r'Gas (10$^{\text{21}}$ el s$^{\text{-1}}$)')
 
         S.masked((S.t < 0.5) | (S.t > 6.)).plot(ax, label='D total')
         ax.legend()
@@ -302,7 +301,7 @@ class AUGOverview:
         return ax
 
     def plot_CER(self, ax=None, name='vrot', 
-                 ylab='vrot (km s$^{\mathdefault{-1}}$)', **kw):
+                 ylab=r'vrot (km s$^{\text{-1}}$)', **kw):
         S = self.S['CEZ']
         ax = get_axes(ax)
         ax.set_ylabel(ylab)
@@ -315,7 +314,7 @@ class AUGOverview:
         return ax
 
     def plot_vrot(self, ax=None, **kw):
-        return self.plot_CER(ax, 'vrot', 'vrot (km s$^{\mathdefault{-1}}$)')
+        return self.plot_CER(ax, 'vrot', r'vrot (km s$^{\text{-1}}$)')
 
     def plot_Ti(self, ax=None, **kw):
         return self.plot_CER(ax, 'Ti', 'Ti (keV)')

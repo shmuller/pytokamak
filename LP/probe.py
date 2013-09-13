@@ -27,7 +27,7 @@ from sm_pyplot.tight_figure import get_fig, get_tfig, get_axes
 from sm_pyplot.annotations import vlines, vrect
 
 from utils.utils import memoized_property, dict_pop, DictView
-from utils.sig import math_sel, usetex, Signal, amp_unity, AmpSignal, PeriodPhaseFinder
+from utils.sig import Signal, amp_unity, AmpSignal, PeriodPhaseFinder
 
 class PositionSignal(AmpSignal):
     def __init__(self, x, t, amp=None, dtype=np.float64, **kw):
@@ -185,24 +185,25 @@ class CurrentSignal(AmpSignal):
 
 
 class PhysicalResults:
-    def __init__(self, probe, i, meas, usetex=usetex):
-        self.probe, self.i, self.meas, self.usetex = probe, i, meas, usetex
+    def __init__(self, probe, i, meas):
+        self.probe, self.i, self.meas = probe, i, meas
         
         self.shn = probe.digitizer.shn
         self.R = probe['Rs']
 
-        self.keys = ('n_cs', 'Mach', 'nv', 'mnv', 'j', 'Vf', 'Te', 'Vp', 
+        self.keys = ('n_cs', 'Mach', 'nv', 'mnv', 'j', 'jsat', 'Vf', 'Te', 'Vp', 
                 'cs', 'n', 'v', 'pe', 'pe_tot', 'R', 't', 'Dt')
 
-        def sup(x): return r'$^{\mathdefault{%s}}$' % x
-        def sub(x): return r'$_{\mathdefault{%s}}$' % x
+        def sup(x): return r'$^{\text{%s}}$' % x
+        def sub(x): return r'$_{\text{%s}}$' % x
 
         self.units = dict(
-                n_cs   = r'm%s s%s' % (sup('-2'), sup('-1')),
                 Mach   = None,
+                n_cs   = r'm%s s%s' % (sup('-2'), sup('-1')),
                 nv     = r'm%s s%s' % (sup('-2'), sup('-1')),
                 mnv    = r'g m%s s%s' % (sup('-2'), sup('-1')),
                 j      = r'kA m%s' % sup('-2'),
+                jsat   = r'kA m%s' % sup('-2'),
                 Vf     = r'V',
                 Te     = r'eV',
                 Vp     = r'V',
@@ -216,31 +217,33 @@ class PhysicalResults:
                 Dt     = r'ms')
 
         self.texlabels = dict(
-                n_cs   = math_sel.wrap(r'n c_s'),
                 Mach   = r'Mach',
-                nv     = math_sel.wrap(r'nv'),
-                mnv    = math_sel.wrap(r'mnv'),
-                j      = math_sel.wrap(r'j'),
-                Vf     = math_sel.wrap(r'V_f'),
-                Te     = math_sel.wrap(r'T_e'),
-                Vp     = math_sel.wrap(r'V_p'),
-                cs     = math_sel.wrap(r'c_s'),
-                n      = math_sel.wrap(r'n'),
-                v      = math_sel.wrap(r'v'),
-                pe     = math_sel.wrap(r'p_e'),
-                pe_tot = math_sel.wrap(r'p_{e,tot}'),
-                R      = math_sel.wrap(r'R'),
-                t      = math_sel.wrap(r't'),
-                Dt     = math_sel.wrap(r'\Delta t'))
+                n_cs   = r'$n c_s$',
+                nv     = r'$nv$',
+                mnv    = r'$mnv$',
+                j      = r'$j$',
+                jsat   = r'$j_{sat}$',
+                Vf     = r'$V_f$',
+                Te     = r'$T_e$',
+                Vp     = r'$V_p$',
+                cs     = r'$c_s$',
+                n      = r'$n$',
+                v      = r'$v$',
+                pe     = r'$p_e$',
+                pe_tot = r'$p_{e,tot}$',
+                R      = r'$R$',
+                t      = r'$t$',
+                Dt     = r'$\Delta t$')
 
         self.fact = dict.fromkeys(self.keys, 1)
-        self.fact['j'] = self.fact['cs'] = self.fact['v'] = 1e-3
+        self.fact['j'] = self.fact['jsat'] = self.fact['cs'] = self.fact['v'] = 1e-3
         self.fact['R'] = 100
         self.fact['mnv'] = self.fact['Dt'] = 1e3
 
         self.lim = dict.fromkeys(self.keys, (None, None))
         self.lim['n'] = (0, 2e20)
         self.lim['Mach'] = (-2, 2)
+        self.lim['j'] = self.lim['jsat'] = (0, None)
         self.lim['Te'] = (0, 100)
         self.lim['R'] = (0, None)
 
@@ -263,12 +266,13 @@ class PhysicalResults:
 
         res['Mach'] = Mach = 0.5*np.log(Gm/Gp)
         res['n_cs'] = n_cs = np.e*np.sqrt(Gp*Gm)
-        res['nv']  = nv = n_cs*Mach
-        res['mnv'] = mi*nv
-        res['j']   = qe*nv
-        res['Vf']  = Vf = self.meas['Vf']
-        res['Te']  = Te = self.meas['Te']
-        res['Vp']  = Vf + 2.8*Te
+        res['nv']   = nv = n_cs*Mach
+        res['mnv']  = mi*nv
+        res['j']    = qe*nv
+        res['jsat'] = self.meas['jt']
+        res['Vf']   = Vf = self.meas['Vf']
+        res['Te']   = Te = self.meas['Te']
+        res['Vp']   = Vf + 2.8*Te
 
         Ti = Te
         res['cs'] = cs = np.sqrt(qe/mi*(Te+Ti))
@@ -307,8 +311,8 @@ class PhysicalResults:
         name = self.make_name(plunge, inout)
         return IOH5(name + '.h5').load()
 
-    def make_label(self, key):
-        if self.usetex:
+    def make_label(self, key, usetex=False):
+        if usetex:
             lab = self.texlabels[key]
         else:
             lab = key
@@ -330,7 +334,7 @@ class PhysicalResults:
     def plot_key(self, key, x, y, ax=None, label=None):
         ax = get_axes(ax)
 
-        ylab = self.make_label(key)
+        ylab = self.make_label(key, ax.figure.usetex)
         ax.set_ylabel(ylab)
 
         yc = self.clip(y[key], self.lim[key])
@@ -338,13 +342,13 @@ class PhysicalResults:
         ax.plot(x, self.fact[key]*yc, label=label)
 
     def plot(self, fig=None, keys=None, xkey='t', plunge=None, inout=None, 
-            mirror=False, figsize=(10, 10), **kw):
+            mirror=False, figsize=(10, 10), usetex=False, **kw):
         y = self.eval(plunge, inout)
                 
         x = self.fact[xkey]*self.clip(y[xkey], self.lim[xkey])
         if mirror:
             x = -x
-        xlab = self.make_label(xkey)
+        xlab = self.make_label(xkey, usetex)
 
         label = "%d" % self.shn
         tM = self.R.tM(plunge)
@@ -366,7 +370,8 @@ class PhysicalResults:
         else:
             viewers = ()
 
-        fig = get_tfig(fig, keys.shape, xlab=xlab, figsize=figsize, viewers=viewers)
+        fig = get_tfig(fig, keys.shape, xlab=xlab, 
+                       figsize=figsize, usetex=usetex, viewers=viewers)
 
         for key, ax in zip(keys.ravel(), fig.axes):
             self.plot_key(key, x, y, ax=ax, label=label)

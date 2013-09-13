@@ -39,11 +39,7 @@ try:
 except ImportError:
     pass
 
-from sm_pyplot.tight_figure import get_axes, MathSelector
-
-usetex = True
-
-math_sel = MathSelector(usetex=usetex)
+from sm_pyplot.tight_figure import get_axes
 
 from mediansmooth import *
 from cookb_signalsmooth import smooth
