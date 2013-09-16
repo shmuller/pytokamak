@@ -185,6 +185,13 @@ class ProbeXPR(Probe):
             S['tip1'] = S['tip1'].masked(mask)
             S['tip2'] = S['tip2'].masked(mask)
 
+        tips = self.head.tips
+        A = [0.5*tips[0].area, 0.5*tips[1].area, tips[2].area]
+        A.append(A[0] + A[1])
+        for tip, area in zip(('tip1', 'tip2', 'tip3', 'tip1+tip2'), A):
+            S[tip + 'j'] = S[tip] / area
+            S[tip + 'j'].update(type='Current density', units='A / m**2')
+
     def calc_res(self, ID='IV'):
         tips = self.head.tips
 

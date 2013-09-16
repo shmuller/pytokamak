@@ -509,13 +509,17 @@ class Signal2D:
             ylab += " (%s)" % self.yunits
         return ylab
 
-    def plot(self, ax=None, ylim=None, cmap='spectral', **kw):
+    def plot(self, ax=None, ylim=None, cmap='spectral', scale='linear', **kw):
         if cmap == 'custom':
             cmap = self.cmap
         x, y, Z = self.x, self.y, self.Z
         
         if ylim is not None:
             cnd = (ylim[0] <= y) & (y <= ylim[1])
+            y, Z = y[cnd], Z[cnd]
+
+        if scale == 'log':
+            cnd = y > 0
             y, Z = y[cnd], Z[cnd]
         
         dy = y[1] - y[0]
@@ -524,7 +528,16 @@ class Signal2D:
         kw.setdefault('xlab', self.xlab)
         kw.setdefault('ylab', self.ylab)
         ax = get_axes(ax, **kw)
-        im = ax.pcolorfast(x, y, Z, cmap=cmap)
+
+        if scale == 'linear':
+            im = ax.pcolorfast(x, y, Z, cmap=cmap)
+        else:
+            # make x and y 2D to trigger QuadMesh, which works for log scales]
+            X = x[None,:].repeat(y.size, axis=0)
+            Y = y[:,None].repeat(x.size, axis=1)
+            im = ax.pcolorfast(X, Y, ma.masked_invalid(Z), cmap=cmap)
+            ax.set_yscale(scale)
+
         ax._current_image = im
         return ax
 
