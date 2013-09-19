@@ -6,10 +6,9 @@ from sm_pyplot.tight_figure import get_tfig, get_axes, show
 from utils.utils import memoized_property, BoundingBox
 from LP.probe_xpr import ProbeXPR, ShotNotFoundError
 
-from digitizer_aug import DigitizerAUG, DigitizerAUGMAC, eqi_digitizers, dig_YGC
+from digitizer_aug import DigitizerAUG, DigitizerAUGMAC, eqi_digitizers
+from diaggeom_aug import Vessel
 from equilibrium import Eqi, EqiViewer
-
-from vtk_aug import VtkProxy, VtkWindow, VtkRotatingPolygon
 
 from sm_pyplot.observer_viewer import ToggleViewer, ToggleViewerVtk
 
@@ -28,37 +27,6 @@ aug_diags = dict(
     CEZ = dict(nodes=('vrot', 'Ti', 'inte', 'err_vrot', 'err_Ti', 'err_inte',
                       'R', 'z', 'phi')),
     XVS = dict(nodes=('S2L1A10',)))
-
-
-class Vessel(VtkProxy):
-    def __init__(self, digitizer):
-        self.digitizer = digitizer
-
-    @memoized_property
-    def bdry(self):
-        return np.concatenate(self.digitizer.xy_bdry)
-
-    @memoized_property
-    def vtk(self):
-        kw = dict(phi1=3./2.*np.pi)
-        return [VtkRotatingPolygon(*xy.T, **kw) for xy in self.digitizer.xy]
-
-    def get_bbox(self):
-        return BoundingBox(self.bdry.min(axis=0), self.bdry.max(axis=0))
-
-    def plot(self, *args, **kw):
-        return self.digitizer.plot(*args, **kw)
-
-    def prerender(self, **kw):
-        alpha = np.ones(len(self.vtk))
-        alpha[[0, 1]] = 0.2
-        alpha[[2, 4, 5]] = 0
-
-        win = VtkWindow(axes='2d', **kw)
-        for rpoly, a in zip(self.vtk, alpha):
-            if a > 0:
-                win = rpoly.prerender(win=win, alpha=a)
-        return win
 
 
 class EqiViewerAUG(EqiViewer):
@@ -144,7 +112,7 @@ class AUGOverview:
     def __init__(self, shn, eqi_dig='EQI'):
         self.shn, self.eqi_dig = shn, eqi_dig
 
-        self.ves = Vessel(self.S['YGC'])
+        self.ves = Vessel()
         self.eqi = EqiAUG(self.S['EQI'], self.ves)
         try:
             self.XPR = ProbeXPR(shn=shn, eqi=self.eqi)
@@ -164,7 +132,6 @@ class AUGOverview:
         S = {k: DigitizerAUG(self.shn, diag=k, **v) for k, v in aug_diags.iteritems()}
         S['MAC'] = DigitizerAUGMAC(self.shn)
         S['EQI'] = eqi_digitizers[self.eqi_dig](self.shn)
-        S['YGC'] = dig_YGC
         return S
 
     def plot_power(self, ax=None, **kw):
@@ -204,7 +171,7 @@ class AUGOverview:
             v.update(name=k, label=k)
 
         for c in chn:
-            (S_map[c]*1e-19).nonneg().filled().plot(ax)
+            (S_map[c]*1e-19).nonneg().filled().plot(ax, **kw)
         ax.legend()
         return ax
 
@@ -215,7 +182,7 @@ class AUGOverview:
         #ax.yaxis.labelpad = -2
         
         for c in chn:
-            (S[c]*1e-19).nonneg().plot(ax)
+            (S[c]*1e-19).nonneg().plot(ax, **kw)
         ax.legend()
         return ax
 
@@ -356,7 +323,7 @@ class AUGOverview:
         fig.axes[0].set_xlim((1,7))
 
         for p, ax in zip(plots, fig.axes):
-            getattr(self, 'plot_' + p)(ax, **kw)
+            getattr(self, 'plot_' + p)(ax)
         return fig
 
     def plot_all(self, **kw):
