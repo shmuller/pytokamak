@@ -672,7 +672,7 @@ class SignalBase:
     def __init__(self, x, t=None, *args, **kw):
         self._x = np.atleast_1d(x)
         if t is None:
-            t = np.arange(x.shape[0])
+            t = np.arange(self._x.shape[0])
         self._t = np.atleast_1d(t)
         self.size, self.shape = self._x.size, self._x.shape
         self.args, self.kw = args, kw
@@ -766,6 +766,24 @@ class SignalBase:
             if not np.isfinite(fill):
                 x = np.asanyarray(x, np.float_)
             return self._wrap(x.filled(fill))
+
+    def compressed(self):
+        x, t = self._x, self._t
+        x_ismasked = isinstance(x, ma.masked_array)
+        t_ismasked = isinstance(t, ma.masked_array)
+        if not x_ismasked:
+            if not t_ismasked:
+                return self
+            else:
+                cnd = ~t.mask
+                return self.__class__(x[cnd], t.data[cnd], *self.args, **self.kw)
+        else:
+            mask = np.all(x.mask.reshape(t.size, -1), axis=1)
+            if t_ismasked:
+                mask |= t.mask
+                t = t.data
+            cnd = ~mask
+            return self.__class__(x[cnd], t[cnd], *self.args, **self.kw)
 
 
 class Signal(SignalBase):
@@ -1036,10 +1054,10 @@ class Signal(SignalBase):
             ylab += " (%s)" % self.units
         return ylab
 
-    def plot(self, ax=None, **kw):
+    def plot(self, ax=None, *args, **kw):
         ax = get_axes(ax, xlab=self.xlab, ylab=self.ylab)
         kw.setdefault('label', self.label)
-        lines = ax.plot(self.t, self.x, **kw)
+        lines = ax.plot(self.t, self.x, *args, **kw)
         if self.x.size > self.rasterized_threshold:
             for l in lines: 
                 l.set_rasterized(True)

@@ -160,13 +160,13 @@ class AUGOverview:
         return self.plot_rad(ax, **kw)
 
     def plot_density(self, ax=None, chn=('H-1', 'H-4', 'H-5'), **kw):
-        S = self.DCN.digitizer
+        S = self.DCN
         ax = get_axes(ax)
         ax.set_ylabel(r'$\int$n dl (10$^{\text{19}}$ m$^{\text{-2}}$)')
         #ax.yaxis.labelpad = -2
         
         for c in chn:
-            (S[c]*1e-19).t_gt(0.).nonneg().filled().plot(ax, **kw)
+            (S[c]*1e-19).plot(ax, **kw)
         ax.legend()
         return ax
 
