@@ -6,9 +6,10 @@ from sm_pyplot.tight_figure import get_tfig, get_axes, show
 from utils.utils import memoized_property, BoundingBox
 from LP.probe_xpr import ProbeXPR, ShotNotFoundError
 
-from digitizer_aug import DigitizerAUG, DigitizerAUGMAC, DigitizerAUGDCR, eqi_digitizers
+from digitizer_aug import DigitizerAUG, DigitizerAUGMAC, eqi_digitizers
 from diaggeom_aug import Vessel
 from equilibrium import Eqi, EqiViewer
+from diags_aug import DCN
 
 from sm_pyplot.observer_viewer import ToggleViewer, ToggleViewerVtk
 
@@ -113,6 +114,7 @@ class AUGOverview:
 
         self.ves = Vessel()
         self.eqi = EqiAUG(self.S['EQI'], self.ves)
+        self.DCN = DCN(shn=shn, eqi=self.eqi)
         try:
             self.XPR = ProbeXPR(shn=shn, eqi=self.eqi)
             self.def_plots = ('power', 'density', 'XPR_I_Mach', 'XPR_R', 'Ipolsol')
@@ -130,7 +132,6 @@ class AUGOverview:
     def S(self):
         S = {k: DigitizerAUG(self.shn, diag=k, **v) for k, v in aug_diags.iteritems()}
         S['MAC'] = DigitizerAUGMAC(self.shn)
-        S['DCR'] = DigitizerAUGDCR(self.shn)
         S['EQI'] = eqi_digitizers[self.eqi_dig](self.shn)
         return S
 
@@ -159,7 +160,7 @@ class AUGOverview:
         return self.plot_rad(ax, **kw)
 
     def plot_density(self, ax=None, chn=('H-1', 'H-4', 'H-5'), **kw):
-        S = self.S['DCR']
+        S = self.DCN.digitizer
         ax = get_axes(ax)
         ax.set_ylabel(r'$\int$n dl (10$^{\text{19}}$ m$^{\text{-2}}$)')
         #ax.yaxis.labelpad = -2
