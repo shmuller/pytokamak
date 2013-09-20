@@ -36,7 +36,7 @@ class Vessel(VtkProxy):
         return win
 
 
-class DCN:
+class DCNGeom:
     # from DCN_Strahlengaenge20071212.pdf
     DCN_all = np.array(
         [[(1.0060, 0.1447), (2.1662, 0.1351), (2.1667, 0.1715), (2.1664, 0.1533)],
@@ -64,7 +64,7 @@ class DCN:
         return ax
 
 
-class Doppler:
+class DopplerGeom:
     antenna = np.array([(2.2717,-0.5087), (2.1998,-0.4665), 
                         (2.2528,-0.4033), (2.3066,-0.4667)])
 

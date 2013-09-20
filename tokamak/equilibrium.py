@@ -4,7 +4,7 @@ import numpy as np
 from scipy.ndimage import map_coordinates
 
 from utils.utils import memoized_property
-from utils.sig import Signal, Amp, AmpSignal
+from utils.sig import Amp, AmpSignal
 from utils.splines import Spline, Spline2D
 
 from sm_pyplot.tight_figure import get_tfig, get_axes, show
@@ -192,13 +192,13 @@ class FieldLineIntegrator:
         return R0, l
 
 
-class NormalizedFluxSignal(Signal):
+class NormalizedFluxSignal(AmpSignal):
     def __init__(self, x, t, **kw):
         kw.setdefault('name', 'psi_n')
         kw.setdefault('type', 'Normalized flux')
         kw.setdefault('label', 'Normalized flux')
         kw.setdefault('units', '')
-        Signal.__init__(self, x, t, **kw)
+        AmpSignal.__init__(self, x, t, **kw)
 
     @memoized_property
     def separatrix_crossings(self):

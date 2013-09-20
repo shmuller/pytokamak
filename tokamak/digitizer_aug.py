@@ -72,6 +72,25 @@ class DigitizerAUGMAC(DigitizerAUG):
             return self.dig_Tdiv[indx]
 
 
+class DigitizerAUGDCR(DigitizerAUG):
+    alias = ('H-1', 'H-2', 'H-3', 'H-4', 'H-5')
+
+    def __init__(self, shn):
+        DigitizerAUG.__init__(self, shn, diag='DCR', nodes=('dbl_res',))
+
+    def __getitem__(self, indx):
+        try:
+            return DigitizerAUG.__getitem__(self, indx)
+        except KeyError:
+            try:
+                i = self.alias.index(indx)
+            except:
+                raise KeyError(indx)
+            S = DigitizerAUG.__getitem__(self, 'dbl_res')[:, 5 + i]
+            S.update(name=indx, label=indx)
+            return S
+
+
 amp_2pi     = Amp(fact=0.5/np.pi, offs=0)
 amp_mu0_2pi = Amp(fact=2e-7, offs=0)
 

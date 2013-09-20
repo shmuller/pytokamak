@@ -6,7 +6,7 @@ from sm_pyplot.tight_figure import get_tfig, get_axes, show
 from utils.utils import memoized_property, BoundingBox
 from LP.probe_xpr import ProbeXPR, ShotNotFoundError
 
-from digitizer_aug import DigitizerAUG, DigitizerAUGMAC, eqi_digitizers
+from digitizer_aug import DigitizerAUG, DigitizerAUGMAC, DigitizerAUGDCR, eqi_digitizers
 from diaggeom_aug import Vessel
 from equilibrium import Eqi, EqiViewer
 
@@ -14,7 +14,6 @@ from sm_pyplot.observer_viewer import ToggleViewer, ToggleViewerVtk
 
 aug_diags = dict(
     DCN = dict(nodes=('H-1', 'H-2', 'H-3', 'H-4', 'H-5')),
-    DCR = dict(nodes=('dbl_res',)),
     TOT = dict(nodes=('H-1_corr', 'H-2_corr', 'H-3_corr', 'H-4_corr', 'H-5_corr')),
     NIS = dict(nodes=('PNI',)),
     ECS = dict(nodes=('PECRH',)),
@@ -131,6 +130,7 @@ class AUGOverview:
     def S(self):
         S = {k: DigitizerAUG(self.shn, diag=k, **v) for k, v in aug_diags.iteritems()}
         S['MAC'] = DigitizerAUGMAC(self.shn)
+        S['DCR'] = DigitizerAUGDCR(self.shn)
         S['EQI'] = eqi_digitizers[self.eqi_dig](self.shn)
         return S
 
@@ -146,11 +146,11 @@ class AUGOverview:
         return ax
 
     def plot_rad(self, ax=None, **kw):
+        S = self.S['BPD']
         ax = get_axes(ax)
         ax.set_ylabel('Power (MW)')
 
-        S = self.S['BPD']['Pradtot']*1e-6
-        S.masked(S.t > 6.).plot(ax)
+        (S['Pradtot']*1e-6).t_lt(6.).plot(ax)
         ax.legend()
         return ax
 
@@ -159,19 +159,13 @@ class AUGOverview:
         return self.plot_rad(ax, **kw)
 
     def plot_density(self, ax=None, chn=('H-1', 'H-4', 'H-5'), **kw):
-        S = self.S['DCR']['dbl_res'][:,5:10]
-        S = S.t_masked(S.t < 0.)
+        S = self.S['DCR']
         ax = get_axes(ax)
         ax.set_ylabel(r'$\int$n dl (10$^{\text{19}}$ m$^{\text{-2}}$)')
         #ax.yaxis.labelpad = -2
         
-        keys = ('H-1', 'H-2', 'H-3', 'H-4', 'H-5')
-        S_map = {keys[i]: S[:,i] for i in range(5)}
-        for k, v in S_map.iteritems():
-            v.update(name=k, label=k)
-
         for c in chn:
-            (S_map[c]*1e-19).nonneg().filled().plot(ax, **kw)
+            (S[c]*1e-19).t_gt(0.).nonneg().filled().plot(ax, **kw)
         ax.legend()
         return ax
 
@@ -215,9 +209,8 @@ class AUGOverview:
         ax = get_axes(ax)
         ax.set_ylabel('Div. cur. (kA)')
 
-        Sa, Si = S['Ipolsola']*1e-3, S['Ipolsoli']*1e-3
-        Sa.masked(Sa.t > 6.).plot(ax, label='Outer')
-        Si.masked(Si.t > 6.).plot(ax, label='Inner')
+        (S['Ipolsola']*1e-3).t_lt(6.).plot(ax, label='Outer')
+        (S['Ipolsoli']*1e-3).t_lt(6.).plot(ax, label='Inner')
         ax.legend()
         return ax
 
@@ -235,28 +228,26 @@ class AUGOverview:
         ax = get_axes(ax)
         ax.set_ylabel('Photons (au)')
 
-        Sa, Si = S['ELMa-Han'], S['ELMi-Han']
-        Sa.masked(Sa.t > 6.).plot(ax, label='Da outer')
-        Si.masked(Si.t > 6.).plot(ax, label='Da inner')
+        S['ELMa-Han'].t_lt(6.).plot(ax, label='Da outer')
+        S['ELMi-Han'].t_lt(6.).plot(ax, label='Da inner')
         ax.legend()
         return ax
 
     def plot_gas(self, ax=None, **kw):
-        S = self.S['UVS']['D_tot']*1e-21
+        S = self.S['UVS']
         ax = get_axes(ax)
         ax.set_ylabel(r'Gas (10$^{\text{21}}$ el s$^{\text{-1}}$)')
 
-        S.masked((S.t < 0.5) | (S.t > 6.)).plot(ax, label='D total')
+        (S['D_tot']*1e-21).t_between(0.5, 6.).plot(ax, label='D total')
         ax.legend()
         return ax
 
     def plot_ipvl(self, ax=None, **kw):
         S = self.S['MAG']
         ax = get_axes(ax)
-        Ip, Vl = S['Ipa']*1e-6, S['ULid12']
 
-        Ip.plot(ax, label='Ip (MA)')
-        Vl.masked((Vl.t < 0.5) | (Vl.t > 6.)).plot(ax, label='V loop (V)')
+        (S['Ipa']*1e-6).plot(ax, label='Ip (MA)')
+        S['ULid12'].t_between(0.5, 6.).plot(ax, label='V loop (V)')
         ax.legend()
         return ax
 
