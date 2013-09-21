@@ -137,25 +137,72 @@ class Spline2D(RectBivariateSpline):
         dierckx.fpbisp(tx, ty, c, x, y, z, wx, wy, lx, ly)
         return z.reshape(mx, my), wx, wy
 
-    def eval_tensor(self, x, y):
+    def eval_yx(self, x, y):
         tx, ty, c = self.tck[:3]
         kx, ky = self.degrees
         nx, ny = tx.size, ty.size
         mx, my = x.size, y.size
-        C = np.zeros((nx-kx-1, my))
+        C = np.zeros(my*(nx-kx-1))
 
-        c = c.reshape((nx-kx-1, ny-ky-1))
         ier = 0
-        wrk = np.zeros(ny)
-
+        c = c.reshape((nx-kx-1, ny-ky-1))
+        C = C.reshape((nx-kx-1, my))
         for i in xrange(nx-kx-1):
             dierckx.splev(ty, c[i], ky, y, C[i], ier)
+        C = C.T.copy()
 
         z = np.zeros((my, mx))
-        C = C.T.copy()
         for j in xrange(my):
             dierckx.splev(tx, C[j], kx, x, z[j], ier)
         return z.T, C
+
+    def eval_xy(self, x, y):
+        tx, ty, c = self.tck[:3]
+        kx, ky = self.degrees
+        nx, ny = tx.size, ty.size
+        mx, my = x.size, y.size
+        C = np.zeros(mx*(ny-ky-1))
+
+        ier = 0
+        c = c.reshape((nx-kx-1, ny-ky-1)).T.copy()
+        C = C.reshape((ny-ky-1, mx))
+        for j in xrange(ny-ky-1):
+            dierckx.splev(tx, c[j], kx, x, C[j], ier)
+        C = C.T.copy()
+        
+        z = np.zeros((mx, my))
+        for i in xrange(mx):
+            dierckx.splev(ty, C[i], ky, y, z[i], ier)
+        return z, C
+
+    def evalv_yx(self, x, y):
+        tx, ty, c = self.tck[:3]
+        kx, ky = self.degrees
+        nx, ny = tx.size, ty.size
+        mx, my = x.size, y.size
+        C = np.zeros(my*(nx-kx-1))
+        z = np.zeros(mx*my)
+
+        ier = 0
+        dierckx.splevv(ty, c, ky, y, C, nx-kx-1, ier)        
+        dierckx.splevv(tx, C, kx, x, z, my, ier)
+        z = z.reshape((mx, my))
+        return z, C
+
+    def evalv_xy(self, x, y):
+        tx, ty, c = self.tck[:3]
+        kx, ky = self.degrees
+        nx, ny = tx.size, ty.size
+        mx, my = x.size, y.size
+        C = np.zeros(mx*(ny-ky-1))
+        z = np.zeros(mx*my)
+
+        ier = 0
+        c = c.reshape((nx-kx-1, ny-ky-1)).T.ravel().copy()
+        dierckx.splevv(tx, c, kx, x, C, ny-ky-1, ier)
+        dierckx.splevv(ty, C, ky, y, z, mx, ier)
+        z = z.reshape(my, mx).T
+        return z, C
 
     def eval1(self, x, y):
         # shortcut for fast evaluation at 1 point
@@ -280,4 +327,8 @@ if __name__ == "__main__":
     zi = self.eval(xi, yi)
     zi2, wx, wy = self.eval_test(xi, yi)
     
-    zi3, CC = self.eval_tensor(xi, yi)
+    zi_yx, C_yx = self.eval_yx(xi, yi)
+    zi_xy, C_xy = self.eval_xy(xi, yi)
+
+    ziv_yx, Cv_yx = self.evalv_yx(xi, yi)
+    ziv_xy, Cv_xy = self.evalv_xy(xi, yi)
