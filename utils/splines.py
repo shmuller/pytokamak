@@ -1,4 +1,5 @@
 import numpy as np
+import operator
 from utils import memoized_property, BoundingBox
 from sig import Signal
 
@@ -16,6 +17,18 @@ class Spline(InterpolatedUnivariateSpline):
         else:
             self._data = tuple(data)
             self._reset_class()
+
+    def _op_factory(op):
+        def apply(self, other):
+            data = list(self._data)
+            data[9] = op(data[9], other)
+            return self.__class__(data=data)
+        return apply
+
+    __add__ = _op_factory(operator.add)
+    __sub__ = _op_factory(operator.sub)
+    __mul__ = _op_factory(operator.mul)
+    __div__ = _op_factory(operator.div)
 
     def get_bbox(self):
         x = self.get_knots()
@@ -70,6 +83,16 @@ class Spline(InterpolatedUnivariateSpline):
         data[9] = self.wrk[:n]
         return Spline(data=data)
 
+    def roots(self):
+        t, c, k = self._eval_args
+        if k == 3:
+            ier = 0
+            z = np.zeros(100)
+            m = dierckx.sproot(t, c, z, ier)
+            return z[:m]
+        raise NotImplementedError("finding roots unsupported for "
+                                  "non-cubic splines")
+
     def assignal(self):
         x = self.get_knots()
         y = self._eval(x)
@@ -95,6 +118,18 @@ class Spline2D(RectBivariateSpline):
         self.iwrk1 = np.zeros(2, 'i')
         self.z1 = np.zeros(1)
 
+    def _op_factory(op):
+        def apply(self, other):
+            tx, ty, c = self.tck
+            data = dict(tck=(tx, ty, op(c, other)), degrees=self.degrees)
+            return self.__class__(data=data)
+        return apply
+
+    __add__ = _op_factory(operator.add)
+    __sub__ = _op_factory(operator.sub)
+    __mul__ = _op_factory(operator.mul)
+    __div__ = _op_factory(operator.div)
+
     def astuple(self):
         return self.tck[:3] + self.degrees
 
@@ -102,106 +137,66 @@ class Spline2D(RectBivariateSpline):
         tx, ty = self.tck[:2]
         return BoundingBox(np.array(((tx[0], ty[0]), (tx[-1], ty[-1]))))
 
-    def eval(self, x, y):
-        tx, ty, c = self.tck[:3]
+    def _args(self):
+        tx, ty, c = self.tck
+        nx, ny = tx.size, ty.size
         kx, ky = self.degrees
+        wx, wy = nx-kx-1, ny-ky-1
+        ier = 0
+        return tx, ty, c, nx, ny, kx, ky, wx, wy, ier
+
+    def eval(self, x, y):
+        tx, ty, c, nx, ny, kx, ky, wx, wy, ier = self._args()
         mx, my = x.size, y.size
-        
         lwrk = mx*(kx+1)+my*(ky+1)
         kwrk = mx+my
         wrk = np.zeros(lwrk)
         iwrk = np.zeros(kwrk, 'i')
 
         z = np.zeros(mx*my)
-        ier = 0
         dierckx.bispev(tx, ty, c, kx, ky, x, y, z, wrk, iwrk, ier)
         return z.reshape(mx, my)
 
-    def eval_test(self, x, y):
-        tx, ty, c = self.tck[:3]
-        kx, ky = self.degrees
-        mx, my = x.size, y.size
-        
-        lwrk = mx*(kx+1)+my*(ky+1)
-        kwrk = mx+my
-        wrk = np.zeros(lwrk)
-        iwrk = np.zeros(kwrk, 'i')
+    def eval_y(self, y):
+        tx, ty, c, nx, ny, kx, ky, wx, wy, ier = self._args()
+        my = y.size
+        C = np.zeros(my*wx)
 
-        wx = np.zeros((mx, kx+1), order='F')
-        wy = np.zeros((my, ky+1), order='F')
-        lx = np.zeros(mx, 'i')
-        ly = np.zeros(my, 'i')
+        dierckx.splevv(ty, c, ky, y, C, wx, ier)
+        C = C.reshape((my, wx))
+        return [Spline._from_tck((tx, c, kx)) for c in C]
 
-        z = np.zeros(mx*my)
+    def eval_x(self, x):
+        tx, ty, c, nx, ny, kx, ky, wx, wy, ier = self._args()
+        mx = x.size
+        C = np.zeros(mx*wy)
 
-        dierckx.fpbisp(tx, ty, c, x, y, z, wx, wy, lx, ly)
-        return z.reshape(mx, my), wx, wy
+        c = c.reshape((wx, wy)).T.ravel().copy()
+        dierckx.splevv(tx, c, kx, x, C, wy, ier)
+        C = C.reshape((mx, wy))
+        return [Spline._from_tck((ty, c, ky)) for c in C]
 
     def eval_yx(self, x, y):
-        tx, ty, c = self.tck[:3]
-        kx, ky = self.degrees
-        nx, ny = tx.size, ty.size
+        tx, ty, c, nx, ny, kx, ky, wx, wy, ier = self._args()
         mx, my = x.size, y.size
-        C = np.zeros(my*(nx-kx-1))
-
-        ier = 0
-        c = c.reshape((nx-kx-1, ny-ky-1))
-        C = C.reshape((nx-kx-1, my))
-        for i in xrange(nx-kx-1):
-            dierckx.splev(ty, c[i], ky, y, C[i], ier)
-        C = C.T.copy()
-
-        z = np.zeros((my, mx))
-        for j in xrange(my):
-            dierckx.splev(tx, C[j], kx, x, z[j], ier)
-        return z.T, C
-
-    def eval_xy(self, x, y):
-        tx, ty, c = self.tck[:3]
-        kx, ky = self.degrees
-        nx, ny = tx.size, ty.size
-        mx, my = x.size, y.size
-        C = np.zeros(mx*(ny-ky-1))
-
-        ier = 0
-        c = c.reshape((nx-kx-1, ny-ky-1)).T.copy()
-        C = C.reshape((ny-ky-1, mx))
-        for j in xrange(ny-ky-1):
-            dierckx.splev(tx, c[j], kx, x, C[j], ier)
-        C = C.T.copy()
-        
-        z = np.zeros((mx, my))
-        for i in xrange(mx):
-            dierckx.splev(ty, C[i], ky, y, z[i], ier)
-        return z, C
-
-    def evalv_yx(self, x, y):
-        tx, ty, c = self.tck[:3]
-        kx, ky = self.degrees
-        nx, ny = tx.size, ty.size
-        mx, my = x.size, y.size
-        C = np.zeros(my*(nx-kx-1))
+        C = np.zeros(my*wx)
         z = np.zeros(mx*my)
 
-        ier = 0
-        dierckx.splevv(ty, c, ky, y, C, nx-kx-1, ier)        
+        dierckx.splevv(ty, c, ky, y, C, wx, ier)
         dierckx.splevv(tx, C, kx, x, z, my, ier)
         z = z.reshape((mx, my))
         return z, C
 
-    def evalv_xy(self, x, y):
-        tx, ty, c = self.tck[:3]
-        kx, ky = self.degrees
-        nx, ny = tx.size, ty.size
+    def eval_xy(self, x, y):
+        tx, ty, c, nx, ny, kx, ky, wx, wy, ier = self._args()
         mx, my = x.size, y.size
-        C = np.zeros(mx*(ny-ky-1))
+        C = np.zeros(mx*wy)
         z = np.zeros(mx*my)
 
-        ier = 0
-        c = c.reshape((nx-kx-1, ny-ky-1)).T.ravel().copy()
-        dierckx.splevv(tx, c, kx, x, C, ny-ky-1, ier)
+        c = c.reshape((wx, wy)).T.ravel().copy()
+        dierckx.splevv(tx, c, kx, x, C, wy, ier)
         dierckx.splevv(ty, C, ky, y, z, mx, ier)
-        z = z.reshape(my, mx).T
+        z = z.reshape((my, mx)).T
         return z, C
 
     def eval1(self, x, y):
@@ -317,18 +312,17 @@ if __name__ == "__main__":
     Z = np.sin(X)*Y*0.1
     self = Spline2D(x[::9], y[::9], Z[::9,::9])
 
-    spl = Spline(x[::9], Z[::9,9])
-    t, c, k = spl._eval_args
-
     kx, ky = self.degrees
-    tx, ty, C = self.tck
+    tx, ty, c = self.tck
     #xi, yi = tx[kx:-kx], ty[kx+1:kx+2]
     xi, yi = np.arange(10.) + 0.5, np.arange(5.) + 0.5
     zi = self.eval(xi, yi)
-    zi2, wx, wy = self.eval_test(xi, yi)
     
-    zi_yx, C_yx = self.eval_yx(xi, yi)
-    zi_xy, C_xy = self.eval_xy(xi, yi)
+    zi_yx, c_yx = self.eval_yx(xi, yi)
+    zi_xy, c_xy = self.eval_xy(xi, yi)
+    print np.abs(zi_yx - zi_xy).max()
 
-    ziv_yx, Cv_yx = self.evalv_yx(xi, yi)
-    ziv_xy, Cv_xy = self.evalv_xy(xi, yi)
+    spl_y = self.eval_y(y[9:10])[0]
+    spl = Spline(x[::9], Z[::9,9])
+    print np.abs(spl_y(x) - spl(x)).max()
+

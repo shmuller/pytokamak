@@ -1,7 +1,8 @@
 import math
 import numpy as np
+import numpy.ma as ma
 from utils.utils import memoized_property
-from utils.sig import Signal2D
+from utils.sig import Signal2D, AmpSignal
 from vtk_aug import VtkContour
 
 class DCN:
@@ -35,6 +36,18 @@ class DCN:
                         xtype='t', xunits=S.tunits, ytype='Ray coordinate', yunits='')
 
     def get_separatrix(self):
+        S = self['H-5'].compressed()
+        t = np.asarray(S.t, np.float64)
+        sep = np.zeros((t.size, 2))
+        sep.fill(np.nan)
+        Spl = (self._psi_spl - 1.).eval_x(t)
+        for s, spl in zip(sep, Spl):
+            z = spl.roots()
+            if z.size == 2:
+                s[:] = z
+        return AmpSignal(ma.masked_invalid(sep), t)
+
+    def get_separatrix_old(self):
         t = np.ascontiguousarray(self.psi.x, np.float64)
         s = np.ascontiguousarray(self.psi.y, np.float64)
         psi = np.ascontiguousarray(self.psi.Z.base, np.float64)
