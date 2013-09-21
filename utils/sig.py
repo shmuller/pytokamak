@@ -493,7 +493,7 @@ class Signal2D:
         elif x.ndim == 0:
             return Signal(Z, y, type=self.type, units=self.units, tunits=self.yunits)
         else:
-            return self.__array_wrap(x, y, Z)
+            return self.__array_wrap__(x, y, Z)
 
     @memoized_property
     def xlab(self):
@@ -522,9 +522,17 @@ class Signal2D:
             cnd = y > 0
             y, Z = y[cnd], Z[cnd]
         
-        dy = y[1] - y[0]
-        y = np.r_[y[0], y[1:] - dy/2, y[-1]]
-        
+        def check_size(x, n):
+            if x.size == n + 1:
+                return x
+            elif x.size == n:
+                return np.r_[x[0], 0.5*(x[:-1] + x[1:]), x[-1]]
+            else:
+                raise ValueError('axes length must be n + 1 or n')
+
+        x = check_size(x, Z.shape[1])
+        y = check_size(y, Z.shape[0])
+
         kw.setdefault('xlab', self.xlab)
         kw.setdefault('ylab', self.ylab)
         ax = get_axes(ax, **kw)
@@ -1075,8 +1083,11 @@ class Signal(SignalBase):
         filter = Filter(fm, fM, self.f_Nyq)
         return self.__array_wrap__(filter(self.x))
 
+    def spec(self, NFFT=2048, step=512, detrend='linear'):
+        return Specgram(NFFT, step, detrend)(self)        
+
     def specgram(self, ax=None, NFFT=2048, step=512, detrend='linear', **kw):
-        spec = Specgram(NFFT, step, detrend)(self)
+        spec = self.spec(NFFT, step, detrend)
         spec.y *= 1e-3
         spec.yunits = 'kHz'
         return spec.plot(ax, **kw)

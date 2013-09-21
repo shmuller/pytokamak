@@ -117,6 +117,46 @@ class Spline2D(RectBivariateSpline):
         dierckx.bispev(tx, ty, c, kx, ky, x, y, z, wrk, iwrk, ier)
         return z.reshape(mx, my)
 
+    def eval_test(self, x, y):
+        tx, ty, c = self.tck[:3]
+        kx, ky = self.degrees
+        mx, my = x.size, y.size
+        
+        lwrk = mx*(kx+1)+my*(ky+1)
+        kwrk = mx+my
+        wrk = np.zeros(lwrk)
+        iwrk = np.zeros(kwrk, 'i')
+
+        wx = np.zeros((mx, kx+1), order='F')
+        wy = np.zeros((my, ky+1), order='F')
+        lx = np.zeros(mx, 'i')
+        ly = np.zeros(my, 'i')
+
+        z = np.zeros(mx*my)
+
+        dierckx.fpbisp(tx, ty, c, x, y, z, wx, wy, lx, ly)
+        return z.reshape(mx, my), wx, wy
+
+    def eval_tensor(self, x, y):
+        tx, ty, c = self.tck[:3]
+        kx, ky = self.degrees
+        nx, ny = tx.size, ty.size
+        mx, my = x.size, y.size
+        C = np.zeros((nx-kx-1, my))
+
+        c = c.reshape((nx-kx-1, ny-ky-1))
+        ier = 0
+        wrk = np.zeros(ny)
+
+        for i in xrange(nx-kx-1):
+            dierckx.splev(ty, c[i], ky, y, C[i], ier)
+
+        z = np.zeros((my, mx))
+        C = C.T.copy()
+        for j in xrange(my):
+            dierckx.splev(tx, C[j], kx, x, z[j], ier)
+        return z.T, C
+
     def eval1(self, x, y):
         # shortcut for fast evaluation at 1 point
         tx, ty, c = self.tck[:3]
@@ -221,7 +261,23 @@ def spline2d_test(nu=2):
 
 
 if __name__ == "__main__":
-    nu = 1
-    spline_test(nu=nu)
-    spline2d_test(nu=nu)
-    show()
+    #nu = 1
+    #spline_test(nu=nu)
+    #spline2d_test(nu=nu)
+    #show()
+    x = y = np.linspace(0., 10., 100)
+    X, Y = np.ix_(x, y)
+    Z = np.sin(X)*Y*0.1
+    self = Spline2D(x[::9], y[::9], Z[::9,::9])
+
+    spl = Spline(x[::9], Z[::9,9])
+    t, c, k = spl._eval_args
+
+    kx, ky = self.degrees
+    tx, ty, C = self.tck
+    #xi, yi = tx[kx:-kx], ty[kx+1:kx+2]
+    xi, yi = np.arange(10.) + 0.5, np.arange(5.) + 0.5
+    zi = self.eval(xi, yi)
+    zi2, wx, wy = self.eval_test(xi, yi)
+    
+    zi3, CC = self.eval_tensor(xi, yi)
