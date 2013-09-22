@@ -9,7 +9,109 @@ from scipy.interpolate import InterpolatedUnivariateSpline, RectBivariateSpline
 
 import dierckx
 
-class Spline(InterpolatedUnivariateSpline):
+class Spline(object):
+    def __init__(self, x, y, k=3, s=0.):
+        iopt = 0
+        m = x.size
+        w = np.ones(m)
+        nest = m+k+1
+        lwrk = m*(k+1)+nest*(7+3*k)
+
+        t = np.zeros(nest)
+        c = np.zeros(nest)
+        wrk = np.zeros(lwrk)
+        iwrk = np.zeros(nest, 'i')
+        n, fp, ier = dierckx.curfit(iopt, x, y, w, x[0], x[-1], k, s, t, c, wrk, iwrk)
+        t.resize(n)
+        c.resize(n-k-1)
+        self.tck = t, c, k
+
+    @classmethod
+    def _from_tck(cls, tck):
+        self = cls.__new__(cls)
+        self.tck = tck
+        return self
+
+    def _op_factory(op):
+        def apply(self, other):
+            t, c, k = self.tck
+            return self._from_tck((t, op(c, other), k))
+        return apply
+
+    __add__ = _op_factory(operator.add)
+    __sub__ = _op_factory(operator.sub)
+    __mul__ = _op_factory(operator.mul)
+    __div__ = _op_factory(operator.div)
+
+    def _eval(self, x, nu=0, y=None):
+        '''
+        Unsafe evaluation: Assume that x is sorted and within spline bbox
+        '''
+        tck = self.tck
+        if y is None:
+            y = np.zeros_like(x)
+        self.wrk = np.zeros_like(tck[0])
+        ier = 0
+
+        dierckx.splder(*(tck + (nu, x, y, self.wrk, ier)))
+        return y
+
+    def __call__(self, x, nu=0, fill=np.nan):
+        '''
+        Safe evaluation: Check for x values outside bbox and make sure x is
+        sorted before passed to _eval().
+        '''
+        x = np.atleast_1d(x)
+        shape = x.shape
+        x = x.ravel()
+        perm = x.argsort()
+        iperm = np.zeros_like(perm)
+        iperm[perm] = np.arange(perm.size)
+        x = x[perm]
+        
+        t = self.tck[0]
+        i = x.searchsorted(t[[0, -1]])
+        if x[i[1]] == t[-1]:
+            i[1] += 1
+
+        y = np.zeros_like(x)
+        y.fill(fill)
+
+        s = slice(i[0], i[1])
+        self._eval(x[s], nu, y[s])
+        return y[iperm].reshape(shape)
+
+    def deriv(self, nu=1):
+        t, c, k = self.tck
+        self._eval(t[:1], nu)
+
+        n = t.size - 2*nu
+        return self.from_tck((t[nu:n+nu], self.wrk[:n], k - nu))
+
+    def roots(self):
+        t, c, k = self.tck
+        if k == 3:
+            ier = 0
+            z = np.zeros(100)
+            m = dierckx.sproot(t, c, z, ier)
+            z.resize(m)
+            return z
+        else:
+            raise NotImplementedError("finding roots unsupported for "
+                                      "non-cubic splines")
+
+    def assignal(self):
+        t, c, k = self.tck
+        x = t[k:-k]
+        y = self._eval(x)
+        return Signal(y, x)
+        
+    def plot(self, ax=None):
+        ax = get_axes(ax)
+        return self.assignal().plot(ax=ax)
+
+
+class SplineOld(InterpolatedUnivariateSpline):
     def __init__(self, *args, **kw):
         data = kw.pop('data', None)
         if data is None:
@@ -62,13 +164,14 @@ class Spline(InterpolatedUnivariateSpline):
         
         t = self._data[8]
         i = x.searchsorted(t[[0, -1]])
-        if x[i[1]-1] == t[-1]:
+        if x[i[1]] == t[-1]:
             i[1] += 1
 
         y = np.zeros_like(x)
         y.fill(fill)
 
-        self._eval(x[i[0]:i[1]], nu, y[i[0]:i[1]])
+        s = slice(i[0], i[1])
+        self._eval(x[s], nu, y[s])
         return y[iperm].reshape(shape)
 
     def deriv(self, nu=1):
