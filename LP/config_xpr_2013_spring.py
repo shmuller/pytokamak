@@ -517,8 +517,9 @@ E.rep(29694, 29693, "Repeat, go all the way thru",
         posit = 0.34,
         descr = """\
             Arc box switched off at different conditions again. Real arcs on I2.
-            Otherwise good data.""",
-        stars = '***')
+            Otherwise good data. Probe goes through X-point on inward plunge! Very
+            sharp change in Mach number and turbulence quenching.""",
+        stars = '*****')
 
 # Martin Oberkofler
 E.rep(29695, 29694, "No N2, full plunge at 3.8 s, arc box on I3 triggered by I2",
@@ -538,7 +539,7 @@ E.rep(29697, 29696, "N2, plunge, arc box switches 9 V battery on S8",
         times = 3.8,
         posit = 0.34,
         descr = """\
-            Nice data, no arcs. Arc box switched twice.
+            Nice data, no arcs. 
             Compare this shot with 29731, where Mach tips were on separate power
             supplies.""",
         stars = '*****')
@@ -712,7 +713,9 @@ E.rep(29731, 29730, "Full stroke at 3.8 s",
         descr = """\
             Very similar data to 29697. So it didn't matter whether the two tips
             are connected to the same or to different power supplies. Arc box on
-            I2 triggered twice: I2 goes to 0 and I1 is unaffected, as hoped.""",
+            I2 triggered twice: I2 goes to 0 and I1 is unaffected, as hoped.
+            There appears to be an I-phase transition when the probe is in the PF 
+            region where the high-frequency turbulence is quenched.""",
         stars = '*****')
 
 # Stefan Muller

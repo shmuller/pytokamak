@@ -170,6 +170,22 @@ class AUGOverview:
         ax.legend()
         return ax
 
+    def plot_DCN_sep(self, ax=None, chn=('H-1', 'H-4', 'H-5'), field='d', **kw):
+        S = self.DCN
+        ax = S.plot_separatrix(ax, chn=chn, field=field)
+        ax.set_ylabel(S.sep[chn[0]][field].ylab)
+        ax.legend()
+        return ax
+
+    def plot_DCN_Rsep(self, ax=None, **kw):
+        return self.plot_DCN_sep(ax, field='R', **kw)
+
+    def plot_DCN_zsep(self, ax=None, **kw):
+        return self.plot_DCN_sep(ax, field='z', **kw)
+
+    def plot_DCN_dsep(self, ax=None, **kw):
+        return self.plot_DCN_sep(ax, field='d', **kw)
+
     def plot_n(self, ax=None, chn=('H-1_corr', 'H-4_corr', 'H-5_corr'), **kw):
         S = self.S['TOT']
         ax = get_axes(ax)

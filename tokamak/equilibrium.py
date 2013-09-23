@@ -66,9 +66,9 @@ class InterpolatorSlice(Interpolator):
             fs[i] = sp.ev(y, x)
         return fs
 
-    def get_path_spline(self, s, x, y):
+    def get_path_spline(self, s, x, y, kt=1, ks=3):
         fs = self.eval_path_on_slices(x, y)
-        return Spline2D(self.t, s, fs)
+        return Spline2D(self.t, s, fs, kx=kt, ky=ks)
 
 
 class FluxSurf(VtkContour):
@@ -302,8 +302,8 @@ class Eqi:
         return InterpolatorSlice(self.t, self.R, self.z, 
                 get_f_slice=self.get_psi_n_slice, shape=self.shape)
     
-    def get_path_spline(self, s, R, z):
-        return self.interpolator_slice.get_path_spline(s, R, z)
+    def get_path_spline(self, s, R, z, **kw):
+        return self.interpolator_slice.get_path_spline(s, R, z, **kw)
 
     def _psi(self, ti, norm=False):
         if norm:

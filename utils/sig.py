@@ -1062,6 +1062,19 @@ class Signal(SignalBase):
             ylab += " (%s)" % self.units
         return ylab
 
+    def _nanjoin(self):
+        x, t = self.x, self.t
+        n = t.size
+        m = x.size / n
+        x = x.reshape((n, m))
+
+        nans = np.tile(np.nan, (1, m))
+        x = ma.concatenate((x, nans)).T.ravel()
+
+        nan = np.reshape(np.nan, 1)
+        t = np.tile(ma.concatenate((t, nan)), (m, 1)).ravel()
+        return ma.masked_invalid(x), ma.masked_invalid(t)
+        
     def plot(self, ax=None, *args, **kw):
         ax = get_axes(ax, xlab=self.xlab, ylab=self.ylab)
         kw.setdefault('label', self.label)
