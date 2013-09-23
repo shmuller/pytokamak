@@ -363,7 +363,7 @@ class Eqi:
         if psi is None:
             psi = self.get_psi(ti, R, z)
         spl = self._f(ti)
-        fill = spl.assignal().x[0]
+        fill = spl.as_signal().x[0]
         return spl.eval(psi, fill=fill) / R
 
     def get_Bphi_grid(self, ti, R=None, z=None, psi=None):
@@ -371,7 +371,7 @@ class Eqi:
         if psi is None:
             psi = self.get_psi_grid(ti, R, z)
         spl = self._f(ti)
-        fill = spl.assignal().x[0]
+        fill = spl.as_signal().x[0]
         return spl.eval(psi, fill=fill) / R[None]
 
     def get_Bphi_spline(self, ti, R=None, z=None):

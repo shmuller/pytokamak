@@ -56,7 +56,7 @@ class Spline(object):
         dierckx.splder(*(tck + (nu, x, y, self.wrk, ier)))
         return y
 
-    def __call__(self, x, nu=0, fill=np.nan):
+    def eval(self, x, nu=0, fill=np.nan):
         '''
         Safe evaluation: Check for x values outside bbox and make sure x is
         sorted before passed to _eval().
@@ -71,8 +71,8 @@ class Spline(object):
         
         t = self.tck[0]
         i = x.searchsorted(t[[0, -1]])
-        if x[i[1]] == t[-1]:
-            i[1] += 1
+        if x[-1] == t[-1]:
+            i[1] = x.size
 
         y = np.zeros_like(x)
         y.fill(fill)
@@ -80,6 +80,8 @@ class Spline(object):
         s = slice(i[0], i[1])
         self._eval(x[s], nu, y[s])
         return y[iperm].reshape(shape)
+
+    __call__ = eval
 
     def deriv(self, nu=1):
         t, c, k = self.tck
@@ -100,7 +102,17 @@ class Spline(object):
             raise NotImplementedError("finding roots unsupported for "
                                       "non-cubic splines")
 
-    def assignal(self):
+    def as_pp(self):
+        t, c, k = self.tck
+        x = t[k:-k]
+        k1 = k+1
+        d = np.zeros((x.size, k1))
+        ier = 0
+        for xx, dd in zip(x, d):
+            dierckx.spalde(t, c, xx, dd, ier)
+        return x, d
+
+    def as_signal(self):
         t, c, k = self.tck
         x = t[k:-k]
         y = self._eval(x)
@@ -108,7 +120,7 @@ class Spline(object):
         
     def plot(self, ax=None):
         ax = get_axes(ax)
-        return self.assignal().plot(ax=ax)
+        return self.as_signal().plot(ax=ax)
 
 
 class SplineOld(InterpolatedUnivariateSpline):
@@ -164,8 +176,8 @@ class SplineOld(InterpolatedUnivariateSpline):
         
         t = self._data[8]
         i = x.searchsorted(t[[0, -1]])
-        if x[i[1]] == t[-1]:
-            i[1] += 1
+        if x[-1] == t[-1]:
+            i[1] = x.size
 
         y = np.zeros_like(x)
         y.fill(fill)
