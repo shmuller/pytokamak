@@ -845,14 +845,23 @@ class Signal(SignalBase):
     def nonpos(self):
         return self.masked(self > 0)
 
+    def gt(self, x0):
+        return self.masked(self <= x0)
+
+    def lt(self, x1):
+        return self.masked(self >= x1)
+
+    def between(self, x0, x1):
+        return self.masked((self <= x0) | (self >= x1))
+
     def t_gt(self, t0):
         return self.t_masked(self.t <= t0)
 
     def t_lt(self, t1):
-        return self.t_masked(t1 <= self.t)
+        return self.t_masked(self.t >= t1)
 
     def t_between(self, t0, t1):
-        return self.t_masked((self.t <= t0) | (t1 <= self.t))
+        return self.t_masked((self.t <= t0) | (self.t >= t1))
 
     def normed(self):
         return self.__array_wrap__(self / np.abs(self.range).max())

@@ -9,6 +9,13 @@ from scipy.interpolate import InterpolatedUnivariateSpline, RectBivariateSpline
 
 import dierckx
 
+def atleast_1d_dtype(x, dtype):
+    x = np.asanyarray(x, dtype)
+    if len(x.shape) == 0:
+        x.reshape(1)
+    return x
+
+
 class Spline(object):
     def __init__(self, x, y, k=3, s=0.):
         iopt = 0
@@ -20,7 +27,7 @@ class Spline(object):
         t = np.zeros(nest)
         c = np.zeros(nest)
         wrk = np.zeros(lwrk)
-        iwrk = np.zeros(nest, 'i')
+        iwrk = np.zeros(nest, np.int32)
         n, fp, ier = dierckx.curfit(iopt, x, y, w, x[0], x[-1], k, s, t, c, wrk, iwrk)
         t.resize(n)
         c.resize(n-k-1)
@@ -45,7 +52,7 @@ class Spline(object):
 
     def _eval(self, x, nu=0, y=None):
         '''
-        Unsafe evaluation: Assume that x is sorted and within spline bbox
+        Unsafe evaluation: Assume that x is double, sorted and within spline bbox
         '''
         tck = self.tck
         if y is None:
@@ -61,7 +68,7 @@ class Spline(object):
         Safe evaluation: Check for x values outside bbox and make sure x is
         sorted before passed to _eval().
         '''
-        x = np.atleast_1d(x)
+        x = atleast_1d_dtype(x, np.float64)
         shape = x.shape
         x = x.ravel()
         perm = x.argsort()
@@ -90,14 +97,17 @@ class Spline(object):
         n = t.size - 2*nu
         return self.from_tck((t[nu:n+nu], self.wrk[:n], k - nu))
 
-    def roots(self):
+    def roots(self, out=None, maxroots=100):
         t, c, k = self.tck
         if k == 3:
             ier = 0
-            z = np.zeros(100)
-            m = dierckx.sproot(t, c, z, ier)
-            z.resize(m)
-            return z
+            if out is None:
+                out = np.zeros(maxroots)
+                m = dierckx.sproot(t, c, out, ier)
+                out.resize(m)
+                return out
+            else:
+                return dierckx.sproot(t, c, out, ier)
         else:
             raise NotImplementedError("finding roots unsupported for "
                                       "non-cubic splines")

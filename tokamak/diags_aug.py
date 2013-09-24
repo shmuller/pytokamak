@@ -1,6 +1,7 @@
 import math
 import numpy as np
 import numpy.ma as ma
+from itertools import izip
 from utils.utils import memoized_property, GeneratorDict
 from utils.sig import AmpSignal
 
@@ -22,7 +23,7 @@ class DCN:
         self.kw = kw
 
     def __getitem__(self, indx):
-        return self.digitizer[indx].t_gt(0.).nonneg().compressed()
+        return self.digitizer[indx].t_gt(0.).gt(1e18).compressed()
 
     def _get_psi_spl(self, chn='H-5'):
         (Rm, zm), (RM, zM) = self.geom.get_rays(chn)
@@ -35,16 +36,14 @@ class DCN:
 
     def get_separatrix(self, chn='H-5'):
         S = self[chn]
-        t = np.asarray(S.t, np.float64)
+        t = np.asanyarray(S.t, np.float64)
         Spl = (self._psi_spl[chn] - 1.).eval_x(t)
 
         sep = np.zeros((t.size, 2))
         sep.fill(np.nan)
-        for s, spl in zip(sep, Spl):
-            z = spl.roots()
-            if z.size == 2:
-                s[:] = z
-
+        for spl, s in izip(Spl, sep):
+            spl.roots(s)
+        
         kw = dict(units='m', label=chn)
         sep = ma.masked_invalid(sep)
         (Rm, zm), (RM, zM) = self.geom.get_rays(chn)
