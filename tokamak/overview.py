@@ -315,9 +315,11 @@ class AUGOverview:
             ax.set_ylabel('%s f (kHz)' % S.name)
         return fig
 
-    def plot(self, plots=None, fig=None, figsize=(6, 6), **kw):
+    def plot(self, plots=None, fig=None, figsize=(6, 6), kw_plots=None, **kw):
         if plots is None:
             plots = self.def_plots
+        if kw_plots is None:
+            kw_plots = dict()
 
         self.viewers = self.eqi.viewers[:]
         try:
@@ -331,7 +333,7 @@ class AUGOverview:
         fig.axes[0].set_xlim((1,7))
 
         for p, ax in zip(plots, fig.axes):
-            getattr(self, 'plot_' + p)(ax)
+            getattr(self, 'plot_' + p)(ax, **kw_plots)
         return fig
 
     def plot_all(self, **kw):

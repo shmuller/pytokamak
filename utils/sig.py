@@ -1061,24 +1061,15 @@ class Signal(SignalBase):
         if len(self.units) > 0:
             ylab += " (%s)" % self.units
         return ylab
-
-    def _nanjoin(self):
-        x, t = self.x, self.t
-        n = t.size
-        m = x.size / n
-        x = x.reshape((n, m))
-
-        nans = np.tile(np.nan, (1, m))
-        x = ma.concatenate((x, nans)).T.ravel()
-
-        nan = np.reshape(np.nan, 1)
-        t = np.tile(ma.concatenate((t, nan)), (m, 1)).ravel()
-        return ma.masked_invalid(x), ma.masked_invalid(t)
         
     def plot(self, ax=None, *args, **kw):
         ax = get_axes(ax, xlab=self.xlab, ylab=self.ylab)
         kw.setdefault('label', self.label)
+        if 'color' in kw and kw['color'] == 'next':
+            kw['color'] = ax._get_lines.color_cycle.next()
         lines = ax.plot(self.t, self.x, *args, **kw)
+        for line in lines[1:]:
+            line.set_label(None)
         if self.x.size > self.rasterized_threshold:
             for l in lines: 
                 l.set_rasterized(True)

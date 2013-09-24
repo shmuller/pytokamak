@@ -22,7 +22,7 @@ class DCN:
         self.kw = kw
 
     def __getitem__(self, indx):
-        return self.digitizer[indx].t_gt(0.).nonneg()
+        return self.digitizer[indx].t_gt(0.).nonneg().compressed()
 
     def _get_psi_spl(self, chn='H-5'):
         (Rm, zm), (RM, zM) = self.geom.get_rays(chn)
@@ -34,7 +34,7 @@ class DCN:
         return self.eqi.get_path_spline(si, Ri, zi, **self.kw)
 
     def get_separatrix(self, chn='H-5'):
-        S = self[chn].compressed()
+        S = self[chn]
         t = np.asarray(S.t, np.float64)
         Spl = (self._psi_spl[chn] - 1.).eval_x(t)
 
@@ -57,12 +57,28 @@ class DCN:
         sep = dict(R=R, z=z, d=d)
         return sep
 
+    def get_n(self, chn):
+        return self[chn] / self.sep[chn]['d']
+
+    def plot(self, ax=None, chn=None):
+        if chn is None:
+            chn = self.names
+        for c in chn:
+            ax = (self[c]*1e-19).plot(ax)
+        return ax
+
+    def plot_n(self, ax=None, chn=None):
+        if chn is None:
+            chn = self.names
+        for c in chn:
+            ax = (self.get_n(c)*1e-19).plot(ax)
+        return ax
+
     def plot_separatrix(self, ax=None, chn=None, field='d'):
         if chn is None:
             chn = self.names
         for c in chn:
-            ax = self.sep[c][field].plot(ax)
-        ax.legend()
+            ax = self.sep[c][field].plot(ax, color='next')
         return ax
 
     
