@@ -41,13 +41,14 @@ class IOFileAUG(IOFile):
 
 
 class DigitizerAUG(Digitizer):
-    def __init__(self, shn, diag, suffix='_AUG', group=None, raw=False, **kw):
+    def __init__(self, shn, diag, suffix='_AUG', group=None, raw=False, 
+                 IOMdsClass=IOMdsAUG, IOFileClass=IOFileAUG, **kw):
         if group is None:
             group = diag
         
         Digitizer.__init__(self, shn, name=diag, 
-                IO_mds = IOMdsAUG(shn, diag=diag, raw=raw),
-                IO_file = IOFileAUG(shn, suffix=suffix, group=group), **kw)
+                IO_mds = IOMdsClass(shn, diag=diag, raw=raw),
+                IO_file = IOFileClass(shn, suffix=suffix, group=group), **kw)
 
     def get_node(self, node, **kw):
         try:
@@ -89,6 +90,43 @@ class DigitizerAUGDCR(DigitizerAUG):
             S = DigitizerAUG.__getitem__(self, 'dbl_res')[:, 5 + i]
             S.update(name=indx, label=indx)
             return S
+
+
+class IOMdsAUGMIR(IOMdsAUG):
+    numA = (1, 2, 3, 4, 5, 6, 26)
+    numD = (7, 8, 9, 10, 11, 12, 14, 15, 16, 17, 18, 20, 21, 22)
+    numE = (23, 24, 25, 26, 27, 28, 29, 30, 31, 32)
+    
+    formatter = "C09-{:02d}".format
+    nodesA = map(formatter, numA)
+    nodesD = map(formatter, numD)
+    nodesE = map(formatter, numE)
+
+    node_groups = (nodesA, nodesD, nodesE)
+    diags = ('MHA', 'MHD', 'MHE')
+
+    node2diag = dict()
+    for nodes, diag in zip(node_groups, diags):
+        for node in nodes:
+            node2diag[node] = diag
+
+    def __init__(self, shn, **kw):
+        kw['diag'] = '{diag}'
+        IOMdsAUG.__init__(self, shn, **kw)
+
+    def get_mdsbasestr(self, node):
+        return self.mdsfmt.format(diag=self.node2diag[node]) % node
+        
+
+class DigitizerAUGMIR(DigitizerAUG):
+    def __init__(self, shn, **kw):
+        kw.setdefault('t0', 0.)
+        kw.setdefault('t1', 6.)
+        kw.setdefault('s', slice(None, None, 4))
+
+        nodes = IOMdsAUGMIR.nodesA + IOMdsAUGMIR.nodesD + IOMdsAUGMIR.nodesE
+        DigitizerAUG.__init__(self, shn, diag='MIR', suffix='_MIR', nodes=nodes, 
+                              IOMdsClass=IOMdsAUGMIR, **kw)
 
 
 amp_2pi     = Amp(fact=0.5/np.pi, offs=0)

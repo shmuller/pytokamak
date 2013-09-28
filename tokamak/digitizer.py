@@ -96,6 +96,12 @@ class IOFile(IO):
             del self._f[name]
         self._f.create_dataset(name, data=val, compression="szip")
 
+    @ensure_open("a")
+    def del_node(self, node):
+        name = self.group + '/' + node
+        if name in self._f:
+            del self._f[name]
+
     @ensure_open("r")
     def load(self, *args, **kw):
         return IO.load(self, *args, **kw)
@@ -124,7 +130,7 @@ class IOMds(IO):
         self.datadeco = "data(%s)"
         self.timedeco = "dim_of(%s)"
         self.sizedeco = "size(%s)"
-        self.last_node = None
+        self.last_mdsbasestr = None
         IO.__init__(self)
 
     @memoized_property
@@ -134,28 +140,30 @@ class IOMds(IO):
             mdsopen(s, self.mdstree, self.shn)
         return s
 
+    def get_mdsbasestr(self, node):
+        return self.mdsfmt % node
+
     def _mdsslicestr(self, s):
         return '[%s:%s:%s]' % (str(s.start or '*'), str(s.stop or '*'), str(s.step or '*'))
 
-    def _mdsstr(self, node, s=None):
-        mdsfmt = self.mdsfmt
+    def get_mdsstr(self, node, s=None):
         if node == 't':
-            node = self.last_node
-            if node is None:
+            mdsbasestr = self.last_mdsbasestr
+            if mdsbasestr is None:
                 raise RuntimeError("Need to load another node before 't'")
-            mdsfmt = self.timedeco % mdsfmt
+            mdsstr = self.timedeco % mdsbasestr
         else:
-            self.last_node = node
-            mdsfmt = self.datadeco % mdsfmt
+            self.last_mdsbasestr = mdsbasestr = self.get_mdsbasestr(node)
+            mdsstr = self.datadeco % mdsbasestr
         if s is not None:
-            mdsfmt += self._mdsslicestr(s)
-        return mdsfmt % node
+            mdsstr += self._mdsslicestr(s)
+        return mdsstr
 
     def get_size(self, node, t0=None, t1=None, s=None):
-        return self.mdsvalue(self.sizedeco % self._mdsstr(node, s), t0, t1)
+        return self.mdsvalue(self.sizedeco % self.get_mdsstr(node, s), t0, t1)
 
     def get_node(self, node, t0=None, t1=None, s=None):
-        return self.mdsvalue(self._mdsstr(node, s), t0, t1)
+        return self.mdsvalue(self.get_mdsstr(node, s), t0, t1)
 
     def save(self, x):
         raise NotImplementedError("Saving to MDS not implemented")
@@ -191,9 +199,9 @@ class IOMds(IO):
 
 
 class Digitizer(IO, Mapping):
-    def __init__(self, shn=0, name="", s=None, nodes=(), tnode='t', tunits='s',
-            IO_mds=None, IO_file=None):
-        self.shn, self.name, self.s = shn, name, s
+    def __init__(self, shn=0, name="", t0=None, t1=None, s=None, 
+                 nodes=(), tnode='t', tunits='s', IO_mds=None, IO_file=None):
+        self.shn, self.name, self.t0, self.t1, self.s = shn, name, t0, t1, s
         self.nodes = nodes
         self.tnode, self.tunits = tnode, tunits
         self.IO_mds, self.IO_file = IO_mds, IO_file
@@ -239,6 +247,8 @@ class Digitizer(IO, Mapping):
         try:
             x = self.IO_file.get_node(node, **kw)
         except (IOError, KeyError):
+            kw.setdefault('t0', self.t0)
+            kw.setdefault('t1', self.t1)
             kw.setdefault('s', self.s)
             x = self.IO_mds.get_node(node, **kw)
             self.put_node(node, x)

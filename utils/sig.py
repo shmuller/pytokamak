@@ -697,6 +697,7 @@ class SignalBase:
         self.kw.update(kw)
         for k, v in kw.iteritems():
             setattr(self, k, v)
+        return self
 
     def __repr__(self):
         return (self.fmtstr % self.__class__.__name__).format(**self.__dict__)
