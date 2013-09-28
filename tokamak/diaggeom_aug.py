@@ -1,4 +1,5 @@
 import numpy as np
+import os
 
 from utils.utils import memoized_property, BoundingBox
 from sm_pyplot.tight_figure import get_axes
@@ -115,6 +116,32 @@ class DopplerGeom:
         return dict(antenna=antenna, arrow=arrow)
 
 
+class MIRGeom:
+    def __init__(self):
+        data_dir = os.path.join(os.path.dirname(__file__), 'data_aug')
+        fname = os.path.join(data_dir, 'angle.dat')
 
+        names = ('phi', 'theta', 'R', 'z', 'shift', 'dtheta', 'Ohm', 'Aeff')
+        dtype = np.dtype([('name', np.str_, 8)] + zip(names, (np.float32,)*len(names)))
+        self.record = np.loadtxt(fname, dtype, skiprows=2)
+
+        self.lut = dict(zip(self.record['name'], self.record))
+
+    def get_C09(self):
+        import re
+        matcher = re.compile('C09-\d\d').match
+        cnd = np.array(map(matcher, self.record['name']), dtype=bool)
+        rec = self.record[cnd]
+        lut = dict(zip(rec['name'], rec))
+        return lut
+
+    def plot(self, ax=None):
+        lut = self.get_C09()
+
+        ax = get_axes(ax)
+        for coil in lut.itervalues():
+            ax.plot(coil['R'], coil['z'], 'r*')
+        return ax
+            
 
 
