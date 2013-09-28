@@ -101,6 +101,10 @@ class IOFile(IO):
         name = self.group + '/' + node
         if name in self._f:
             del self._f[name]
+    
+    @ensure_open("a")
+    def del_all(self):
+        del self._f[self.group]
 
     @ensure_open("r")
     def load(self, *args, **kw):

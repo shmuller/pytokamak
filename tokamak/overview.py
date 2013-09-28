@@ -6,7 +6,7 @@ from sm_pyplot.tight_figure import get_tfig, get_axes, show
 from utils.utils import memoized_property, BoundingBox
 from LP.probe_xpr import ProbeXPR, ShotNotFoundError
 
-from digitizer_aug import DigitizerAUG, DigitizerAUGMAC, eqi_digitizers
+from digitizer_aug import DigitizerAUG, DigitizerAUGMAC, DigitizerAUGMIR, eqi_digitizers
 from diaggeom_aug import Vessel
 from equilibrium import Eqi, EqiViewer
 from diags_aug import DCN
@@ -63,10 +63,10 @@ class EqiViewerAUGXPR(EqiViewerAUG):
 
 
 class ProfViewerAUG(ToggleViewer):
-    def __init__(self, x, y):
-        self.x, self.y = x, y
+    def __init__(self, x, y, menu_entry, **kw):
+        self.x, self.y, self.kw = x, y, kw
 
-        ToggleViewer.__init__(self, menu_entry='Prof viewer')
+        ToggleViewer.__init__(self, menu_entry=menu_entry)
 
     def plotfun(self, event):
         t_event = event.xdata
@@ -74,8 +74,7 @@ class ProfViewerAUG(ToggleViewer):
         return self.ax.plot(x, y, 'b')
 
     def viewer(self, event=None):
-        fig = get_tfig(pos=(950, 150), figsize=(5, 5), 
-                xlab='R (m)', ylab=r'vrot (km s$^{\text{-1}}$)')
+        fig = get_tfig(pos=(950, 150), figsize=(5, 5), **self.kw)
         self.ax = ax = fig.axes[0]
         ax.set_xlim((1.5, 2.5))
         ax.set_ylim((-50, 100))
@@ -123,8 +122,6 @@ class AUGOverview:
             self.def_plots = ('power', 'density', 'Ipolsol')
         self.eqi.get_viewers(self.XPR)
 
-        self.all_plots = self.def_plots + ('Tdiv', 'Da', 'gas')
-        
     def __getitem__(self, indx):
         return self.S[indx]
 
@@ -132,6 +129,7 @@ class AUGOverview:
     def S(self):
         S = {k: DigitizerAUG(self.shn, diag=k, **v) for k, v in aug_diags.iteritems()}
         S['MAC'] = DigitizerAUGMAC(self.shn)
+        S['MIR'] = DigitizerAUGMIR(self.shn)
         S['EQI'] = eqi_digitizers[self.eqi_dig](self.shn)
         return S
 
@@ -315,18 +313,20 @@ class AUGOverview:
             ax.set_ylabel('%s f (kHz)' % S.name)
         return fig
 
-    def plot(self, plots=None, fig=None, figsize=(6, 6), kw_plots=None, **kw):
+    def plot(self, plots=None, fig=None, figsize=(6, 6), kw_plots=None, 
+            CEZ_viewer=False, **kw):
         if plots is None:
             plots = self.def_plots
         if kw_plots is None:
             kw_plots = dict()
 
         self.viewers = self.eqi.viewers[:]
-        try:
+        if CEZ_viewer:
             S = self.S['CEZ']
-            self.viewers += [ProfViewerAUG(S['R'].x[:24], S['vrot'][:,:24]*1e-3)]
-        except:
-            pass
+            y, x = S['vrot'][:,:24]*1e-3, S['R'].x[:24]
+            viewer_kw = dict(xlab='R (m)', ylab=r'vrot (km s$^{\text{-1}}$)')
+            CEZ_viewer = ProfViewerAUG(x, y, menu_entry='CEZ viewer', **viewer_kw)
+            self.viewers += [CEZ_viewer]
 
         fig = get_tfig(fig, pos=(450, 150), figsize=figsize, shape=(len(plots), 1), 
                        xlab='t (s)', viewers=self.viewers, **kw)
@@ -335,9 +335,6 @@ class AUGOverview:
         for p, ax in zip(plots, fig.axes):
             getattr(self, 'plot_' + p)(ax, **kw_plots)
         return fig
-
-    def plot_all(self, **kw):
-        return self.plot(self.all_plots, **kw)
 
 
 if __name__ == "__main__":
