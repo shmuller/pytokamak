@@ -4,6 +4,7 @@ import numpy.ma as ma
 from sm_pyplot.tight_figure import get_tfig, get_axes, show
 
 from utils.utils import memoized_property, BoundingBox
+from utils.sig import Signal
 from LP.probe_xpr import ProbeXPR, ShotNotFoundError
 
 from digitizer_aug import DigitizerAUG, DigitizerAUGMAC, DigitizerAUGMIR, eqi_digitizers
@@ -65,7 +66,6 @@ class EqiViewerAUGXPR(EqiViewerAUG):
 class ProfViewerAUG(ToggleViewer):
     def __init__(self, x, y, menu_entry, **kw):
         self.x, self.y, self.kw = x, y, kw
-
         ToggleViewer.__init__(self, menu_entry=menu_entry)
 
     def plotfun(self, event):
@@ -78,6 +78,29 @@ class ProfViewerAUG(ToggleViewer):
         self.ax = ax = fig.axes[0]
         ax.set_xlim((1.5, 2.5))
         ax.set_ylim((-50, 100))
+        return ax
+
+
+class MIRViewerAUG(ToggleViewer):
+    def __init__(self, dig):
+        self.x = np.array([int(node[4:]) for node in dig.nodes])
+        t = dig[dig.nodes[0]].t
+        y = np.zeros((t.size, self.x.size), 'f')
+        for i, node in enumerate(dig.nodes):
+            y[:,i] = dig[node].x
+        self.y = Signal(y, t)
+        ToggleViewer.__init__(self, menu_entry='MIR viewer')
+
+    def plotfun(self, event):
+        t_event = event.xdata
+        x, y = self.x, self.y(t_event).x[0]
+        return self.ax.plot(x, y, 'b-+')
+
+    def viewer(self, event=None):
+        fig = get_tfig(pos=(950, 150), figsize=(5, 5), xlab="Number")
+        self.ax = ax = fig.axes[0]
+        ax.set_xlim((0, 33))
+        ax.set_ylim((-2, 2))
         return ax
 
 
@@ -314,7 +337,7 @@ class AUGOverview:
         return fig
 
     def plot(self, plots=None, fig=None, figsize=(6, 6), kw_plots=None, 
-            CEZ_viewer=False, **kw):
+            CEZ_viewer=False, MIR_viewer=False, **kw):
         if plots is None:
             plots = self.def_plots
         if kw_plots is None:
@@ -327,6 +350,10 @@ class AUGOverview:
             viewer_kw = dict(xlab='R (m)', ylab=r'vrot (km s$^{\text{-1}}$)')
             CEZ_viewer = ProfViewerAUG(x, y, menu_entry='CEZ viewer', **viewer_kw)
             self.viewers += [CEZ_viewer]
+
+        if MIR_viewer:
+            MIR_viewer = MIRViewerAUG(self.S['MIR'])
+            self.viewers += [MIR_viewer]
 
         fig = get_tfig(fig, pos=(450, 150), figsize=figsize, shape=(len(plots), 1), 
                        xlab='t (s)', viewers=self.viewers, **kw)

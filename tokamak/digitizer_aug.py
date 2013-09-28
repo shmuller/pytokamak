@@ -133,7 +133,7 @@ class DigitizerAUGMIR(DigitizerAUG):
         kw.setdefault('t1', 6.)
         kw.setdefault('s', slice(None, None, 4))
 
-        nodes = IOMdsAUGMIR.nodesA + IOMdsAUGMIR.nodesD + IOMdsAUGMIR.nodesE
+        nodes = sorted(IOMdsAUGMIR.nodesA + IOMdsAUGMIR.nodesD + IOMdsAUGMIR.nodesE)
         DigitizerAUG.__init__(self, shn, diag='MIR', suffix='_MIR', nodes=nodes, 
                               IOMdsClass=IOMdsAUGMIR, **kw)
 
