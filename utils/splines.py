@@ -90,12 +90,12 @@ class Spline(object):
 
     __call__ = eval
 
-    def deriv(self, nu=1):
+    def deriv(self, nu=1, x=None, y=None):
+        if x is None:
+            x = t[:1]
         t, c, k = self.tck
-        self._eval(t[:1], nu)
-
-        n = t.size - 2*nu
-        return self.from_tck((t[nu:n+nu], self.wrk[:n], k - nu))
+        self._eval(x, nu, y)
+        return self._from_tck((t[nu:t.size - nu], self.wrk[:c.size - nu], k - nu))
 
     def roots(self, out=None, maxroots=100):
         t, c, k = self.tck
@@ -122,6 +122,22 @@ class Spline(object):
             dierckx.spalde(t, c, xx, dd, ier)
         d[:,2:k1] *= 1. / np.cumprod(np.arange(2, k1))
         return PiecewisePolynomial(d.T[::-1], x)
+
+    def as_pp_dierckx2(self):
+        t, c, k = self.tck
+        x = t[k:-k]
+        xx = x[:-1]
+        k1 = k+1
+        d = np.zeros((k1, xx.size))
+        
+        sp = self
+        sp._eval(xx, 0, d[k])
+        fact = 1
+        for r in range(1, k1):
+            sp = sp.deriv(1, xx, d[k-r])
+            fact *= r
+            d[k-r] *= 1. / fact
+        return PiecewisePolynomial(d, x)
 
     @staticmethod
     def _deboor(b, tx, k):
