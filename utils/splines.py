@@ -1,7 +1,7 @@
 import numpy as np
 import operator
 from utils import memoized_property, BoundingBox
-from sig import Signal
+from sig import PiecewisePolynomial, Signal
 
 from sm_pyplot.tight_figure import get_axes, show
 
@@ -116,14 +116,14 @@ class Spline(object):
         t, c, k = self.tck
         x = t[k:-k]
         k1 = k+1
-        d = np.zeros((x.size, k1))
+        d = np.zeros((x.size - 1, k1))
         ier = 0
-        for xx, dd in zip(x, d):
+        for xx, dd in zip(x[:-1], d):
             dierckx.spalde(t, c, xx, dd, ier)
-        return x, d
+        d[:,2:k1] *= 1. / np.cumprod(np.arange(2, k1))
+        return PiecewisePolynomial(d.T[::-1], x)
     
     def as_pp(self):
-        from sig import PiecewisePolynomial
         t, c, k = self.tck
         ix = np.arange(k, t.size-k-1)[None,:]
         dx = np.arange(k, -k, -1)[:,None]
@@ -151,9 +151,10 @@ class Spline(object):
         sp = cls(x, y)
         
         pp = sp.as_pp()
+        pp2 = sp.as_pp_dierckx()
         X = np.linspace(-2., 12., 100)
         ax = get_axes()
-        ax.plot(X, np.sin(X), X, sp(X), X, pp(X))
+        ax.plot(X, np.sin(X), X, sp(X), X, pp(X), X, pp2(X))
         return sp
 
     def as_signal(self):

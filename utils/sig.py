@@ -212,6 +212,11 @@ class PiecewisePolynomial:
         y = self._polyval(x, ind.repeat(x.size))
         return s, y
 
+    def deriv(self):
+        k = self.c.shape[0] - 1
+        c = self.c[:-1] * np.arange(k, 0, -1).reshape((k,) + self.bcast)
+        return self.__class__(c, self.x, **self.kw)
+
     @memoized_property
     def T(self):
         return self.__class__(self.c.swapaxes(2,3), self.x, **self.kw)
