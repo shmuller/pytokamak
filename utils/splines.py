@@ -122,7 +122,30 @@ class Spline(object):
             dierckx.spalde(t, c, xx, dd, ier)
         d[:,2:k1] *= 1. / np.cumprod(np.arange(2, k1))
         return PiecewisePolynomial(d.T[::-1], x)
-    
+
+    @staticmethod
+    def _deboor(b, tx, k):
+        for r in range(k):
+            for i in range(k, r, -1):
+                tx0 = tx[i-1+k-r]
+                tx1 = tx[i-1]
+                b[i] = (tx1 * b[i] - tx0 * b[i-1]) / (tx1 - tx0)
+
+    def eval_deboor(self, x):
+        t, c, k = self.tck
+        x = x[None,:]
+        ix = t.searchsorted(x, 'right') - 1
+        ix[ix < k] = k
+        ix[ix > t.size - 2 - k] = t.size - 2 - k
+
+        dx = np.arange(k, -k, -1)[:,None]
+        dy = np.arange(0, -k-1, -1)[:,None]
+
+        tx = t[ix+dx] - x
+        b = c[ix+dy]
+        self._deboor(b, tx, k)
+        return b[k]
+
     def as_pp(self):
         t, c, k = self.tck
         ix = np.arange(k, t.size-k-1)[None,:]
@@ -131,11 +154,7 @@ class Spline(object):
 
         tx = t[ix+dx] - t[ix]
         b = c[ix+dy]
-        for r in range(k):
-            for i in range(k, r, -1):
-                tx0 = tx[i-1+k-r]
-                tx1 = tx[i-1]
-                b[i] = (tx1 * b[i] - tx0 * b[i-1]) / (tx1 - tx0)
+        self._deboor(b, tx, k)
 
         for r in range(k):
             factor = float(k-r) / (1+r)
@@ -154,7 +173,7 @@ class Spline(object):
         pp2 = sp.as_pp_dierckx()
         X = np.linspace(-2., 12., 100)
         ax = get_axes()
-        ax.plot(X, np.sin(X), X, sp(X), X, pp(X), X, pp2(X))
+        ax.plot(X, np.sin(X), X, sp(X), X, sp.eval_deboor(X), X, pp(X), X, pp2(X))
         return sp
 
     def as_signal(self):
