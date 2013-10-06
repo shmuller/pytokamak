@@ -127,23 +127,23 @@ class Spline(object):
         t, c, k = self.tck
         k1 = k+1
         ix = np.arange(k, t.size-k1)[None,:]
-        dx = np.arange(1-k, k1)[:,None]
-        dy = np.arange(-k, 1)[:,None]
+        dx = np.arange(k, -k, -1)[:,None]
+        dy = np.arange(0, -k1, -1)[:,None]
 
         tx = t[ix+dx] - t[ix]
         b = c[ix+dy]
         for r in range(1, k1):
-            for i in range(k1-r):
-                tx0 = tx[i+r-1]
-                tx1 = tx[i+k]
-                b[i] = (tx1 * b[i] - tx0 * b[i+1]) / (tx1 - tx0)
+            for i in range(k, r-1, -1):
+                tx0 = tx[i+k-r]
+                tx1 = tx[i-1]
+                b[i] = (tx1 * b[i] - tx0 * b[i-1]) / (tx1 - tx0)
 
         for r in range(1, k1):
-            factor = float(k1 - r) / r
-            for i in range(k-1, r-2, -1):
-                b[i+1] = (b[i+1] - b[i]) * factor / tx[i+k1-r]
+            factor = float(k1-r) / r
+            for i in range(k1-r):
+                b[i] = (b[i] - b[i+1]) * factor / tx[i+r-1]
         
-        return PiecewisePolynomial(b[k::-1], t[k:-k])
+        return PiecewisePolynomial(b, t[k:-k])
 
     @classmethod
     def test_as_pp(cls):
