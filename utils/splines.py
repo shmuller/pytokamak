@@ -112,7 +112,7 @@ class Spline(object):
             raise NotImplementedError("finding roots unsupported for "
                                       "non-cubic splines")
 
-    def as_pp(self):
+    def as_pp_dierckx(self):
         t, c, k = self.tck
         x = t[k:-k]
         k1 = k+1
@@ -121,6 +121,41 @@ class Spline(object):
         for xx, dd in zip(x, d):
             dierckx.spalde(t, c, xx, dd, ier)
         return x, d
+    
+    def as_pp(self):
+        from sig import PiecewisePolynomial
+        t, c, k = self.tck
+        k1 = k+1
+        ix = np.arange(k, t.size-k1)[None,:]
+        dx = np.arange(1-k, k1)[:,None]
+        dy = np.arange(-k, 1)[:,None]
+
+        tx = t[ix+dx] - t[ix]
+        b = c[ix+dy]
+        for r in range(1, k1):
+            for i in range(k1-r):
+                tx0 = tx[i+r-1]
+                tx1 = tx[i+k]
+                b[i] = (tx1 * b[i] - tx0 * b[i+1]) / (tx1 - tx0)
+
+        for r in range(1, k1):
+            factor = float(k1 - r) / r
+            for i in range(k-1, r-2, -1):
+                b[i+1] = (b[i+1] - b[i]) * factor / tx[i+k1-r]
+        
+        return PiecewisePolynomial(b[k::-1], t[k:-k])
+
+    @classmethod
+    def test_as_pp(cls):
+        x = np.array([0., 2., 3., 3.5, 4., 4.7, 6., 8.])
+        y = np.sin(x)
+        sp = cls(x, y)
+        
+        pp = sp.as_pp()
+        X = np.linspace(-2., 12., 100)
+        ax = get_axes()
+        ax.plot(X, np.sin(X), X, sp(X), X, pp(X))
+        return sp
 
     def as_signal(self):
         t, c, k = self.tck
