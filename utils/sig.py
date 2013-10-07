@@ -561,6 +561,16 @@ class Signal2D:
         ax.figure.tight_layout()
         return ax
 
+    def surf(self, ax=None):
+        from matplotlib.pyplot import figure
+        from matplotlib import cm
+        from mpl_toolkits.mplot3d import Axes3D
+        fig = figure()
+        ax = fig.gca(projection='3d')
+        ax.plot_surface(self.x[None,:], self.y[:,None], self.Z, 
+                        rstride=1, cstride=1, cmap=cm.jet)
+        return ax
+
 
 class Windower:
     def __init__(self, w=2048, step=512, detrend='linear', window='hanning'):

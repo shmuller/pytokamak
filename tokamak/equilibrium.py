@@ -1,8 +1,6 @@
 import math
 import numpy as np
 
-from scipy.ndimage import map_coordinates
-
 from utils.utils import memoized_property
 from utils.sig import Amp, AmpSignal
 from utils.splines import Spline, Spline2D
@@ -40,6 +38,7 @@ class Interpolator:
 
 class Interpolator3DSlab(Interpolator):
     def __call__(self, t, x, y):
+        from scipy.ndimage import map_coordinates
         coo = self.as_coo(t, self.t), self.as_coo(x, self.x), self.as_coo(y, self.y)
         return map_coordinates(self.f, coo)
 

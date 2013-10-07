@@ -203,101 +203,6 @@ class Spline(object):
         return self.as_signal().plot(ax=ax)
 
 
-class SplineOld(InterpolatedUnivariateSpline):
-    def __init__(self, *args, **kw):
-        data = kw.pop('data', None)
-        if data is None:
-            InterpolatedUnivariateSpline.__init__(self, *args, **kw)
-        else:
-            self._data = tuple(data)
-            self._reset_class()
-
-    def _op_factory(op):
-        def apply(self, other):
-            data = list(self._data)
-            data[9] = op(data[9], other)
-            return self.__class__(data=data)
-        return apply
-
-    __add__ = _op_factory(operator.add)
-    __sub__ = _op_factory(operator.sub)
-    __mul__ = _op_factory(operator.mul)
-    __div__ = _op_factory(operator.div)
-
-    def get_bbox(self):
-        x = self.get_knots()
-        return BoundingBox(x[0], x[-1])
-
-    def _eval(self, x, nu=0, y=None):
-        '''
-        Unsafe evaluation: Assume that x is sorted and within spline bbox
-        '''
-        tck = self._eval_args
-        if y is None:
-            y = np.zeros_like(x)
-        self.wrk = np.zeros_like(tck[0])
-        ier = 0
-
-        dierckx.splder(*(tck + (nu, x, y, self.wrk, ier)))
-        return y
-
-    def eval(self, x, nu=0, fill=np.nan):
-        '''
-        Safe evaluation: Check for x values outside bbox and make sure x is
-        sorted before passed to _eval().
-        '''
-        x = np.atleast_1d(x)
-        shape = x.shape
-        x = x.ravel()
-        perm = x.argsort()
-        iperm = np.zeros_like(perm)
-        iperm[perm] = np.arange(perm.size)
-        x = x[perm]
-        
-        t = self._data[8]
-        i = x.searchsorted(t[[0, -1]])
-        if x[-1] == t[-1]:
-            i[1] = x.size
-
-        y = np.zeros_like(x)
-        y.fill(fill)
-
-        s = slice(i[0], i[1])
-        self._eval(x[s], nu, y[s])
-        return y[iperm].reshape(shape)
-
-    def deriv(self, nu=1):
-        x = self._eval_args[0][:1]
-        y = self._eval(x, nu)
-        
-        data = list(self._data)
-        data[5] -= nu
-        data[7] -= 2*nu
-        n = data[7]
-        data[8] = data[8][nu:n+nu]
-        data[9] = self.wrk[:n]
-        return Spline(data=data)
-
-    def roots(self):
-        t, c, k = self._eval_args
-        if k == 3:
-            ier = 0
-            z = np.zeros(100)
-            m = dierckx.sproot(t, c, z, ier)
-            return z[:m]
-        raise NotImplementedError("finding roots unsupported for "
-                                  "non-cubic splines")
-
-    def assignal(self):
-        x = self.get_knots()
-        y = self._eval(x)
-        return Signal(y, x)
-        
-    def plot(self, ax=None):
-        ax = get_axes(ax)
-        return self.assignal().plot(ax=ax)
-
-
 class Spline2D(RectBivariateSpline):
     def __init__(self, *args, **kw):
         data = kw.pop('data', None)
@@ -437,6 +342,45 @@ class Spline2D(RectBivariateSpline):
         z = self.eval(x, y)
         ax.contourf(y, x, z, 30)
         return ax
+
+
+class TensorProductSpline(object):
+    def __init__(self, x, y, Z, kx=3, ky=3):
+        mx = x.size
+        my = y.size
+
+        Cx = np.zeros((my, mx))
+        for i in xrange(my):
+            spx = Spline(x, Z[i], kx)
+            Cx[i] = spx.tck[1]
+        tx = spx.tck[0]
+
+        Cx = Cx.T.copy()
+        Cy = np.zeros((mx, my))
+        for j in xrange(mx):
+            spy = Spline(y, Cx[j], ky)
+            Cy[j] = spy.tck[1]
+        ty = spy.tck[0]
+
+        C = Cy.ravel()
+        self.sp = Spline2D(data=dict(degrees=(kx, ky), tck=(tx, ty, C)))
+
+        self.sp2 = Spline2D(x, y, Z.T.copy())
+
+    @classmethod
+    def test(cls):
+        x = np.linspace(0., 10., 10)
+        y = np.linspace(0., 5., 8)
+        X = x[None,:]
+        Y = y[:,None]
+        Z = np.sin(X) * np.cos(Y)
+
+        sp = cls(x, y, Z)
+
+        from sig import Signal2D
+        S = Signal2D(x, y, Z)
+        ax = S.surf()
+        return sp
 
 
 def spline_test(nu=2):
