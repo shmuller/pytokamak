@@ -565,8 +565,11 @@ class Signal2D:
         from matplotlib.pyplot import figure
         from matplotlib import cm
         from mpl_toolkits.mplot3d import Axes3D
-        fig = figure()
-        ax = fig.gca(projection='3d')
+        if ax is None:
+            fig = figure()
+            ax = fig.gca(projection='3d')
+            ax.set_xlabel(self.xlab)
+            ax.set_ylabel(self.ylab)
         ax.plot_surface(self.x[None,:], self.y[:,None], self.Z, 
                         rstride=1, cstride=1, cmap=cm.jet)
         return ax
