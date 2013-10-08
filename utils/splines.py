@@ -344,10 +344,9 @@ class Spline2D(RectBivariateSpline):
         return ax
 
 
-class TensorProductSpline(object):
+class SplineND(object):
     def __init__(self, x, y, Z, kx=2, ky=3):
-        mx = x.size
-        my = y.size
+        mx, my = x.size, y.size
 
         Cx = np.zeros((my, mx))
         for i in xrange(my):
@@ -362,10 +361,25 @@ class TensorProductSpline(object):
             Cy[j] = spy.tck[1]
         ty = spy.tck[0]
 
-        C = Cy.T.ravel().copy()
-        self.sp = Spline2D(data=dict(degrees=(ky, kx), tck=(ty, tx, C)))
+        self.k = (kx, ky)
+        self.t = (tx, ty)
+        self.w = Cy.shape
+        self.c = Cy.ravel()
 
-        self.sp2 = Spline2D(y, x, Z, kx=ky, ky=kx)
+    def __call__(self, x, y):
+        mx, my = x.size, y.size
+        kx, ky = self.k
+        tx, ty = self.t
+        wx, wy = self.w
+
+        c = self.c
+        C = np.zeros(my*wx)
+        z = np.zeros(mx*my)
+
+        ier = 0
+        dierckx.splevv(ty, c, ky, y, C, wx, ier)
+        dierckx.splevv(tx, C, kx, x, z, my, ier)
+        return z.reshape((mx, my))
 
     @classmethod
     def test(cls):
@@ -384,10 +398,10 @@ class TensorProductSpline(object):
 
         xx = np.linspace(0., 10., 19)
         yy = np.linspace(0., 5., 15)
-        ZZ = sp.sp.eval(yy, xx)
+        
+        ZZ = sp(xx, yy).T
         SS = Signal2D(xx, yy, ZZ, **kw)
         ax2 = SS.surf()
-
         return sp
 
 
