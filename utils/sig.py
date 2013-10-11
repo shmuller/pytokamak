@@ -7,6 +7,8 @@ from math import sqrt
 
 from pprint import pformat
 
+from utils import memoized_property, dict_pop, DictView
+
 try:
     from scipy.fftpack import fft
 except ImportError:
@@ -61,11 +63,6 @@ except ImportError:
             return get_fig().gca()
 
     get_tfig, get_taxes = get_fig, get_axes
-
-
-from mediansmooth import *
-from cookb_signalsmooth import smooth
-from utils import memoized_property, dict_pop, DictView
 
 
 class NodeInterpolator:
@@ -1009,8 +1006,10 @@ class Signal(SignalBase):
 
     def smooth(self, w=100, mode='gaussian'):
         if mode == 'gaussian':
+            from cookb_signalsmooth import smooth
             x = smooth(self.x, window_len=2*w+1)
         elif mode == 'median':
+            from mediansmooth import mediansmooth
             x = self.x.copy()
             mediansmooth(x, w)
         else:
