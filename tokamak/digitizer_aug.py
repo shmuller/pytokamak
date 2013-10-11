@@ -2,14 +2,9 @@ import numpy as np
 import os
 
 from utils.utils import memoized_property
-from utils.sig import Amp
+from utils.sig import Amp, get_axes
 
 from digitizer import TdiError, IOMds, IOFile, Digitizer
-
-from sm_pyplot.tight_figure import get_axes
-
-from matplotlib.path import Path
-from matplotlib.collections import PathCollection
 
 class IOMdsAUG(IOMds):
     def __init__(self, shn, diag='XPR', raw=False):
@@ -251,6 +246,9 @@ class DigitizerAUGYGC(DigitizerAUG):
         return [self._xy[i:j] for i, j in ij[idx]]
 
     def plot(self, ax=None, unfilled=(4, 5), edgecolors='k', facecolors=(0.75, 0.75, 0.75)):
+        from matplotlib.path import Path
+        from matplotlib.collections import PathCollection
+
         ax = get_axes(ax, xlab="R (m)", ylab="z (m)")
         ax.set_aspect('equal')
         ax.set_xlim((0.5, 2.5))

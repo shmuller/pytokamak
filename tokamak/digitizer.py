@@ -1,18 +1,14 @@
 import numpy as np
 import os
+from warnings import warn
 from pprint import pformat
 
 from collections import OrderedDict, Mapping
 
-import h5py as H5
-#import hdf5_cffi as H5
-
 from mdsclient import *
 
-from sm_pyplot.tight_figure import get_fig
-
 from utils.utils import memoized_property, GeneratorDict
-from utils.sig import Signal, AmpSignal
+from utils.sig import Signal, AmpSignal, get_fig
 
 
 class IOH5:
@@ -34,17 +30,17 @@ class IOH5:
 
 
 class IO:
-    def __init__(self):
-        pass
+    def __init__(self, shn, *args, **kw):
+        self.shn = shn
 
     def get_size(self, node, **kw):
-        pass
+        raise NotImplementedError
 
     def get_node(self, node, **kw):
-        pass
+        raise NotImplementedError
 
     def put_node(self, node, val):
-        pass
+        raise NotImplementedError
     
     def load(self, nodes, **kw):
         if isinstance(nodes, str):
@@ -58,16 +54,18 @@ class IO:
             self.put_node(node, x[node])
 
 
-class IOFile(IO):
+class IOFileH5(IO):
     def __init__(self, shn, suffix="", subdir="", group=""):
-        self.shn, self.suffix, self.subdir, self.group = shn, suffix, subdir, group
-
-        self.basepath = os.environ['DATAPATH']
+        IO.__init__(self, shn)
+        self.suffix, self.subdir, self.group = suffix, subdir, group
+        try:
+            self.basepath = os.environ['DATAPATH']
+        except KeyError:
+            self.basepath = ""
         self.fullpath = os.path.join(self.basepath, self.subdir)
-        self.fname = str(self.shn) + self.suffix + '.h5'
+        self.fname = str(shn) + self.suffix + '.h5'
         
         self.h5name = os.path.join(self.fullpath, self.fname)
-        IO.__init__(self)
 
     def ensure_open(mode):
         def ensure_open_mode(fun):
@@ -115,6 +113,16 @@ class IOFile(IO):
         IO.save(self, *args)
 
 
+try:
+    import h5py as H5
+    #import hdf5_cffi as H5
+except ImportError:
+    warn("Could not import h5py, disabling cache files...")
+    IOFile = IO
+else:
+    IOFile = IOFileH5
+
+
 class TdiError(Exception):
     def __init__(self, err, mdsfmt, args):
         self.err, self.mdsfmt, self.args = err, mdsfmt, args
@@ -125,7 +133,7 @@ class TdiError(Exception):
 
 class IOMds(IO):
     def __init__(self, shn):
-        self.shn = shn
+        IO.__init__(self, shn)
         self.mdsserver = "localhost"
         self.mdsport = "8000"
         self.mdstree = None
@@ -135,7 +143,6 @@ class IOMds(IO):
         self.timedeco = "dim_of(%s)"
         self.sizedeco = "size(%s)"
         self.last_mdsbasestr = None
-        IO.__init__(self)
 
     @memoized_property
     def sock(self):
@@ -205,15 +212,15 @@ class IOMds(IO):
 class Digitizer(IO, Mapping):
     def __init__(self, shn=0, name="", t0=None, t1=None, s=None, 
                  nodes=(), tnode='t', tunits='s', IO_mds=None, IO_file=None):
-        self.shn, self.name, self.t0, self.t1, self.s = shn, name, t0, t1, s
+        IO.__init__(self, shn)
+        
+        self.name, self.t0, self.t1, self.s = name, t0, t1, s
         self.nodes = nodes
         self.tnode, self.tunits = tnode, tunits
         self.IO_mds, self.IO_file = IO_mds, IO_file
 
         self.amp = dict()
         self.x = GeneratorDict(generator=self.get_node)
-
-        IO.__init__(self)
 
     @property
     def loaded_nodes(self):
@@ -243,14 +250,14 @@ class Digitizer(IO, Mapping):
     def get_size(self, node, **kw):
         try:
             return self.IO_file.get_size(node, **kw)
-        except (IOError, KeyError):
+        except (NotImplementedError, IOError, KeyError):
             kw.setdefault('s', self.s)
             return self.IO_mds.get_size(node, **kw)
 
     def get_node(self, node, **kw):
         try:
             x = self.IO_file.get_node(node, **kw)
-        except (IOError, KeyError):
+        except (NotImplementedError, IOError, KeyError):
             kw.setdefault('t0', self.t0)
             kw.setdefault('t1', self.t1)
             kw.setdefault('s', self.s)
@@ -278,7 +285,10 @@ class Digitizer(IO, Mapping):
         return self.make_sig(node, self.x[node], self.x[self.tnode])
         
     def put_node(self, node, val):
-        return self.IO_file.put_node(node, val)
+        try:
+            self.IO_file.put_node(node, val)
+        except NotImplementedError:
+            pass
 
     def load(self):
         # visit all signals to load them

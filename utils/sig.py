@@ -1,19 +1,22 @@
 import numpy as np
 import numpy.ma as ma
 
+from warnings import warn
 import operator
 from math import sqrt
 
 from pprint import pformat
 
-import scipy.optimize as opt
-import scipy.fftpack
-import scipy.signal
+try:
+    from scipy.fftpack import fft
+except ImportError:
+    warn("Could not import from 'scipy.fftpack', falling back to numpy's...")
+    fft = np.fft.fft
 
-fft = scipy.fftpack.fft
-fftconvolve = scipy.signal.fftconvolve
-
-#fft = np.fft.fft
+try:
+    from scipy.signal import fftconvolve
+except ImportError:
+    warn("Could not import from 'scipy.signal', reducing functionality...")
 
 try:
     import bottleneck as bn
@@ -25,6 +28,7 @@ try:
         nanmin  = bn.move_nanmin,
         nanmax  = bn.move_nanmax)
 except ImportError:
+    warn("Could not import 'bottleneck', reducing functionality...")
     median = np.median
     movefuns = dict(
         median  = None,
@@ -39,7 +43,25 @@ try:
 except ImportError:
     pass
 
-from sm_pyplot.tight_figure import get_axes
+try:
+    from sm_pyplot.tight_figure import get_fig, get_tfig, get_axes, get_taxes
+except ImportError:
+    warn("Could not import from 'sm_pyplot.tight_figure', using fallback...")
+    def get_fig(fig=None, *args, **kw):
+        if fig is not None:
+            return fig
+        else:
+            from matplotlib.pyplot import figure
+            return figure()
+
+    def get_axes(ax=None, *args, **kw):
+        if ax is not None:
+            return ax
+        else:
+            return get_fig().gca()
+
+    get_tfig, get_taxes = get_fig, get_axes
+
 
 from mediansmooth import *
 from cookb_signalsmooth import smooth
@@ -1306,7 +1328,8 @@ class AmpSignal(Signal):
 
 class PeriodPhaseFinder:
     def __init__(self, x):
-        self.x = x
+        from scipy.optimize import fmin
+        self.x, self.fmin = x, fmin
 
     def nextpow2(self):
         return 2**np.ceil(np.log2(self.x.size)).astype('i')
@@ -1355,7 +1378,7 @@ class PeriodPhaseFinder:
     @memoized_property
     def res(self):
         p1 = self.guess2[0]
-        p, D = opt.fmin(self.cumdist, p1, full_output=True)[:2]
+        p, D = self.fmin(self.cumdist, p1, full_output=True)[:2]
         return p, -D
 
     @memoized_property
