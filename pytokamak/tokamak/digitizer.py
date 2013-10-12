@@ -7,8 +7,8 @@ from collections import OrderedDict, Mapping
 
 from mdsclient import *
 
-from utils.utils import memoized_property, GeneratorDict
-from utils.sig import Signal, AmpSignal, get_fig
+from pytokamak.utils.utils import memoized_property, GeneratorDict
+from pytokamak.utils.sig import Signal, AmpSignal, get_fig
 
 
 class IOH5:

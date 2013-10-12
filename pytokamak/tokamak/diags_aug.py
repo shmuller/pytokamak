@@ -2,8 +2,8 @@ import math
 import numpy as np
 import numpy.ma as ma
 from itertools import izip
-from utils.utils import memoized_property, GeneratorDict
-from utils.sig import AmpSignal
+from pytokamak.utils.utils import memoized_property, GeneratorDict
+from pytokamak.utils.sig import AmpSignal
 
 class DCN:
     def __init__(self, shn, eqi=None, **kw):

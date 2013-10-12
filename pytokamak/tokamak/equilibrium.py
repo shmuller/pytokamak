@@ -1,11 +1,10 @@
 import math
 import numpy as np
 
-from utils.utils import memoized_property
-from utils.sig import Amp, AmpSignal
-from utils.splines import Spline, Spline2D
+from pytokamak.utils.utils import memoized_property
+from pytokamak.utils.sig import Amp, AmpSignal, get_tfig, get_axes, show
+from pytokamak.utils.splines import Spline, Spline2D
 
-from sm_pyplot.tight_figure import get_tfig, get_axes, show
 from sm_pyplot.observer_viewer import ToggleViewer, ToggleViewerIntegrated, \
                                       ToggleViewerVtk
 from vtk_aug import VtkProxy, VtkContour, VtkPolyline

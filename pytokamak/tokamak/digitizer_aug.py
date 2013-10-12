@@ -1,8 +1,8 @@
 import numpy as np
 import os
 
-from utils.utils import memoized_property
-from utils.sig import Amp, get_axes
+from pytokamak.utils.utils import memoized_property
+from pytokamak.utils.sig import Amp, get_axes
 
 from digitizer import TdiError, IOMds, IOFile, Digitizer
 

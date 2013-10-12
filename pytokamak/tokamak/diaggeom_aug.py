@@ -1,8 +1,9 @@
 import numpy as np
 import os
 
-from utils.utils import memoized_property, BoundingBox
-from sm_pyplot.tight_figure import get_axes
+from pytokamak.utils.utils import memoized_property, BoundingBox
+from pytokamak.utils.sig import get_axes
+
 from vtk_aug import VtkProxy, VtkWindow, VtkRotatingPolygon
 
 class Vessel(VtkProxy):

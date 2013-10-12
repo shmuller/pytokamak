@@ -5,10 +5,7 @@ import textwrap
 
 from pprint import pformat
 
-from utils.utils import ensure_tuple, recursive_dictcopy, Container
-
-from matplotlib.path import Path
-from matplotlib.patches import PathPatch
+from pytokamak.utils.utils import ensure_tuple, recursive_dictcopy, Container
 
 class Tip:
     def __init__(self, area, proj_area, number, pos, label=None):
@@ -68,6 +65,9 @@ class Head:
 
         xy[:2,0] += R
         xy[:,1] += z
+
+        from matplotlib.path import Path
+        from matplotlib.patches import PathPatch
         return PathPatch(Path(xy), **kw)
 
     def plot(self, ax, R, z, **kw):

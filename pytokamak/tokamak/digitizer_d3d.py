@@ -1,6 +1,6 @@
 from digitizer import TdiError, IOMds, IOFile, Digitizer
 
-from utils.sig import Amp
+from pytokamak.utils.sig import Amp
 
 class IOMdsD3D(IOMds):
     def __init__(self, *args, **kw):
@@ -34,7 +34,12 @@ class DigitizerD3DEFIT(DigitizerD3D):
         DigitizerD3D.__init__(self, shn, diag='EFIT01', tnode='GTIME', tunits='s',
                 nodes = ('PSIRZ', 'GTIME', 'R', 'Z', 
                          'RMAXIS', 'ZMAXIS', 'SSIMAG', 'SSIBRY', 'BDRY'))
-        self.amp.update(GTIME=Amp(1e-3))
+
+    def get_node(self, node, **kw):
+        x = DigitizerD3D.get_node(self, node, **kw)
+        if node == self.tnode:
+            x *= 1e-3
+        return x
 
     def get_R_z_psi(self):
         return self.x['R'], self.x['Z'], self['PSIRZ']

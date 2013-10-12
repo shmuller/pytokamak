@@ -2,7 +2,7 @@ import numpy as np
 
 from probe import PositionSignal
 
-from tokamak.digitizer_aug import DigitizerAUG
+from pytokamak.tokamak.digitizer_aug import DigitizerAUG
 
 class DigitizerMEM(DigitizerAUG):
     def __init__(self, shn, raw=False, s=slice(None, None, 4), **kw):

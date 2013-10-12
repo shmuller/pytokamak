@@ -1,17 +1,16 @@
 import numpy as np
 from warnings import warn
 
-from sm_pyplot.tight_figure import get_fig, get_tfig
 from sm_pyplot.annotations import vrect
 
 import config_xpr as config
 ShotNotFoundError = config.ShotNotFoundError
 
-from tokamak.digitizer_aug import DigitizerAUG
-from tokamak.equilibrium import NormalizedFluxSignal
+from pytokamak.tokamak.digitizer_aug import DigitizerAUG
+from pytokamak.tokamak.equilibrium import NormalizedFluxSignal
 
-from utils.utils import memoized_property
-from utils.sig import Amp, amp_inv
+from pytokamak.utils.utils import memoized_property
+from pytokamak.utils.sig import Amp, amp_inv, get_fig, get_tfig
 from probe import PositionSignal, Probe, PhysicalResults
 
 amp_12bit = Amp(fact=10./4095, offs=-5.)

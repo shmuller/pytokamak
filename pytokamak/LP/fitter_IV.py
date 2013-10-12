@@ -3,8 +3,9 @@ import numpy.ma as ma
 
 from itertools import cycle
 
-from utils.utils import memoized_property, DictView, GeneratorDict, Container
-from utils.sig import median, PiecewisePolynomialEndpoints
+from pytokamak.utils.utils import memoized_property, DictView, \
+                                  GeneratorDict, Container
+from pytokamak.utils.sig import median, PiecewisePolynomialEndpoints, get_tfig
 
 from fitter import Fitter, FitterError
 
@@ -14,9 +15,8 @@ import fitfun as ff
 #import fitfun_cffi as ff
 #import fitfun_boost_numpy as ff
 
-from LP import mag_fit
+from pytokamak.LP import mag_fit
 
-from sm_pyplot.tight_figure import get_tfig
 from sm_pyplot.observer_viewer import ToggleViewer, ToggleViewerIntegrated
 
 

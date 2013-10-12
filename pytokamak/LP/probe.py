@@ -10,12 +10,7 @@ logger = logging
 
 from collections import Iterable, OrderedDict
 
-from tokamak.digitizer import IOH5
-
-try:
-    import h5py as H5
-except ImportError:
-    pass
+from pytokamak.tokamak.digitizer import IOH5
 
 import fitter_IV
 reload(fitter_IV)
@@ -23,11 +18,11 @@ reload(fitter_IV)
 FitterIV = fitter_IV.FitterIV
 IVContainer = fitter_IV.IVContainer
 
-from sm_pyplot.tight_figure import get_fig, get_tfig, get_axes
 from sm_pyplot.annotations import vlines, vrect
 
-from utils.utils import memoized_property, dict_pop, DictView
-from utils.sig import Signal, amp_unity, AmpSignal, PeriodPhaseFinder
+from pytokamak.utils.utils import memoized_property, dict_pop, DictView
+from pytokamak.utils.sig import Signal, amp_unity, AmpSignal, PeriodPhaseFinder, \
+                                get_fig, get_tfig, get_axes
 
 class PositionSignal(AmpSignal):
     def __init__(self, x, t, amp=None, dtype=np.float64, **kw):

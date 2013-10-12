@@ -1,11 +1,9 @@
 import numpy as np
 import numpy.ma as ma
 
-from sm_pyplot.tight_figure import get_tfig, get_axes, show
-
-from utils.utils import memoized_property, BoundingBox
-from utils.sig import Signal
-from LP.probe_xpr import ProbeXPR, ShotNotFoundError
+from pytokamak.utils.utils import memoized_property, BoundingBox
+from pytokamak.utils.sig import Signal, get_tfig, get_axes, show
+from pytokamak.LP.probe_xpr import ProbeXPR, ShotNotFoundError
 
 from digitizer_aug import DigitizerAUG, DigitizerAUGMAC, DigitizerAUGMIR, eqi_digitizers
 from diaggeom_aug import Vessel

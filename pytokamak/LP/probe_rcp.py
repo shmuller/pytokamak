@@ -1,7 +1,7 @@
 import numpy as np
 
-from tokamak.digitizer import Digitizer
-from tokamak.digitizer_d3d import IOMdsD3D, IOFileD3D
+from pytokamak.tokamak.digitizer import Digitizer
+from pytokamak.tokamak.digitizer_d3d import IOMdsD3D, IOFileD3D
 
 from probe import Probe
 

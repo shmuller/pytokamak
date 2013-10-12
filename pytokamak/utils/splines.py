@@ -1,9 +1,7 @@
 import numpy as np
 import operator
 from utils import memoized_property, BoundingBox
-from sig import PiecewisePolynomial, Signal
-
-from sm_pyplot.tight_figure import get_axes, show
+from sig import PiecewisePolynomial, Signal, get_axes
 
 from scipy.interpolate import InterpolatedUnivariateSpline, RectBivariateSpline
 
@@ -464,6 +462,7 @@ def spline2d_test(nu=2):
 
 
 if __name__ == "__main__":
+    from sig import show
     #nu = 1
     #spline_test(nu=nu)
     #spline2d_test(nu=nu)

@@ -40,13 +40,7 @@ except ImportError:
         nanmax  = None)
 
 try:
-    import matplotlib.mlab as mlab
-    import matplotlib.colors as colors
-except ImportError:
-    pass
-
-try:
-    from sm_pyplot.tight_figure import get_fig, get_tfig, get_axes, get_taxes
+    from sm_pyplot.tight_figure import get_fig, get_tfig, get_axes, get_taxes, show
 except ImportError:
     warn("Could not import from 'sm_pyplot.tight_figure', using fallback...")
     def get_fig(fig=None, *args, **kw):
@@ -63,6 +57,12 @@ except ImportError:
             return get_fig().gca()
 
     get_tfig, get_taxes = get_fig, get_axes
+
+    try:
+        from matplotlib.pyplot import show
+    except ImportError:
+        def show():
+            pass
 
 
 class NodeInterpolator:
@@ -489,7 +489,11 @@ class Signal2D:
                  green=((0,0,0),(.5,1,1),(.75,1,1),(1,0,0)), 
                  red  =((0,0,0),(.5,1,1),(.75,0,0),(1,1,1)))
 
-    cmap = colors.LinearSegmentedColormap('spectral_colormap', cdict, 256)
+    try:
+        import matplotlib.colors as colors
+        cmap = colors.LinearSegmentedColormap('spectral_colormap', cdict, 256)
+    except ImportError:
+        pass
 
     #clist = [(0,0,1)]*4 + [(1,1,0)]*3 + [(0,1,0)]*2 + [(1,0,0)]*1
     #cmap = colors.ListedColormap(clist)
