@@ -123,14 +123,6 @@ else:
     IOFile = IOFileH5
 
 
-class TdiError(Exception):
-    def __init__(self, err, mdsfmt, args):
-        self.err, self.mdsfmt, self.args = err, mdsfmt, args
-
-    def __str__(self):
-        return self.err + '\nmdsfmt:\n' + self.mdsfmt + '\nargs:\n' + pformat(self.args)
-
-
 class IOMds(IO):
     def __init__(self, shn):
         IO.__init__(self, shn)

@@ -4,7 +4,7 @@ import os
 from pytokamak.utils.utils import memoized_property
 from pytokamak.utils.sig import Amp, get_axes
 
-from digitizer import TdiError, IOMds, IOFile, Digitizer
+from digitizer import MdsConnectError, TdiError, IOMds, IOFile, Digitizer
 
 class IOMdsAUG(IOMds):
     def __init__(self, shn, diag='XPR', raw=False):
@@ -57,7 +57,7 @@ class DigitizerAUG(Digitizer):
                 perm = np.roll(np.arange(x.ndim), 1)
                 x = np.ascontiguousarray(x.transpose(perm))
             return x
-        except TdiError:
+        except (MdsConnectError, TdiError):
             return np.zeros(1)
 
 

@@ -191,12 +191,12 @@ class FieldLineIntegrator:
 
 
 class NormalizedFluxSignal(AmpSignal):
-    def __init__(self, x, t, **kw):
+    def __init__(self, x, t, *args, **kw):
         kw.setdefault('name', 'psi_n')
         kw.setdefault('type', 'Normalized flux')
         kw.setdefault('label', 'Normalized flux')
         kw.setdefault('units', '')
-        AmpSignal.__init__(self, x, t, **kw)
+        AmpSignal.__init__(self, x, t, *args, **kw)
 
     @memoized_property
     def separatrix_crossings(self):
@@ -251,7 +251,7 @@ class Eqi:
         fact = 1. / (self.psi1._x - self.psi0._x)
         offs = -self.psi0._x * fact
         amp = Amp(fact[:, None, None], offs[:, None, None])
-        return AmpSignal(psi._x, psi._t, amp, **psi.kw)
+        return AmpSignal(psi._x, psi._t, amp, psi.dtype, **psi.kw)
 
     def get_psi_n_slice(self, i):
         dpsi = self.psi1[i] - self.psi0[i]

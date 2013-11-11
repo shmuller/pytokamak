@@ -7,15 +7,11 @@ from scipy.interpolate import InterpolatedUnivariateSpline, RectBivariateSpline
 
 import dierckx
 
-def atleast_1d_dtype(x, dtype):
-    x = np.asanyarray(x, dtype)
-    if len(x.shape) == 0:
-        x.reshape(1)
-    return x
-
+cont = np.ascontiguousarray
 
 class Spline(object):
     def __init__(self, x, y, k=3, s=0.):
+        x, y = cont(x, np.float64), cont(y, np.float64)
         iopt = 0
         m = x.size
         w = np.ones(m)
@@ -66,7 +62,7 @@ class Spline(object):
         Safe evaluation: Check for x values outside bbox and make sure x is
         sorted before passed to _eval().
         '''
-        x = atleast_1d_dtype(x, np.float64)
+        x = cont(x, np.float64)
         shape = x.shape
         x = x.ravel()
         perm = x.argsort()
@@ -245,6 +241,7 @@ class Spline2D(RectBivariateSpline):
 
     def eval(self, x, y):
         tx, ty, c, nx, ny, kx, ky, wx, wy, ier = self._args()
+        x, y = cont(x, np.float64), cont(y, np.float64)
         mx, my = x.size, y.size
         lwrk = mx*(kx+1)+my*(ky+1)
         kwrk = mx+my
@@ -257,6 +254,7 @@ class Spline2D(RectBivariateSpline):
 
     def eval_y(self, y):
         tx, ty, c, nx, ny, kx, ky, wx, wy, ier = self._args()
+        y = cont(y, np.float64)
         my = y.size
         C = np.zeros(my*wx)
 
@@ -266,6 +264,7 @@ class Spline2D(RectBivariateSpline):
 
     def eval_x(self, x):
         tx, ty, c, nx, ny, kx, ky, wx, wy, ier = self._args()
+        x = cont(x, np.float64)
         mx = x.size
         C = np.zeros(mx*wy)
 
@@ -276,6 +275,7 @@ class Spline2D(RectBivariateSpline):
 
     def eval_yx(self, x, y):
         tx, ty, c, nx, ny, kx, ky, wx, wy, ier = self._args()
+        x, y = cont(x, np.float64), cont(y, np.float64)
         mx, my = x.size, y.size
         C = np.zeros(my*wx)
         z = np.zeros(mx*my)
@@ -287,6 +287,7 @@ class Spline2D(RectBivariateSpline):
 
     def eval_xy(self, x, y):
         tx, ty, c, nx, ny, kx, ky, wx, wy, ier = self._args()
+        x, y = cont(x, np.float64), cont(y, np.float64)
         mx, my = x.size, y.size
         C = np.zeros(mx*wy)
         z = np.zeros(mx*my)
@@ -365,6 +366,7 @@ class SplineND(object):
         self.c = Cy.ravel()
 
     def __call__(self, x, y):
+        x, y = cont(x, np.float64), cont(y, np.float64)
         mx, my = x.size, y.size
         kx, ky = self.k
         tx, ty = self.t
