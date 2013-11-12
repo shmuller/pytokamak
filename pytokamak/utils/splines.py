@@ -5,7 +5,7 @@ from sig import PiecewisePolynomial, Signal, get_axes
 
 from scipy.interpolate import InterpolatedUnivariateSpline, RectBivariateSpline
 
-import dierckx
+import ddierckx
 
 cont = np.ascontiguousarray
 
@@ -22,7 +22,7 @@ class Spline(object):
         c = np.zeros(nest)
         wrk = np.zeros(lwrk)
         iwrk = np.zeros(nest, np.int32)
-        n, fp, ier = dierckx.curfit(iopt, x, y, w, x[0], x[-1], k, s, t, c, wrk, iwrk)
+        n, fp, ier = ddierckx.curfit(iopt, x, y, w, x[0], x[-1], k, s, t, c, wrk, iwrk)
         t.resize(n)
         c.resize(n-k-1)
         self.tck = t, c, k
@@ -54,7 +54,7 @@ class Spline(object):
         self.wrk = np.zeros_like(tck[0])
         ier = 0
 
-        dierckx.splder(*(tck + (nu, x, y, self.wrk, ier)))
+        ddierckx.splder(*(tck + (nu, x, y, self.wrk, ier)))
         return y
 
     def eval(self, x, nu=0, fill=np.nan):
@@ -97,27 +97,27 @@ class Spline(object):
             ier = 0
             if out is None:
                 out = np.zeros(maxroots)
-                m = dierckx.sproot(t, c, out, ier)
+                m = ddierckx.sproot(t, c, out, ier)
                 out.resize(m)
                 return out
             else:
-                return dierckx.sproot(t, c, out, ier)
+                return ddierckx.sproot(t, c, out, ier)
         else:
             raise NotImplementedError("finding roots unsupported for "
                                       "non-cubic splines")
 
-    def as_pp_dierckx(self):
+    def as_pp_ddierckx(self):
         t, c, k = self.tck
         x = t[k:-k]
         k1 = k+1
         d = np.zeros((x.size - 1, k1))
         ier = 0
         for xx, dd in zip(x[:-1], d):
-            dierckx.spalde(t, c, xx, dd, ier)
+            ddierckx.spalde(t, c, xx, dd, ier)
         d[:,2:k1] *= 1. / np.cumprod(np.arange(2, k1))
         return PiecewisePolynomial(d.T[::-1], x)
 
-    def as_pp_dierckx2(self):
+    def as_pp_ddierckx2(self):
         t, c, k = self.tck
         x = t[k:-k]
         xx = x[:-1]
@@ -180,7 +180,7 @@ class Spline(object):
         sp = cls(x, y)
         
         pp = sp.as_pp()
-        pp2 = sp.as_pp_dierckx()
+        pp2 = sp.as_pp_ddierckx()
         X = np.linspace(-2., 12., 100)
         ax = get_axes()
         ax.plot(X, np.sin(X), X, sp(X), X, sp.eval_deboor(X), X, pp(X), X, pp2(X))
@@ -249,7 +249,7 @@ class Spline2D(RectBivariateSpline):
         iwrk = np.zeros(kwrk, 'i')
 
         z = np.zeros(mx*my)
-        dierckx.bispev(tx, ty, c, kx, ky, x, y, z, wrk, iwrk, ier)
+        ddierckx.bispev(tx, ty, c, kx, ky, x, y, z, wrk, iwrk, ier)
         return z.reshape(mx, my)
 
     def eval_y(self, y):
@@ -258,7 +258,7 @@ class Spline2D(RectBivariateSpline):
         my = y.size
         C = np.zeros(my*wx)
 
-        dierckx.splevv(ty, c, ky, y, C, wx, ier)
+        ddierckx.splevv(ty, c, ky, y, C, wx, ier)
         C = C.reshape((my, wx))
         return [Spline._from_tck((tx, c, kx)) for c in C]
 
@@ -269,7 +269,7 @@ class Spline2D(RectBivariateSpline):
         C = np.zeros(mx*wy)
 
         c = c.reshape((wx, wy)).T.ravel().copy()
-        dierckx.splevv(tx, c, kx, x, C, wy, ier)
+        ddierckx.splevv(tx, c, kx, x, C, wy, ier)
         C = C.reshape((mx, wy))
         return [Spline._from_tck((ty, c, ky)) for c in C]
 
@@ -280,8 +280,8 @@ class Spline2D(RectBivariateSpline):
         C = np.zeros(my*wx)
         z = np.zeros(mx*my)
 
-        dierckx.splevv(ty, c, ky, y, C, wx, ier)
-        dierckx.splevv(tx, C, kx, x, z, my, ier)
+        ddierckx.splevv(ty, c, ky, y, C, wx, ier)
+        ddierckx.splevv(tx, C, kx, x, z, my, ier)
         z = z.reshape((mx, my))
         return z, C
 
@@ -293,8 +293,8 @@ class Spline2D(RectBivariateSpline):
         z = np.zeros(mx*my)
 
         c = c.reshape((wx, wy)).T.ravel().copy()
-        dierckx.splevv(tx, c, kx, x, C, wy, ier)
-        dierckx.splevv(ty, C, ky, y, z, mx, ier)
+        ddierckx.splevv(tx, c, kx, x, C, wy, ier)
+        ddierckx.splevv(ty, C, ky, y, z, mx, ier)
         z = z.reshape((my, mx)).T
         return z, C
 
@@ -303,7 +303,7 @@ class Spline2D(RectBivariateSpline):
         tx, ty, c = self.tck[:3]
         kx, ky = self.degrees
         z = self.z1
-        dierckx.bispev(tx, ty, c, kx, ky, x, y, z, self.wrk1, self.iwrk1, 0)
+        ddierckx.bispev(tx, ty, c, kx, ky, x, y, z, self.wrk1, self.iwrk1, 0)
         return z
 
     def deriv(self, nux=0, nuy=0):
@@ -317,7 +317,7 @@ class Spline2D(RectBivariateSpline):
         iwrk = np.zeros(2, 'i')
         ier = 0
 
-        dierckx.parder(tx, ty, c, kx, ky, nux, nuy, x, y, z, wrk, iwrk, ier)
+        ddierckx.parder(tx, ty, c, kx, ky, nux, nuy, x, y, z, wrk, iwrk, ier)
 
         nx, ny = nx-2*nux, ny-2*nuy
         kx, ky = kx-nux, ky-nuy
@@ -377,8 +377,8 @@ class SplineND(object):
         z = np.zeros(mx*my)
 
         ier = 0
-        dierckx.splevv(ty, c, ky, y, C, wx, ier)
-        dierckx.splevv(tx, C, kx, x, z, my, ier)
+        ddierckx.splevv(ty, c, ky, y, C, wx, ier)
+        ddierckx.splevv(tx, C, kx, x, z, my, ier)
         return z.reshape((mx, my))
 
     @classmethod
