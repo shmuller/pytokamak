@@ -415,6 +415,31 @@ class Eqi:
         return ax
 
 
+from splinetoolbox import SplineND
+cont = np.ascontiguousarray
+
+class Eqi2(Eqi):
+    def __init__(self, eqi):
+        Eqi.__init__(self, eqi.digitizer, eqi.vessel)
+
+        R, z, psi_n = self.R, self.z, self.psi_n
+        # do not convert to double
+        t = psi_n.t
+        psi_n = cont(psi_n.amp(psi_n._x), np.float32)
+
+        self.sp = SplineND((t, z, R), psi_n, k=(2, 4, 4))
+
+    def get_psi(self, ti, R, z, norm=False):
+        if norm is False:
+            raise ValueError
+        return self.sp((ti, z, R))[0]
+
+    def get_psi_grid(self, ti, R=None, z=None, **kw):
+        R, z = self._check_grid(R, z)
+        return self.sp.spval_grid((ti, z, R))[0]
+ 
+
+
 class FieldLineViewer(ToggleViewerIntegrated):
     def __init__(self, eqi):
         self.eqi = eqi
