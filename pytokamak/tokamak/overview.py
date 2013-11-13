@@ -7,7 +7,8 @@ from pytokamak.LP.probe_xpr import ProbeXPR, ShotNotFoundError
 
 from digitizer_aug import DigitizerAUG, DigitizerAUGMAC, DigitizerAUGMIR, eqi_digitizers
 from diaggeom_aug import Vessel
-from equilibrium import Eqi, EqiViewer
+from equilibrium import Eqi2 as Eqi
+from equilibrium import EqiViewer
 from diags_aug import DCN
 
 from sm_pyplot.observer_viewer import ToggleViewer, ToggleViewerVtk

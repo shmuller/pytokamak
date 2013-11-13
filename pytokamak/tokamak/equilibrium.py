@@ -361,7 +361,7 @@ class Eqi:
         if psi is None:
             psi = self.get_psi(ti, R, z)
         spl = self._f(ti)
-        fill = spl.as_signal().x[0]
+        fill = spl._eval(spl.t[:1]).ravel()[0]
         return spl.eval(psi, fill=fill) / R
 
     def get_Bphi_grid(self, ti, R=None, z=None, psi=None):
@@ -369,7 +369,7 @@ class Eqi:
         if psi is None:
             psi = self.get_psi_grid(ti, R, z)
         spl = self._f(ti)
-        fill = spl.as_signal().x[0]
+        fill = spl._eval(spl.t[:1]).ravel()[0]
         return spl.eval(psi, fill=fill) / R[None]
 
     def get_Bphi_spline(self, ti, R=None, z=None):
@@ -416,28 +416,74 @@ class Eqi:
 
 
 from splinetoolbox import SplineND
-cont = np.ascontiguousarray
+from splinetoolbox import SplineSLA4 as Spline1D
+cont, cat = np.ascontiguousarray, np.concatenate
 
 class Eqi2(Eqi):
-    def __init__(self, eqi):
-        Eqi.__init__(self, eqi.digitizer, eqi.vessel)
+    def __init__(self, digitizer, vessel=None):
+        Eqi.__init__(self, digitizer, vessel)
 
-        R, z, psi_n = self.R, self.z, self.psi_n
+        R, z, psi = self.R_z_psi
         # do not convert to double
-        t = psi_n.t
-        psi_n = cont(psi_n.amp(psi_n._x), np.float32)
+        t = psi.t
+        psi = psi.amp(psi._x)
+        self.sp_psi = SplineND((t, z, R), psi, k=(2, 4, 4))
 
-        self.sp = SplineND((t, z, R), psi_n, k=(2, 4, 4))
+        psi01 = cat((self.psi0.x[:,None], self.psi1.x[:,None]), axis=1)
+        self.sp_psi01 = Spline1D(t, psi01, k=2)
+
+        psiif = cat((self['psii'].x, self['f'].x), axis=1)
+        self.sp_psiif = Spline1D(t, psiif, k=2)
 
     def get_psi(self, ti, R, z, norm=False):
-        if norm is False:
-            raise ValueError
-        return self.sp((ti, z, R))[0]
+        psi = self.sp_psi((ti, z, R))[0]
+        if norm:
+            psi0, psi1 = self.sp_psi01(ti)[0, 0]
+            psi = (psi - psi0) / (psi1 - psi0)
+        return cont(psi, np.float64)
 
-    def get_psi_grid(self, ti, R=None, z=None, **kw):
+    def get_psi_grid(self, ti, R=None, z=None, norm=False):
         R, z = self._check_grid(R, z)
-        return self.sp.spval_grid((ti, z, R))[0]
- 
+        psi = self.sp_psi.spval_grid((ti, z, R))[0]
+        if norm:
+            psi0, psi1 = self.sp_psi01(ti)[0, 0]
+            psi = (psi - psi0) / (psi1 - psi0)
+        return cont(psi, np.float64)
+
+    def get_Bpol(self, ti, R, z):
+        fact = 1./R
+        BR = -self.sp_psi.spval((ti, z, R), der=(0,1,0))[0] * fact
+        Bz =  self.sp_psi.spval((ti, z, R), der=(0,0,1))[0] * fact
+        return BR, Bz
+
+    def get_Bpol_grid(self, ti, R=None, z=None):
+        R, z = self._check_grid(R, z)
+        fact = (1./R)[None]
+        BR = -self.sp_psi.spval_grid((ti, z, R), der=(0,1,0))[0] * fact
+        Bz =  self.sp_psi.spval_grid((ti, z, R), der=(0,0,1))[0] * fact
+        return BR, Bz
+
+    def _f(self, ti):
+        psii, f = self.sp_psiif(ti).reshape((2, -1))
+        cnd = (f != 0)
+        psii, f = psii[cnd], f[cnd]
+        perm = psii.argsort()
+        return Spline1D(psii[perm], f[perm], k=4)
+
+    def get_Bphi(self, ti, R, z=None, psi=None):
+        if psi is None:
+            psi = self.get_psi(ti, R, z)
+        spl = self._f(ti)
+        fill = spl.spval(spl.t[:1]).ravel()[0]
+        return spl.eval(psi, fill=fill) / R
+
+    def get_Bphi_grid(self, ti, R=None, z=None, psi=None):
+        R, z = self._check_grid(R, z)
+        if psi is None:
+            psi = self.get_psi_grid(ti, R, z)
+        spl = self._f(ti)
+        fill = spl.spval(spl.t[:1]).ravel()[0]
+        return spl.eval(psi, fill=fill) / R[None]
 
 
 class FieldLineViewer(ToggleViewerIntegrated):

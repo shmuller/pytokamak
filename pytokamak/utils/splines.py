@@ -33,6 +33,18 @@ class Spline(object):
         self.tck = tck
         return self
 
+    @property
+    def t(self):
+        return self.tck[0]
+
+    @property
+    def c(self):
+        return self.tck[1]
+
+    @property
+    def k(self):
+        return self.tck[2]
+
     def _op_factory(op):
         def apply(self, other):
             t, c, k = self.tck
