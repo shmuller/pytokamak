@@ -420,25 +420,32 @@ from splinetoolbox import SplineSLA4 as Spline1D
 cont, cat = np.ascontiguousarray, np.concatenate
 
 class Eqi2(Eqi):
-    def __init__(self, digitizer, vessel=None):
-        Eqi.__init__(self, digitizer, vessel)
+    def __call__(self, t, R, z, norm=True):
+        psi = self.get_psi(t, R, z, norm=norm)
+        return NormalizedFluxSignal(psi, t)
 
+    @memoized_property
+    def sp_psi(self):
         R, z, psi = self.R_z_psi
         # do not convert to double
         t = psi.t
         psi = psi.amp(psi._x)
-        self.sp_psi = SplineND((t, z, R), psi, k=(2, 4, 4))
+        return SplineND((t, z, R), psi, k=(2, 4, 4))
 
+    @memoized_property
+    def sp_psi01(self):
         psi01 = cat((self.psi0.x[:,None], self.psi1.x[:,None]), axis=1)
-        self.sp_psi01 = Spline1D(t, psi01, k=2)
-
+        return Spline1D(self.t, psi01, k=2)
+        
+    @memoized_property
+    def sp_psiif(self):
         psiif = cat((self['psii'].x, self['f'].x), axis=1)
-        self.sp_psiif = Spline1D(t, psiif, k=2)
+        return Spline1D(self.t, psiif, k=2)
 
     def get_psi(self, ti, R, z, norm=False):
-        psi = self.sp_psi((ti, z, R))[0]
+        psi = self.sp_psi((ti, z, R))
         if norm:
-            psi0, psi1 = self.sp_psi01(ti)[0, 0]
+            psi0, psi1 = self.sp_psi01(ti)[0].T
             psi = (psi - psi0) / (psi1 - psi0)
         return cont(psi, np.float64)
 

@@ -142,6 +142,7 @@ class ProbeXPR(Probe):
         Rz[:,1] = self.z0
         return PositionSignal(Rz, t, name='Rz')
 
+    """
     @memoized_property
     def _psi_spl(self):
         R, z = self.pos.x.T
@@ -157,7 +158,7 @@ class ProbeXPR(Probe):
         R, z = self.pos.x.T
         psi = self._psi_spl.ev(t, R)
         return NormalizedFluxSignal(psi, t)
-
+    """
     def get_keys(self, name):
         return self.shot.tipmap[name]
 
