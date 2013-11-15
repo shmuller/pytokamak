@@ -2,7 +2,7 @@ import numpy as np
 import os
 
 from pytokamak.utils.utils import memoized_property
-from pytokamak.utils.sig import Amp, get_axes
+from pytokamak.utils.sig import Amp, AmpSignal, get_axes
 
 from digitizer import MdsConnectError, TdiError, IOMds, IOFile, Digitizer
 
@@ -136,6 +136,8 @@ class DigitizerAUGMIR(DigitizerAUG):
 amp_2pi     = Amp(fact=0.5/np.pi, offs=0)
 amp_mu0_2pi = Amp(fact=2e-7, offs=0)
 
+from splinetoolbox import SplineND
+
 class DigitizerAUGFPP(DigitizerAUG):
     def __init__(self, shn, diag='FPP'):
         DigitizerAUG.__init__(self, shn, diag=diag, 
@@ -161,8 +163,36 @@ class DigitizerAUGFPP(DigitizerAUG):
         except KeyError:
             return get(self, indx)
 
+    def get_R_z(self):
+        return self.x['Ri'][0], self.x['Zj'][0]
+
     def get_R_z_psi(self):
-        return self.x['Ri'][0], self.x['Zj'][0], self['PFM']
+        R, z = self.get_R_z()
+        return R, z, self['PFM']
+
+    def get_psi_spline(self):
+        try:
+            get = self.IO_file.get_node
+            tzR = get('t_t'), get('t_z'), get('t_R')
+            return SplineND.from_knots_coefs(tzR, get('c_psi'))
+        except KeyError:
+            R, z, psi = self.get_R_z_psi()
+            # do not convert to double
+            t = psi.t
+            psi = psi.amp(psi._x)
+            sp = SplineND((t, z, R), psi, k=(2, 4, 4))
+            self.put_node('t_t', sp.t[0])
+            self.put_node('t_z', sp.t[1])
+            self.put_node('t_R', sp.t[2])
+            self.put_node('c_psi', sp.c)
+            return sp
+
+    def get_PFM_from_spline(self):
+        sp = self.get_psi_spline()
+        R, z = self.get_R_z()
+        t = self.x['t']
+        PFM = 2*np.pi*sp.spval_grid((t, z, R))
+        return AmpSignal(PFM, t, amp=self.amp['PFM'], dtype=np.float64, name='PFM')
 
     def get_R_z_psi_special(self, spec):
         i = self.mapspec[spec]

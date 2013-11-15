@@ -273,16 +273,11 @@ class Eqi:
     def get_flux_surf(self, ti, norm=True, lvls=None, refine=1):
         if lvls is None:
             lvls = np.linspace(0., 1., 20)
-        if refine == 1:
-            if norm:
-                psi = self.psi_n
-            else:
-                psi = self.psi
-            return FluxSurf(self.R, self.z, psi(ti).x[0], lvls)
-        else:
-            R = np.linspace(self.R[0], self.R[-1], self.R.size*refine)
-            z = np.linspace(self.z[0], self.z[-1], self.z.size*refine)
-            return FluxSurf(R, z, self.get_psi_grid(ti, R, z, norm=norm), lvls)
+        R, z = self.R, self.z
+        if refine != 1:
+            R = np.linspace(R[0], R[-1], R.size*refine)
+            z = np.linspace(z[0], z[-1], z.size*refine)
+        return FluxSurf(R, z, self.get_psi_grid(ti, R, z, norm=norm), lvls)
 
     def get_separatrix(self, ti, **kw):
         return self.get_flux_surf(ti, lvls=np.array([1.]), norm=True, **kw)
@@ -324,9 +319,16 @@ class Eqi:
             z = self.z
         return R, z
 
-    def get_psi_grid(self, ti, R=None, z=None, **kw):
+    def get_psi_grid(self, ti, R=None, z=None, norm=False):
         R, z = self._check_grid(R, z)
-        return self._psi(ti, **kw).eval(z, R)
+        if R is self.R and z is self.z:
+            if norm:
+                psi = self.psi_n
+            else:
+                psi = self.psi
+            return psi(ti).x[0]
+        else:
+            return self._psi(ti, norm=norm).eval(z, R)
 
     def get_Bpol(self, ti, R, z):
         dRpsi, dzpsi = self._grad_psi(ti)
@@ -415,7 +417,6 @@ class Eqi:
         return ax
 
 
-from splinetoolbox import SplineND
 from splinetoolbox import SplineSLA4 as Spline1D
 cont, cat = np.ascontiguousarray, np.concatenate
 
@@ -426,11 +427,7 @@ class Eqi2(Eqi):
 
     @memoized_property
     def sp_psi(self):
-        R, z, psi = self.R_z_psi
-        # do not convert to double
-        t = psi.t
-        psi = psi.amp(psi._x)
-        return SplineND((t, z, R), psi, k=(2, 4, 4))
+        return self.digitizer.get_psi_spline()
 
     @memoized_property
     def sp_psi01(self):
