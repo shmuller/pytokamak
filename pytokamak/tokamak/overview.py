@@ -1,7 +1,7 @@
 import numpy as np
 import numpy.ma as ma
 
-from pytokamak.utils.utils import memoized_property, BoundingBox
+from pytokamak.utils.utils import memoized_property, BoundingBox, Timer, tic, toc
 from pytokamak.utils.sig import Signal, get_tfig, get_axes, show
 from pytokamak.LP.probe_xpr import ProbeXPR, ShotNotFoundError
 
@@ -40,21 +40,32 @@ class EqiViewerAUGXPR(EqiViewerAUG):
     def __init__(self, eqi, XPR):
         EqiViewerAUG.__init__(self, eqi)
         self.XPR = XPR
+    
+    def viewer(self, event=None):
+        # cache 'pos' when viewer is active
+        #self.pos = self.XPR.pos
+        self.pos = self.XPR.pos.as_spline(k=2)
+        return EqiViewerAUG.viewer(self, event)
+    
+    def on_close(self, event=None):
+        # remove 'pos' when viewer is inactive
+        del self.pos
+        return EqiViewerAUG.on_close(self, event)
 
     def plotfun(self, event, **kw):
         artists = EqiViewerAUG.plotfun(self, event, **kw)
-
+        
         t_event = event.xdata
         ax = self.ax
-        R, z = self.XPR.pos(t_event, masked=True).x[0]
+        #R, z = self.pos(t_event, masked=True).x[0]
+        R, z = self.pos(t_event).ravel()
         pp_head = self.XPR.head.as_path_patch(R, z)
         ax.add_patch(pp_head)
         artists.append(pp_head)
 
         if R < self.XPR.R0:
-            fli = self.eqi.get_field_line_integrator(t_event)
             y0 = np.array([R, z, 0.])
-            fl = fli.solve_bdry(y0)
+            fl = self.fli.solve_bdry(y0)
             print fl
             pp_fl = fl.as_path_patch()
             ax.add_patch(pp_fl)

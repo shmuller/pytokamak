@@ -1,5 +1,33 @@
 import numpy as np
+from time import time
 from collections import MutableMapping, Iterable, OrderedDict
+
+_tstart_stack = []
+
+def tic():
+    _tstart_stack.append(time())
+
+def toc(fmt="Elapsed: %s s"):
+    print fmt % (time() - _tstart_stack.pop())
+
+
+class Timer(object):
+    def __init__(self, name=None):
+        if name:
+            self.fmt = '[%s] Elapsed: %%s' % name
+        else:
+            self.fmt = 'Elapsed: %s'
+        self.tstart = time()
+
+    def toc(self):
+        print self.fmt % (time() - self.tstart)
+
+    def __enter__(self):
+        pass
+
+    def __exit__(self, type, value, traceback):
+        self.toc()
+
 
 def ensure_tuple(d, *keys):
     for k in keys:

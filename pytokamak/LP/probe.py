@@ -606,11 +606,8 @@ class Probe:
         return xsep + offs
 
     def plot_separatrix_crossings(self, axes, color='last', linewidth=1, **kw):
-        try:
-            xsep = self._get_xsep(**kw)
-            for ax in axes:
-                vlines(ax, xsep, color=color, linewidth=linewidth)
-        except:
-            warn("Could not generate lines")
+        xsep = self._get_xsep(**kw)
+        for ax in axes:
+            vlines(ax, xsep, color=color, linewidth=linewidth)
 
 

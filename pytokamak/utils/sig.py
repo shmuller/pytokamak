@@ -968,6 +968,10 @@ class Signal(SignalBase):
             x = ma.masked_array(x, outl | outr)
         return self.__class__(x, t, **self.kw)
 
+    def as_spline(self, k=4):
+        from splinetoolbox import SplineSLA4 as Spline1D
+        return Spline1D(self.t, self.x, k)
+
     @classmethod
     def constfit(cls, x, y, deg=0):
         return y.mean()

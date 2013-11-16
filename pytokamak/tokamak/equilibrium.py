@@ -1,7 +1,7 @@
 import math
 import numpy as np
 
-from pytokamak.utils.utils import memoized_property
+from pytokamak.utils.utils import memoized_property, Timer
 from pytokamak.utils.sig import Amp, AmpSignal, get_tfig, get_axes, show
 from pytokamak.utils.splines import Spline, Spline2D
 
@@ -556,17 +556,23 @@ class EqiViewer(ToggleViewer):
             pass
         return ax
 
-    def plotfun(self, event, refine=2):
+    def plotfun(self, event, refine=1):
         t_event = event.xdata
         ax = self.ax
         FS = self.eqi.get_flux_surf(t_event, lvls=self.lvls, norm=True, refine=refine)
         FS.plot(ax)
 
         # assign field line integrator for t_event to FieldLineViewer
-        fli = self.eqi.get_field_line_integrator(t_event)
-        self.flv.set_fli(fli)
-        self.flv_vtk.set_fli(fli)
+        self.fli = self.eqi.get_field_line_integrator(t_event)
+        self.flv.set_fli(self.fli)
+        self.flv_vtk.set_fli(self.fli)
         return ax.collections[-1:]
+
+    def test(self, ti, nrep=1, **kw):
+        self.viewer()
+        t_event = Event(ti)
+        for i in xrange(nrep):
+            self.plotfun(t_event, **kw)
 
 
 if __name__ == "__main__":
