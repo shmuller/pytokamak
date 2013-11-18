@@ -211,31 +211,23 @@ class Eqi:
         return self.digitizer[indx]
 
     @memoized_property
-    def R_z_psi(self):
-        return self.digitizer.get_R_z_psi()
-
-    @memoized_property
     def R(self):
-        return self.R_z_psi[0].astype(np.float64)
+        return cont(self.digitizer.get_R(), np.float64)
 
     @memoized_property
     def z(self):
-        return self.R_z_psi[1].astype(np.float64)
-   
-    @memoized_property
-    def psi(self):
-        return self.R_z_psi[2]
-     
-    def get_psi_slice(self, i):
-        return self.R_z_psi[2][i].astype(np.float64)
+        return cont(self.digitizer.get_z(), np.float64)
 
     @memoized_property
     def t(self):
-        return self.R_z_psi[2].t
+        return cont(self.digitizer.get_t(), np.float64)
 
     @memoized_property
-    def shape(self):
-        return self.R_z_psi[2].shape
+    def psi(self):
+        return self.digitizer.get_psi()
+     
+    def get_psi_slice(self, i):
+        return cont(self.psi[i], np.float64)
 
     @memoized_property
     def psi0(self):
@@ -247,7 +239,7 @@ class Eqi:
 
     @memoized_property
     def psi_n(self):
-        psi = self.R_z_psi[2]
+        psi = self.psi
         fact = 1. / (self.psi1._x - self.psi0._x)
         offs = -self.psi0._x * fact
         amp = Amp(fact[:, None, None], offs[:, None, None])

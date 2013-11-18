@@ -140,8 +140,9 @@ from splinetoolbox import SplineND
 
 class DigitizerAUGFPP(DigitizerAUG):
     def __init__(self, shn, diag='FPP'):
-        DigitizerAUG.__init__(self, shn, diag=diag, 
-                nodes=('PFM', 'Ri', 'Zj', 'ikCAT', 'RPFx', 'zPFx', 'PFxx',
+        # PFM is not in nodes so that it is never cached: see get_psi()
+        DigitizerAUG.__init__(self, shn, diag=diag, tnode='time',
+                nodes=('Ri', 'Zj', 'ikCAT', 'RPFx', 'zPFx', 'PFxx',
                        'Lpf', 'PFL', 'TFLx', 'Qpsi', 'Jpol', 'Pres', 'Vol', 'Area', 'CLE'))
         
         self.amp.update(PFM=amp_2pi, PFxx=amp_2pi, PFL=amp_2pi, Jpol=amp_mu0_2pi)
@@ -163,36 +164,58 @@ class DigitizerAUGFPP(DigitizerAUG):
         except KeyError:
             return get(self, indx)
 
-    def get_R_z(self):
-        return self.x['Ri'][0], self.x['Zj'][0]
+    def get_R(self):
+        return self.x['Ri'][0]
+    
+    def get_z(self):
+        return self.x['Zj'][0]
+
+    def get_t(self):
+        return self.x[self.tnode]
+
+    def get_psi(self):
+        # try to reconstruct PFM from spline, otherwise load without caching
+        try:
+            PFM = self.get_PFM_from_spline()
+        except KeyError:
+            PFM = self.get_node('PFM', cache=False)
+        return self.make_sig('PFM', PFM, self.get_t())
 
     def get_R_z_psi(self):
-        R, z = self.get_R_z()
-        return R, z, self['PFM']
+        return self.get_R(), self.get_z(), self.get_psi()
+
+    def _load_psi_spline(self):
+        # try to load spline from file, fail raises KeyError
+        get = self.IO_file.get_node
+        tzR = get('t_t'), get('t_z'), get('t_R')
+        return SplineND.from_knots_coefs(tzR, get('c_psi'))
 
     def get_psi_spline(self):
+        # Try to load spline from file. On fail load PFM matrix (without caching
+        # it anywhere), construct and save the spline. Then delete the PFM matrix 
+        # from the cache if it had been cached previously, such that h5repack can 
+        # reclaim the disk space.
         try:
-            get = self.IO_file.get_node
-            tzR = get('t_t'), get('t_z'), get('t_R')
-            return SplineND.from_knots_coefs(tzR, get('c_psi'))
+            return self._load_psi_spline()
         except KeyError:
             R, z, psi = self.get_R_z_psi()
             # do not convert to double
             t = psi.t
             psi = psi.amp(psi._x)
             sp = SplineND((t, z, R), psi, k=(2, 4, 4))
+            # write spline
             self.put_node('t_t', sp.t[0])
             self.put_node('t_z', sp.t[1])
             self.put_node('t_R', sp.t[2])
             self.put_node('c_psi', sp.c)
+            # delete PFM (run h5repack to reclaim space)
+            self.IO_file.del_node('PFM', not_found_action='ignore')
             return sp
 
     def get_PFM_from_spline(self):
-        sp = self.get_psi_spline()
-        R, z = self.get_R_z()
-        t = self.x['t']
-        PFM = 2*np.pi*sp.spval_grid((t, z, R))
-        return AmpSignal(PFM, t, amp=self.amp['PFM'], dtype=np.float64, name='PFM')
+        sp = self._load_psi_spline()
+        tzR = self.get_t(), self.get_z(), self.get_R()
+        return 2*np.pi*sp.spval_grid(tzR)
 
     def get_R_z_psi_special(self, spec):
         i = self.mapspec[spec]

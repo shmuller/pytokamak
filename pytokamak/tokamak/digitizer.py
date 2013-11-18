@@ -95,14 +95,22 @@ class IOFileH5(IO):
         self._f.create_dataset(name, data=val, compression="szip")
 
     @ensure_open("a")
-    def del_node(self, node):
-        name = self.group + '/' + node
-        if name in self._f:
+    def _del(self, name, not_found_action='warn'):
+        try:
             del self._f[name]
-    
-    @ensure_open("a")
-    def del_all(self):
-        del self._f[self.group]
+        except KeyError:
+            if not_found_action == 'warn':
+                warn("Dataset %s does not exist" % name)
+            elif not_found_action == 'error':
+                raise
+            elif not_found_action == 'ignore':
+                pass
+
+    def del_node(self, node, **kw):
+        self._del(self.group + '/' + node, **kw)
+            
+    def del_all(self, **kw):
+        self._del(self.group, **kw)
 
     @ensure_open("r")
     def load(self, *args, **kw):
@@ -246,7 +254,7 @@ class Digitizer(IO, Mapping):
             kw.setdefault('s', self.s)
             return self.IO_mds.get_size(node, **kw)
 
-    def get_node(self, node, **kw):
+    def get_node(self, node, cache=True, **kw):
         try:
             x = self.IO_file.get_node(node, **kw)
         except (NotImplementedError, IOError, KeyError):
@@ -254,7 +262,8 @@ class Digitizer(IO, Mapping):
             kw.setdefault('t1', self.t1)
             kw.setdefault('s', self.s)
             x = self.IO_mds.get_node(node, **kw)
-            self.put_node(node, x)
+            if cache:
+                self.put_node(node, x)
         return x
 
     @memoized_property
