@@ -30,10 +30,10 @@ aug_diags = dict(
 
 
 class EqiViewerAUG(EqiViewer):
-    def viewer(self, event=None):
+    def viewer(self, event=None, **kw):
         return EqiViewer.viewer(self, event, 
                                 pos=(50, 150), figsize=(4.5, 6), 
-                                xlab="R (m)", ylab="z (m)")
+                                xlab="R (m)", ylab="z (m)", **kw)
 
 
 class EqiViewerAUGXPR(EqiViewerAUG):
@@ -41,19 +41,19 @@ class EqiViewerAUGXPR(EqiViewerAUG):
         EqiViewerAUG.__init__(self, eqi)
         self.XPR = XPR
     
-    def viewer(self, event=None):
+    def viewer(self, event=None, **kw):
         # cache 'pos' when viewer is active
         #self.pos = self.XPR.pos
         self.pos = self.XPR.pos.as_spline(k=2)
-        return EqiViewerAUG.viewer(self, event)
+        return EqiViewerAUG.viewer(self, event, **kw)
     
     def on_close(self, event=None):
         # remove 'pos' when viewer is inactive
         del self.pos
         return EqiViewerAUG.on_close(self, event)
 
-    def plotfun(self, event, **kw):
-        artists = EqiViewerAUG.plotfun(self, event, **kw)
+    def plotfun(self, event):
+        artists = EqiViewerAUG.plotfun(self, event)
         
         t_event = event.xdata
         ax = self.ax
@@ -83,8 +83,10 @@ class ProfViewerAUG(ToggleViewer):
         x, y = self.x, self.y(t_event).x[0]
         return self.ax.plot(x, y, 'b')
 
-    def viewer(self, event=None):
-        fig = get_tfig(pos=(950, 150), figsize=(5, 5), **self.kw)
+    def viewer(self, event=None, **kw):
+        kw2 = self.kw.copy()
+        kw2.update(kw)
+        fig = get_tfig(pos=(950, 150), figsize=(5, 5), **kw2)
         self.ax = ax = fig.axes[0]
         ax.set_xlim((1.5, 2.5))
         ax.set_ylim((-50, 100))
@@ -106,8 +108,8 @@ class MIRViewerAUG(ToggleViewer):
         x, y = self.x, self.y(t_event).x[0]
         return self.ax.plot(x, y, 'b-+')
 
-    def viewer(self, event=None):
-        fig = get_tfig(pos=(950, 150), figsize=(5, 5), xlab="Number")
+    def viewer(self, event=None, **kw):
+        fig = get_tfig(pos=(950, 150), figsize=(5, 5), xlab="Number", **kw)
         self.ax = ax = fig.axes[0]
         ax.set_xlim((0, 33))
         ax.set_ylim((-2, 2))
@@ -119,14 +121,15 @@ class EqiViewerAUGVtk(ToggleViewerVtk):
         self.eqi = eqi
         ToggleViewerVtk.__init__(self, menu_entry='VTK viewer')
 
-    def viewer(self, event=None):
+    def viewer(self, event=None, **kw):
+        self.refine = kw.pop('refine', 1)
         self.ax = ax = self.eqi.vessel.render()
         return ax
 
     def plotfun(self, event):
         t_event = event.xdata
         win = self.ax
-        FS = self.eqi.get_flux_surf(t_event, norm=True, refine=2)
+        FS = self.eqi.get_flux_surf(t_event, norm=True, refine=self.refine)
         FS.render(win=win)
         return [win.ren.GetActors().GetLastActor()]
 

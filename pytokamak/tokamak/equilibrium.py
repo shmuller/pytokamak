@@ -404,8 +404,8 @@ class Eqi:
 
     def plot(self, ti, **kw):
         viewer = self.viewers[0]
-        ax = viewer.viewer()
-        viewer.plotfun(Event(xdata=ti), **kw)
+        ax = viewer.viewer(**kw)
+        viewer.plotfun(Event(xdata=ti))
         return ax
 
 
@@ -528,7 +528,7 @@ class FieldLineViewerVtk(ToggleViewerVtk):
         self.fli = fli
         self.invalidate()
 
-    def viewer(self, event=None):
+    def viewer(self, event=None, **kw):
         self.ax = ax = self.eqi.vessel.render()
         return ax
 
@@ -549,6 +549,7 @@ class EqiViewer(ToggleViewer):
         ToggleViewer.__init__(self, menu_entry='Eqi viewer')
 
     def viewer(self, event=None, **kw):
+        self.refine = kw.pop('refine', 1)
         self.flv = FieldLineViewer(self.eqi)
         self.flv_vtk = FieldLineViewerVtk(self.eqi)
         
@@ -560,10 +561,11 @@ class EqiViewer(ToggleViewer):
             pass
         return ax
 
-    def plotfun(self, event, refine=1):
+    def plotfun(self, event):
         t_event = event.xdata
         ax = self.ax
-        FS = self.eqi.get_flux_surf(t_event, lvls=self.lvls, norm=True, refine=refine)
+        FS = self.eqi.get_flux_surf(t_event, lvls=self.lvls, norm=True, 
+                                    refine=self.refine)
         FS.plot(ax)
 
         # assign field line integrator for t_event to FieldLineViewer
