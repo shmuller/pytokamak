@@ -410,6 +410,7 @@ class Eqi:
 
 
 from splinetoolbox import SplineSLA4 as Spline1D
+from splinetoolbox import SplineND
 cont, cat = np.ascontiguousarray, np.concatenate
 
 class Eqi2(Eqi):
@@ -481,6 +482,17 @@ class Eqi2(Eqi):
         fill = spl.spval(spl.t[:1]).ravel()[0]
         return spl.eval(psi, fill=fill) / R[None]
 
+    def get_f_spline(self):
+        t = self.t
+        tzR = t, self.z, self.R
+        psi = self.sp_psi.spval_grid(tzR)
+        f = np.zeros_like(psi)
+        for i in xrange(t.size):
+            spl = self._f(t[i])
+            fill = spl.spval(spl.t[:1]).ravel()[0]
+            f[i] = spl.eval(psi[i], fill=fill)
+        return SplineND(tzR, f, k=(2, 4, 4)) 
+        
 
 class FieldLineViewer(ToggleViewerIntegrated):
     def __init__(self, eqi):

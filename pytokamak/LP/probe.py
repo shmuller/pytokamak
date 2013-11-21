@@ -274,7 +274,7 @@ class PhysicalResults:
         res['n']  = n  = n_cs/cs
         res['v']  = v  = Mach*cs
         res['pe'] = pe = n*qe*Te
-        res['pe_tot']  = pe*(1. + Mach*Mach)
+        res['pe_tot']  = pe*(1. + 0.5*Mach*Mach)
         return res
 
     def eval(self, plunge=None, inout=None):

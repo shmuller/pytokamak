@@ -138,6 +138,8 @@ amp_mu0_2pi = Amp(fact=2e-7, offs=0)
 
 from splinetoolbox import SplineND
 
+ReadError = (IOError, KeyError)
+
 class DigitizerAUGFPP(DigitizerAUG):
     def __init__(self, shn, diag='FPP'):
         # PFM is not in nodes so that it is never cached: see get_psi()
@@ -177,15 +179,15 @@ class DigitizerAUGFPP(DigitizerAUG):
         # try to reconstruct PFM from spline, otherwise load without caching
         try:
             PFM = self.get_PFM_from_spline()
-        except KeyError:
+        except ReadError:
             PFM = self.get_node('PFM', cache=False)
         return self.make_sig('PFM', PFM, self.get_t())
 
     def get_R_z_psi(self):
         return self.get_R(), self.get_z(), self.get_psi()
 
-    def _load_psi_spline(self):
-        # try to load spline from file, fail raises KeyError
+    def _read_psi_spline(self):
+        # try to load spline from file, fail raises IOError or KeyError
         get = self.IO_file.get_node
         tzR = get('t_t'), get('t_z'), get('t_R')
         return SplineND.from_knots_coefs(tzR, get('c_psi'))
@@ -196,8 +198,8 @@ class DigitizerAUGFPP(DigitizerAUG):
         # from the cache if it had been cached previously, such that h5repack can 
         # reclaim the disk space.
         try:
-            return self._load_psi_spline()
-        except KeyError:
+            return self._read_psi_spline()
+        except ReadError:
             R, z, psi = self.get_R_z_psi()
             # do not convert to double
             t = psi.t
@@ -213,7 +215,7 @@ class DigitizerAUGFPP(DigitizerAUG):
             return sp
 
     def get_PFM_from_spline(self):
-        sp = self._load_psi_spline()
+        sp = self._read_psi_spline()
         tzR = self.get_t(), self.get_z(), self.get_R()
         return 2*np.pi*sp.spval_grid(tzR)
 
