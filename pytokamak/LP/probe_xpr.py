@@ -265,6 +265,13 @@ class ProbeXPR(Probe):
         else:
             raise ValueError("Unknown sepmode: '%s'" % sepmode)
 
+    def mk_R_axis(self, axes, Rj=None, tlab=None, xlab='Probe R (cm)', **kw):
+        if tlab is None:
+            tlab = np.r_[np.arange(131, 135), np.arange(135, 160, 5)]
+        if Rj is None:
+            Rj = 0.01*tlab
+        return Probe.mk_R_axis(self, axes, Rj, tlab=tlab, xlab=xlab, **kw)
+
 
 def get_dwell_params():
     shots = config.campaign.shots_with_min_stars('*')

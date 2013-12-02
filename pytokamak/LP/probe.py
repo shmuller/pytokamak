@@ -610,4 +610,31 @@ class Probe:
         for ax in axes:
             vlines(ax, xsep, color=color, linewidth=linewidth)
 
+    def mk_R_axis(self, axes, Rj, plunge=0, tlab=None, xlab=''):
+        if tlab is None:
+            tlab = Rj
+        R = self.pos[:,0]
+
+        i0, i1 = self['Rs'].plunges(plunge, 'in')
+        R_in = R[i1:i0:-1]
+        tj_in = AmpSignal(R_in.t, R_in.x)(Rj).x
+
+        i0, i1 = self['Rs'].plunges(plunge, 'out')
+        R_out = R[i0:i1]
+        tj_out = AmpSignal(R_out.t, R_out.x)(Rj).x
+
+        tj_inout = np.r_[tj_in[::-1], tj_out]
+        tlab_inout = np.r_[tlab[::-1], tlab]
+
+        axes_ = [ax.get_2nd_axes(xloc='top') for ax in axes[:]]
+        ax0_ = axes_[0]
+        ax0_.set_xlabel(xlab)
+        ax0_.set_xticks(tj_inout)
+        ax0_.set_xticklabels(tlab_inout)
+        for ax_ in axes_[1:]:
+            ax_.set_xticks(tj_inout)
+            ax_.set_xticklabels([])
+        return axes_
+
+
 
