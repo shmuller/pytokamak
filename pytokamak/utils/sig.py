@@ -760,6 +760,9 @@ class SignalBase:
     def _wrap(self, x):
         return self.__class__(x, self._t, *self.args, **self.kw)
 
+    def _wrap_t(self, t):
+        return self.__class__(self._x, t, *self.args, **self.kw)
+
     def __array_wrap__(self, x):
         return self.__class__(x, self._t, **self.kw)
 
@@ -781,7 +784,11 @@ class SignalBase:
         x, y = self._x, other._x
         x = x.reshape(x.shape + (1,)*(axis + 1 - x.ndim))
         y = y.reshape(y.shape + (1,)*(axis + 1 - y.ndim))
-        return self._wrap(ma.concatenate((x, y), axis=axis))
+        x = ma.concatenate((x, y), axis=axis)
+        t = self._t
+        if axis == 0:
+            t = ma.concatenate((t, other._t))
+        return self.__class__(x, t, *self.args, **self.kw)
 
     def copy(self):
         return self._wrap(self._x.copy())
@@ -799,14 +806,13 @@ class SignalBase:
             return self._wrap(self._x.data)
 
     def t_masked(self, mask):
-        return self.__class__(self._x, ma.masked_array(self._t, mask), 
-                              *self.args, **self.kw)
+        return self._wrap_t(ma.masked_array(self._t, mask))
 
     def t_unmasked(self):
         if not isinstance(self._t, ma.masked_array):
             return self
         else:
-            return self.__class__(self._x, self._t.data, *self.args, **self.kw)
+            return self._wrap_t(self._t.data)
 
     def filled(self, fill=np.nan):
         x = self._x
@@ -851,13 +857,13 @@ class Signal(SignalBase):
         self.tunits = kw.get('tunits', "s")
 
     def shift_t(self, dt):
-        return self.__class__(self.x, self.t + dt, *self.args, **self.kw)
+        return self._wrap_t(self.t + dt)
 
     def to_ms(self):
         assert self.tunits == 's', "tunits must be seconds"
         kw = self.kw.copy()
         kw['tunits'] = 'ms'
-        return self.__class__(self.x, 1e3*self.t, *self.args, **kw)
+        return self.__class__(self._x, 1e3*self.t, *self.args, **kw)
 
     def _op_factory(op):
         def wapply(self, other):
@@ -1008,8 +1014,10 @@ class Signal(SignalBase):
         c = self.ppolyfit(PP.i0, PP.i1, PP.c.shape[0] - 1)
         return PP.__class__(c, PP.x, **PP.kw)
 
-    def detrend(self):
+    def detrend(self, keep_mean=False):
         k, d = self.linfit(self.t, self.filled().x)
+        if keep_mean:
+            d -= self.x.mean()
         return self.__array_wrap__(self.x - k*self.t - d)
 
     def smooth(self, w=100, mode='gaussian'):
