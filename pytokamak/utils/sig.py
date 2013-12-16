@@ -7,7 +7,7 @@ from math import sqrt
 
 from pprint import pformat
 
-from utils import memoized_property, dict_pop, DictView
+from utils import memoized_property, cat, dict_pop, DictView
 
 try:
     from scipy.fftpack import fft
@@ -162,7 +162,10 @@ class PiecewisePolynomial:
 
     def __add__(self, other):
         c = self.c.copy()
-        c[-1] += other
+        if isinstance(other, PiecewisePolynomial):
+            c += other.c
+        else:
+            c[-1] += other
         return self.__array_wrap__(c)
 
     def __sub__(self, other):
@@ -254,7 +257,7 @@ class PiecewisePolynomial:
 
     @staticmethod
     def cat(a, axis=0):
-        return a[0].__array_wrap__(ma.concatenate(a, axis))
+        return a[0].__array_wrap__(cat(a, axis))
 
     def _eval_prepare_output(self, il, yl, ir, yr, pad):
         dim = (0, 1)[pad]
@@ -537,10 +540,19 @@ class Signal2D:
             ylab += " (%s)" % self.yunits
         return ylab
 
+    def compressed(self):
+        x, y, Z = self.x, self.y, self.Z
+        S = SignalBase(Z.T, x).compressed()
+        x, Z = S.t, S.x
+        S = SignalBase(Z.T, y).compressed()
+        y, Z = S.t, S.x
+        return self.__array_wrap__(x, y, Z)
+
     def plot(self, ax=None, ylim=None, cmap='spectral', scale='linear', **kw):
         if cmap == 'custom':
             cmap = self.cmap
-        x, y, Z = self.x, self.y, self.Z
+        S = self.compressed()
+        x, y, Z = S.x, S.y, S.Z
         
         if ylim is not None:
             cnd = (ylim[0] <= y) & (y <= ylim[1])
@@ -554,7 +566,7 @@ class Signal2D:
             if x.size == n + 1:
                 return x
             elif x.size == n:
-                return np.r_[x[0], 0.5*(x[:-1] + x[1:]), x[-1]]
+                return cat((x[:1], 0.5*(x[:-1] + x[1:]), x[-1:]))
             else:
                 raise ValueError('axes length must be n + 1 or n')
 
@@ -784,10 +796,10 @@ class SignalBase:
         x, y = self._x, other._x
         x = x.reshape(x.shape + (1,)*(axis + 1 - x.ndim))
         y = y.reshape(y.shape + (1,)*(axis + 1 - y.ndim))
-        x = ma.concatenate((x, y), axis=axis)
+        x = cat((x, y), axis=axis)
         t = self._t
         if axis == 0:
-            t = ma.concatenate((t, other._t))
+            t = cat((t, other._t))
         return self.__class__(x, t, *self.args, **self.kw)
 
     def copy(self):
@@ -1155,10 +1167,12 @@ class Signal(SignalBase):
     def spec(self, NFFT=2048, step=512, detrend='linear'):
         return Specgram(NFFT, step, detrend)(self)        
 
-    def specgram(self, ax=None, NFFT=2048, step=512, detrend='linear', **kw):
+    def specgram(self, ax=None, NFFT=2048, step=512, detrend='linear', fM=None, **kw):
         spec = self.spec(NFFT, step, detrend)
         spec.y *= 1e-3
         spec.yunits = 'kHz'
+        if fM is not None:
+            spec.y = ma.masked_array(spec.y, spec.y > fM)
         return spec.plot(ax, **kw)
 
     def plot_over_specgram(self, ax=None, yloc=None, *args, **kw):

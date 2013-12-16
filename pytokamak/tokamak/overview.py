@@ -23,7 +23,6 @@ aug_diags = dict(
     UVS = dict(nodes=('D_tot',)),
     BPD = dict(nodes=('Pradtot',)),
     MAG = dict(nodes=('Ipa', 'ULid12')),
-    MHE = dict(nodes=('C09-23',), s=slice(None, None, 4)),
     CEZ = dict(nodes=('vrot', 'Ti', 'inte', 'err_vrot', 'err_Ti', 'err_inte',
                       'R', 'z', 'phi')),
     XVS = dict(nodes=('S2L1A10',)))
@@ -303,7 +302,7 @@ class AUGOverview:
         return ax
 
     def plot_mirn(self, ax=None, **kw):
-        S = self.S['MHE']['C09-23']
+        S = self.S['MIR']['C09-23']
         ax = get_axes(ax)
         S.plot(ax)
         ax.legend()
@@ -338,7 +337,7 @@ class AUGOverview:
     def specgram(self, **kw):
         S_list = [self.XPR['tip1+tip2'],
                   self['MAC']['Ipolsoli'],
-                  self['MHE']['C09-23'],
+                  self['MIR']['C09-23'],
                   self['XVS']['S2L1A10']]
 
         fig = get_tfig(shape=(5, 1), figsize=(6, 8), xlab='t (s)')

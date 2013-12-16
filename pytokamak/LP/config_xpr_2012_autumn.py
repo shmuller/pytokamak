@@ -828,7 +828,7 @@ E.rep(29076, 29075, "Mach tips -200 V, single tip swept 500 Hz, 13.5 Vpp",
         times = (2.1, 3.6, 4.4),
         posit = (0.34, 0.34, 0.34),
         descr = """\
-            Plunge 0: 2.5 kHz oscillation, also in PF region.
+            Plunge 0: 2.5 kHz oscillation, also in PF region, where I1 and I2 change phase!
             Plunge 1: 2.5 kHz, goes away at 3.6975 s, broadband in PF.
             Plunge 2: quiescent until PF region, jump at 4.486 s.
             """,

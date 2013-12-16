@@ -29,6 +29,15 @@ class Timer(object):
         self.toc()
 
 
+def cat(arrays, *args, **kw):
+    from numpy import ma
+    d = ma.concatenate(arrays, *args, **kw)
+    if d.mask is ma.nomask:
+        return d.data
+    else:
+        return d
+
+
 def ensure_tuple(d, *keys):
     for k in keys:
         if not isinstance(d[k], tuple):

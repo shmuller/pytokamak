@@ -130,7 +130,7 @@ E.rep(29306, 29305, "1.4 T, 800 kW",
             of single tip on way out. H-mode continues to run after probe
             leaves, showing that I-phase pulsing transitions rather smoothly into
             Type-III ELMs, until finally a Type-I ELM appears which terminates the
-            H-mode. See 29307 for very similar meaurements with DC biased Mach
+            H-mode. See 29307 for very similar measurements with DC biased Mach
             probe""",
         stars = '*****')
 
