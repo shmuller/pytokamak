@@ -7,28 +7,29 @@ from pytokamak.utils.sig import Amp, AmpSignal, get_axes
 from digitizer import MdsConnectError, TdiError, IOMds, IOFile, Digitizer
 
 class IOMdsAUG(IOMds):
-    def __init__(self, shn, diag='XPR', raw=False):
+    mdsplaceholder = 'f_float($)'
+
+    def __init__(self, shn, convdict=None, diag='XPR', raw=False):
         # augdiag(_shot, _diag, _signame, _experiment, _edition, 
         #   _t1, _t2, _oshot, _oedition, _qual)
 
-        IOMds.__init__(self, shn)
+        IOMds.__init__(self, shn, convdict)
         
         if os.uname()[1] == 'plaspc04':
             self.mdsserver, self.mdsport = "localhost", "8001"
         else:
             self.mdsserver, self.mdsport = "mdsplus.aug.ipp.mpg.de", "8000"
 
-        self.mdsplaceholder = 'f_float($)'
+        repl = dict(shn=self.shn, diag=diag, ph=self.mdsplaceholder)
 
-        fmtargs = '%d,"%s","%%s","AUGD",*,f_float($),f_float($)' % (self.shn, diag)
+        fmtargs = '{shn},"{diag}","%s","AUGD",*,{ph},{ph}'.format(**repl)
         if raw:
             self.mdsfmt = 'augdiag(%s,*,*,"raw")' % fmtargs
             self.datadeco = 'word(data(%s))'
         else:
             self.mdsfmt = 'augdiag(%s)' % fmtargs
-        self.timedeco = 'f_float(dim_of(%s))'
 
-        self.sfhfmt = 'augparam(%d,"%s","%%s","%%s")' % (self.shn, diag)
+        self.sfhfmt = 'augparam({shn},"{diag}","%s","%s")'.format(**repl)
 
     def get_param(self, *args):
         return self.mdsvalue(self.sfhfmt % args)
@@ -41,13 +42,16 @@ class IOFileAUG(IOFile):
 
 
 class DigitizerAUG(Digitizer):
-    def __init__(self, shn, diag, suffix='_AUG', group=None, raw=False, 
+    def __init__(self, shn, diag, suffix='_AUG', group=None, raw=False, tnode='t',
                  IOMdsClass=IOMdsAUG, IOFileClass=IOFileAUG, **kw):
         if group is None:
             group = diag
-        
-        Digitizer.__init__(self, shn, name=diag, 
-                IO_mds = IOMdsClass(shn, diag=diag, raw=raw),
+
+        # always download times in single precision for AUG
+        convdict = {tnode: 'f_float(%s)'}
+
+        Digitizer.__init__(self, shn, name=diag, tnode=tnode,
+                IO_mds = IOMdsClass(shn, convdict, diag=diag, raw=raw),
                 IO_file = IOFileClass(shn, suffix=suffix, group=group), **kw)
 
     def get_node(self, node, **kw):
@@ -110,9 +114,9 @@ class IOMdsAUGMIR(IOMdsAUG):
         for node in nodes:
             node2diag[node] = diag
 
-    def __init__(self, shn, **kw):
+    def __init__(self, *args, **kw):
         kw['diag'] = '{diag}'
-        IOMdsAUG.__init__(self, shn, **kw)
+        IOMdsAUG.__init__(self, *args, **kw)
 
     def get_mdsbasestr(self, node):
         return self.mdsfmt.format(diag=self.node2diag[node]) % node

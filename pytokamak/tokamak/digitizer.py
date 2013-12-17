@@ -132,16 +132,21 @@ else:
 
 
 class IOMds(IO):
-    def __init__(self, shn):
+    mdsserver = "localhost"
+    mdsport = "8000"
+    mdstree = None
+    mdsplaceholder = "$"
+    mdsfmt = "%s"
+    datadeco = "data(%s)"
+    timedeco = "dim_of(%s)"
+    sizedeco = "size(%s)"
+    convdeco = "%s"
+
+    def __init__(self, shn, convdict=None):
         IO.__init__(self, shn)
-        self.mdsserver = "localhost"
-        self.mdsport = "8000"
-        self.mdstree = None
-        self.mdsplaceholder = "$"
-        self.mdsfmt = "%s"
-        self.datadeco = "data(%s)"
-        self.timedeco = "dim_of(%s)"
-        self.sizedeco = "size(%s)"
+        if convdict is None:
+            convdict = dict()
+        self.convdict = convdict
         self.last_mdsbasestr = None
 
     @memoized_property
@@ -166,9 +171,15 @@ class IOMds(IO):
         else:
             self.last_mdsbasestr = mdsbasestr = self.get_mdsbasestr(node)
             mdsstr = self.datadeco % mdsbasestr
+        # apply slicing
         if s is not None:
             mdsstr += self._mdsslicestr(s)
-        return mdsstr
+        # apply conversion
+        try:
+            convdeco = self.convdict[node]
+        except KeyError:
+            convdeco = self.convdeco
+        return convdeco % mdsstr
 
     def get_size(self, node, t0=None, t1=None, s=None):
         return self.mdsvalue(self.sizedeco % self.get_mdsstr(node, s), t0, t1)

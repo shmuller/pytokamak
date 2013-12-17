@@ -24,7 +24,7 @@ aug_diags = dict(
     BPD = dict(nodes=('Pradtot',)),
     MAG = dict(nodes=('Ipa', 'ULid12')),
     CEZ = dict(nodes=('vrot', 'Ti', 'inte', 'err_vrot', 'err_Ti', 'err_inte',
-                      'R', 'z', 'phi')),
+                      'R', 'z', 'phi'), tnode='time'),
     XVS = dict(nodes=('S2L1A10',)))
 
 
@@ -196,7 +196,6 @@ class AUGOverview:
         S = self.DCN
         ax = get_axes(ax)
         ax.set_ylabel(r'$\int$n dl (10$^{\text{19}}$ m$^{\text{-2}}$)')
-        #ax.yaxis.labelpad = -2
         
         for c in chn:
             (S[c]*1e-19).plot(ax, **kw)
@@ -223,7 +222,6 @@ class AUGOverview:
         S = self.S['TOT']
         ax = get_axes(ax)
         ax.set_ylabel(r'n (10$^{\text{19}}$ m$^{\text{-3}}$)')
-        #ax.yaxis.labelpad = -2
         
         for c in chn:
             (S[c]*1e-19).nonneg().plot(ax, **kw)
@@ -348,28 +346,32 @@ class AUGOverview:
             ax.set_ylabel('%s f (kHz)' % S.name)
         return fig
 
-    def plot(self, plots=None, fig=None, figsize=(6, 6), kw_plots=None, 
-            CEZ_viewer=False, MIR_viewer=False, **kw):
-        if plots is None:
-            plots = self.def_plots
-        if kw_plots is None:
-            kw_plots = dict()
-
+    def figure(self, fig=None, shape=(5, 1), figsize=(6, 6), 
+               CEZ_viewer=False, MIR_viewer=False, **kw):
         self.viewers = self.eqi.viewers[:]
         if CEZ_viewer:
             S = self.S['CEZ']
             y, x = S['vrot'][:,:24]*1e-3, S['R'].x[:24]
             viewer_kw = dict(xlab='R (m)', ylab=r'vrot (km s$^{\text{-1}}$)')
             CEZ_viewer = ProfViewerAUG(x, y, menu_entry='CEZ viewer', **viewer_kw)
-            self.viewers += [CEZ_viewer]
+            self.viewers.append(CEZ_viewer)
 
         if MIR_viewer:
             MIR_viewer = MIRViewerAUG(self.S['MIR'])
-            self.viewers += [MIR_viewer]
+            self.viewers.append(MIR_viewer)
 
-        fig = get_tfig(fig, pos=(450, 150), figsize=figsize, shape=(len(plots), 1), 
+        fig = get_tfig(fig, pos=(450, 150), shape=shape, figsize=figsize, 
                        xlab='t (s)', viewers=self.viewers, **kw)
-        fig.axes[0].set_xlim((1,7))
+        fig.axes[0].set_xlim((1, 7))
+        return fig
+
+    def plot(self, plots=None, fig=None, kw_plots=None, **kw):
+        if plots is None:
+            plots = self.def_plots
+        if kw_plots is None:
+            kw_plots = dict()
+
+        fig = self.figure(fig, shape=(len(plots), 1), **kw)
 
         for p, ax in zip(plots, fig.axes):
             getattr(self, 'plot_' + p)(ax, **kw_plots)
