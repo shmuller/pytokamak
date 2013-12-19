@@ -54,10 +54,14 @@ class DCNGeom:
         idx = np.searchsorted(self.names, names)
         return self.DCN_rays[idx]
 
-    def plot(self, ax=None, names=names, **kw):
+    def plot_rays(self, ax=None, names=names, **kw):
+        kw.setdefault('linewidth', 1)
         rays = self.get_rays(names)
         ax = get_axes(ax)
-        lines = ax.plot(rays[:,:,0].T, rays[:,:,1].T, linewidth=1)
+        return ax.plot(rays[:,:,0].T, rays[:,:,1].T, **kw)
+
+    def plot(self, ax=None, names=names, **kw):
+        lines = self.plot_rays(self, ax, names, **kw)
 
         offs = np.array([-0.05, 0])
         for lab, xy, l in zip(names, rays[:,0,:], lines):

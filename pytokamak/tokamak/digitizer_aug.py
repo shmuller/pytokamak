@@ -95,6 +95,9 @@ class DigitizerAUGDCR(DigitizerAUG):
             S.update(name=indx, label=indx)
             return S
 
+    def as_spline(self, k=2):
+        return self['dbl_res'][:,5:10].as_spline(k)
+
 
 class IOMdsAUGMIR(IOMdsAUG):
     numA = (1, 2, 3, 4, 5, 6, 26)

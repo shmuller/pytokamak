@@ -29,15 +29,39 @@ aug_diags = dict(
 
 
 class EqiViewerAUG(EqiViewer):
+    def __init__(self, eqi, dcn, cmap='jet'):
+        EqiViewer.__init__(self, eqi)
+        self.dcn = dcn
+        self.dcnM = dcn['H-1'].x.max()
+        from matplotlib.cm import get_cmap
+        self.dcn_cmap = get_cmap(cmap)
+
     def viewer(self, event=None, **kw):
-        return EqiViewer.viewer(self, event, 
-                                pos=(50, 150), figsize=(4.5, 6), 
-                                xlab="R (m)", ylab="z (m)", **kw)
+        ax = EqiViewer.viewer(self, event, pos=(50, 150), figsize=(4.5, 6), 
+                              xlab="R (m)", ylab="z (m)", **kw)
+        self.dcn_spl = self.dcn.digitizer.as_spline(k=2) / self.dcnM
+        return ax
+
+    def on_close(self, event=None):
+        del self.dcn_spl
+        return EqiViewer.on_close(self, event)
+
+    def plotfun(self, event):
+        artists = EqiViewer.plotfun(self, event)
+
+        t_event = event.xdata
+        ax = self.ax
+        col = self.dcn_cmap(self.dcn_spl(t_event).ravel())
+        lines = self.dcn.geom.plot_rays(ax, linewidth=2)
+        for l, c in zip(lines, col):
+            l.set_color(c)
+        artists.extend(lines)
+        return artists
 
 
 class EqiViewerAUGXPR(EqiViewerAUG):
-    def __init__(self, eqi, XPR):
-        EqiViewerAUG.__init__(self, eqi)
+    def __init__(self, eqi, dcn, XPR):
+        EqiViewerAUG.__init__(self, eqi, dcn)
         self.XPR = XPR
     
     def viewer(self, event=None, **kw):
@@ -134,11 +158,11 @@ class EqiViewerAUGVtk(ToggleViewerVtk):
 
 
 class EqiAUG(Eqi):
-    def get_viewers(self, XPR=None):
+    def get_viewers(self, dcn, XPR=None):
         if XPR is None:
-            self.viewers = [EqiViewerAUG(self), EqiViewerAUGVtk(self)]
+            self.viewers = [EqiViewerAUG(self, dcn), EqiViewerAUGVtk(self)]
         else:
-            self.viewers = [EqiViewerAUGXPR(self, XPR), EqiViewerAUGVtk(self)]
+            self.viewers = [EqiViewerAUGXPR(self, dcn, XPR), EqiViewerAUGVtk(self)]
         return self.viewers
 
 
@@ -155,7 +179,7 @@ class AUGOverview:
         except ShotNotFoundError:
             self.XPR = None
             self.def_plots = ('power', 'density', 'Ipolsol')
-        self.eqi.get_viewers(self.XPR)
+        self.eqi.get_viewers(self.DCN, self.XPR)
 
     def __getitem__(self, indx):
         return self.S[indx]
