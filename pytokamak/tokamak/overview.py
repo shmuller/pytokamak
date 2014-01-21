@@ -32,14 +32,14 @@ class EqiViewerAUG(EqiViewer):
     def __init__(self, eqi, dcn, cmap='jet'):
         EqiViewer.__init__(self, eqi)
         self.dcn = dcn
-        self.dcnM = dcn['H-1'].x.max()
         from matplotlib.cm import get_cmap
         self.dcn_cmap = get_cmap(cmap)
 
     def viewer(self, event=None, **kw):
         ax = EqiViewer.viewer(self, event, pos=(50, 150), figsize=(4.5, 6), 
                               xlab="R (m)", ylab="z (m)", **kw)
-        self.dcn_spl = self.dcn.digitizer.as_spline(k=2) / self.dcnM
+        dcnM = self.dcn['H-1'].x.max()
+        self.dcn_spl = self.dcn.digitizer.as_spline(k=2) / dcnM
         return ax
 
     def on_close(self, event=None):

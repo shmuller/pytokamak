@@ -81,6 +81,15 @@ class DCN:
         return ax
 
     
+class MIR:
+    def __init__(self, shn, eqi=None, **kw):
+        from digitizer_aug import DigitizerAUGMIR
+        from diaggeom_aug import MIRGeom
+
+        self.digitizer = DigitizerAUGMIR(shn)
+        self.geom = MIRGeom()
+        self.eqi = eqi
+        self.kw = kw
 
 
 

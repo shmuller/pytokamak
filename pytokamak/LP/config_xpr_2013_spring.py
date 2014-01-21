@@ -784,7 +784,7 @@ E.rep(29756, 29755, "Std H-mode with removed rack grounding, 15 cm at 1 s",
         posit = 0.15,
         descr = """\
             Total measured current was 0!""",
-        stars = '')
+        stars = '*****')
 
 # Garrard Conway
 E.rep(29779, 29756, "Grounds reconnected, no plunge",

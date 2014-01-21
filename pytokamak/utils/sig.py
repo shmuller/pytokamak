@@ -761,6 +761,9 @@ class SignalBase:
     def __call__(self, t, *args, **kw):
         return self.interp(t, *args, **kw)
 
+    def __len__(self):
+        return self.shape[0]
+
     def __getitem__(self, indx):
         if not isinstance(indx, tuple):
             indx = (indx,)

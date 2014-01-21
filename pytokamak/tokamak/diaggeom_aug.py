@@ -145,7 +145,7 @@ class MIRGeom:
 
         ax = get_axes(ax)
         for coil in lut.itervalues():
-            ax.plot(coil['R'], coil['z'], 'r*')
+            ax.plot(coil['R'], coil['z'], 'rs')
         return ax
             
 
