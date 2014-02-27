@@ -61,7 +61,8 @@ class DCNGeom:
         return ax.plot(rays[:,:,0].T, rays[:,:,1].T, **kw)
 
     def plot(self, ax=None, names=names, **kw):
-        lines = self.plot_rays(self, ax, names, **kw)
+        rays = self.get_rays(names)
+        lines = self.plot_rays(ax, names, **kw)
 
         offs = np.array([-0.05, 0])
         for lab, xy, l in zip(names, rays[:,0,:], lines):

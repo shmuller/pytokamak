@@ -32,6 +32,7 @@ class EqiViewerAUG(EqiViewer):
     def __init__(self, eqi, dcn, cmap='jet'):
         EqiViewer.__init__(self, eqi)
         self.dcn = dcn
+        self.with_dcn = True
         from matplotlib.cm import get_cmap
         self.dcn_cmap = get_cmap(cmap)
 
@@ -49,13 +50,14 @@ class EqiViewerAUG(EqiViewer):
     def plotfun(self, event):
         artists = EqiViewer.plotfun(self, event)
 
-        t_event = event.xdata
-        ax = self.ax
-        col = self.dcn_cmap(self.dcn_spl(t_event).ravel())
-        lines = self.dcn.geom.plot_rays(ax, linewidth=2)
-        for l, c in zip(lines, col):
-            l.set_color(c)
-        artists.extend(lines)
+        if self.with_dcn:
+            t_event = event.xdata
+            ax = self.ax
+            col = self.dcn_cmap(self.dcn_spl(t_event).ravel())
+            lines = self.dcn.geom.plot_rays(ax, linewidth=2)
+            for l, c in zip(lines, col):
+                l.set_color(c)
+            artists.extend(lines)
         return artists
 
 

@@ -611,8 +611,9 @@ class IV:
         PP = self.PP[ID]
         s, p = PP.eval_at_event(t_event)
 
-        S = self.S
-        V, I, t = S.V.x[s], S.x[s], S.t[s]
+        # don't do S.x[s] with AmpSignals!
+        S = self.S[s]
+        V, I, t = S.V.x, S.x, S.t
         
         Ifit = self.fitfun(p.T, V)
         Ifit = ma.masked_array(Ifit, ~PP.mask[s])

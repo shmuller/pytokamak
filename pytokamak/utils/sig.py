@@ -160,6 +160,9 @@ class PiecewisePolynomial:
     def copy(self):
         return self.__array_wrap__(self.c.copy())
 
+    def __neg__(self):
+        return self.__array_wrap__(-self.c)
+
     def __add__(self, other):
         c = self.c.copy()
         if isinstance(other, PiecewisePolynomial):
@@ -226,6 +229,12 @@ class PiecewisePolynomial:
             Y *= dX
             Y += a
         return Y
+
+    def eval_at_midpoints(self):
+        ind = slice(self.N)
+        x = (self.xi[ind] + self.x[self.i1]) / 2.
+        y = self._polyval(x, ind)
+        return x, y
 
     def eval_at_event(self, x_event):
         ind = self._findind(np.array([x_event]))[0]
@@ -1251,11 +1260,11 @@ class Amp:
     def __getitem__(self, indx):
         try:
             fact = self.fact[indx]
-        except TypeError:
+        except (IndexError, TypeError):
             fact = self.fact
         try:
             offs = self.offs[indx]
-        except TypeError:
+        except (IndexError, TypeError):
             offs = self.offs
         return self.__class__(fact, offs)
 
