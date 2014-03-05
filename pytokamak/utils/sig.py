@@ -230,11 +230,24 @@ class PiecewisePolynomial:
             Y += a
         return Y
 
-    def eval_at_midpoints(self):
-        ind = slice(self.N)
-        x = (self.xi[ind] + self.x[self.i1]) / 2.
-        y = self._polyval(x, ind)
+    def eval_at_midpoints(self, shift=0):
+        x = (self.xi[:-1] + self.x[self.i1]) / 2.
+
+        if not shift:
+            y = self._polyval(x, slice(self.N))
+        else:
+            y = np.zeros(self.N)
+            if shift < 0:
+                y[:-shift] = np.nan
+                y[-shift:] = self._polyval(x[-shift:], slice(0, self.N + shift))
+            else:
+                y[-shift:] = np.nan
+                y[:-shift] = self._polyval(x[:-shift], slice(shift, self.N))
         return x, y
+
+    def as_signal(self):
+        x, y = self.eval_at_midpoints()
+        return Signal(y, x)
 
     def eval_at_event(self, x_event):
         ind = self._findind(np.array([x_event]))[0]
@@ -245,7 +258,10 @@ class PiecewisePolynomial:
 
     def deriv(self):
         k = self.c.shape[0] - 1
-        c = self.c[:-1] * np.arange(k, 0, -1).reshape((k,) + self.bcast)
+        if k:
+            c = self.c[:-1] * np.arange(k, 0, -1).reshape((k,) + self.bcast)
+        else:
+            c = np.zeros_like(self.c)
         return self.__class__(c, self.x, **self.kw)
 
     @memoized_property
