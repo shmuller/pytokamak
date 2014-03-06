@@ -364,10 +364,11 @@ class AUGOverview:
                   self['MIR']['C09-23'],
                   self['XVS']['S2L1A10']]
 
-        fig = get_tfig(shape=(5, 1), figsize=(6, 8), xlab='t (s)')
-        self.plot_XPR_I_Mach(ax=fig.axes[0])
+        fig = get_tfig(shape=(6, 1), figsize=(6, 9), xlab='t (s)')
+        self.plot_density(ax=fig.axes[0])
+        self.plot_XPR_I_Mach(ax=fig.axes[1])
 
-        for ax, S in zip(fig.axes[1:], S_list):
+        for ax, S in zip(fig.axes[2:], S_list):
             S.specgram(ax=ax, **kw)
             ax.set_ylabel('%s f (kHz)' % S.name)
         return fig

@@ -210,7 +210,7 @@ E.rep(30284, 30283, "One plunge at 4.3 s",
         times = 4.3,
         posit = 0.34,
         descr = """\
-            Many arcs again, but fits OK.""",
+            H-mode. Many arcs again, but fits OK.""",
         stars = '***')
 
 E.rep(30285, 30284, "One plunge at 4.65 s",
@@ -263,5 +263,42 @@ E.rep(30291, 30282, "Repeat 30282",
         descr = """\
             OK, but arcs on each of 4 ELMs.""",
         stars = '**')
+
+
+E = campaign.add_experiment(date="20140306")
+
+# Hans-Werner Mueller
+E.add(30303, "13.5 Vpp on all tips",
+        times = 4.35,
+        posit = 0.22,
+        head = head_20130306_4tips,
+        tipmap = tipmap_tip1_V3,
+        ampI1 = CurrentProbe1[20],
+        ampI2 = CurrentProbe2[20],
+        ampI3 = CurrentProbe3[20], 
+        ampI4 = CurrentProbe4[50],
+        descr = """\
+            Disrupted before plunge.""",
+        stars = '', **def_XPR_pos)
+
+E.rep(30304, 30303, "Repeat of 30268",
+        times = 4.5,
+        posit = 0.22,
+        descr = """\
+            Disrupted really close to plunge.""",
+        stars = '')
+
+# Stefan Muller
+E.rep(30305, 30304, "Detachment fluctuations",
+        times = (2.0, 3.25, 4.5),
+        posit = (0.34, 0.34, 0.34),
+        descr = """\
+            Three great plunges, straight through X-point. Only minor arcing,
+            switched off by arc box. Unfortunately, fluctuations naturally
+            disappeared before 1st and 2nd plunge, and were also absent while
+            the probe was on the HFS in the 3rd plunge. Bad luck!
+            X-point config: EOC 1.24. Thomas Eich saved config as *_XPProbe.
+            """,
+        stars = '****')
 
 
