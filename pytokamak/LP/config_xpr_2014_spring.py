@@ -275,7 +275,7 @@ E.add(30303, "13.5 Vpp on all tips",
         tipmap = tipmap_tip1_V3,
         ampI1 = CurrentProbe1[20],
         ampI2 = CurrentProbe2[20],
-        ampI3 = CurrentProbe3[20], 
+        ampI3 = CurrentProbe3[20],
         ampI4 = CurrentProbe4[50],
         descr = """\
             Disrupted before plunge.""",
@@ -289,7 +289,7 @@ E.rep(30304, 30303, "Repeat of 30268",
         stars = '')
 
 # Stefan Muller
-E.rep(30305, 30304, "Detachment fluctuations",
+E.rep(30305, 30304, "Detachment fluctuations, -160 VDC, 13.5 Vpp",
         times = (2.0, 3.25, 4.5),
         posit = (0.34, 0.34, 0.34),
         descr = """\
@@ -300,5 +300,23 @@ E.rep(30305, 30304, "Detachment fluctuations",
             X-point config: EOC 1.24. Thomas Eich saved config as *_XPProbe.
             """,
         stars = '****')
+
+
+E = campaign.add_experiment(date="20140311")
+
+# Stefan Muller
+E.add(30330, "Repeat 30305",
+        times = (2.0, 3.25, 4.5),
+        posit = (0.34, 0.34, 0.34),
+        head = head_20130306_4tips,
+        tipmap = tipmap_tip1_V3,
+        ampI1 = CurrentProbe1[20],
+        ampI2 = CurrentProbe2[20],
+        ampI3 = CurrentProbe3[20],
+        ampI4 = CurrentProbe4[50],
+        descr = """\
+            """,
+        stars = '', **def_XPR_pos)
+
 
 
