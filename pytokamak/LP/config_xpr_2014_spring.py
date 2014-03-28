@@ -315,8 +315,47 @@ E.add(30330, "Repeat 30305",
         ampI3 = CurrentProbe3[20],
         ampI4 = CurrentProbe4[50],
         descr = """\
-            """,
+            Very similar to 30305, although lower density on first two plunges.
+            Detachment fluctuations only on 3rd plunge, going away as soon as
+            the probe is on HFS. More arcs on 3rd plunge than on 30305.""",
         stars = '', **def_XPR_pos)
 
+
+E = campaign.add_experiment(date="20140328")
+
+# Daniel Carralero
+E.add(30454, "Low n, similar to 29323, Single tip 15 Vpp, 1 kHz, sine",
+        times = 4.55,
+        posit = 0.34,
+        head = head_20130306_4tips,
+        tipmap = tipmap_tip1_V3,
+        ampI1 = CurrentProbe1[20],
+        ampI2 = CurrentProbe2[20],
+        ampI3 = CurrentProbe3[20],
+        ampI4 = CurrentProbe4[50],
+        descr = """\
+            Good. No arcs. Sufficient positive voltage.""",
+        stars = '****', **def_XPR_pos)
+
+E.rep(30455, 30454, "High n, similar to 29887, single tip 13.5 Vpp, Mach tips -160 V",
+        times = 4.55,
+        posit = 0.34,
+        descr = """\
+            Disrupted before plunge.""",
+        stars = '')
+
+E.rep(30456, 30455, "Repeat",
+        times = 4.55,
+        posit = 0.34,
+        descr = """\
+            In rampdown. Recovered arc on LFS divertor leg. Good swept data.""",
+        stars = '***')
+
+E.rep(30457, 30456, "Repeat, earlier plunge, single tip 13.0 Vpp, 0.5 kHz",
+        times = 4.25,
+        posit = 0.34,
+        descr = """\
+            Good high density swept data. Recovered arcs on Mach.""",
+        stars = '****')
 
 
