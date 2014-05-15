@@ -318,7 +318,7 @@ E.add(30330, "Repeat 30305",
             Very similar to 30305, although lower density on first two plunges.
             Detachment fluctuations only on 3rd plunge, going away as soon as
             the probe is on HFS. More arcs on 3rd plunge than on 30305.""",
-        stars = '', **def_XPR_pos)
+        stars = '****', **def_XPR_pos)
 
 
 E = campaign.add_experiment(date="20140328")
@@ -357,5 +357,50 @@ E.rep(30457, 30456, "Repeat, earlier plunge, single tip 13.0 Vpp, 0.5 kHz",
         descr = """\
             Good high density swept data. Recovered arcs on Mach.""",
         stars = '****')
+
+# Leena Aho-Mantila
+E = campaign.add_experiment(date="20140515")
+
+E.add(30791, "Test plunge, Mach -150 V, single 13.0 Vpp, 0.5 kHz, sine",
+        times = 1.00,
+        posit = 0.02,
+        head = head_20130306_4tips,
+        tipmap = tipmap_tip1_V3,
+        ampI1 = CurrentProbe1[20],
+        ampI2 = CurrentProbe2[20],
+        ampI3 = CurrentProbe3[20],
+        ampI4 = CurrentProbe4[50],
+        descr = """\
+            Everything seems OK. Arcs due to 6 MW.
+            Offsets apparently changed!!!""",
+        stars = '**', **def_XPR_pos)
+
+E.rep(30799, 30791, "Ref. 30290, Mach -150 V, single 13.0 Vpp, 0.5 kHz, sine",
+        times = 4.6,
+        posit = 0.34,
+        descr = """\
+            Disruption before plunge.""",
+        stars = '')
+
+E.rep(30800, 30799, "Next try, less N2",
+        times = 4.6,
+        posit = 0.34,
+        descr = """\
+            Disruption before plunge.""",
+        stars = '')
+
+E.rep(30801, 30800, "Next try",
+        times = 4.6,
+        posit = 0.34,
+        descr = """\
+            Nice data, no arcs. Sweep voltage a bit too high.""",
+        stars = '****')
+
+E.rep(30802, 30801, "single 12.0 Vpp, 200 Hz",
+        times = 4.6,
+        posit = 0.34,
+        descr = """\
+            More arcs. OK on way out.""",
+        stars = '***')
 
 
